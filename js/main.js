@@ -267,6 +267,8 @@ class Game {
 
     // ---- paint system ----
     this.paint.on('color', (hex) => this.hand.setBrushColor(hex));
+    this.paint.on('closed', () => this.#exitEasel());
+
     this.paint.on('finished', ({ texture, quality }) => {
       this.mode = 'naming';
       const n = this.state.paintings.length + 1;
@@ -374,10 +376,9 @@ class Game {
       case 'playing': this.#pause(); break;
       case 'paused': this.#resume(); break;
       case 'easel':
-        this.paint.close();
-        this.mode = 'playing';
-        this.input.requestLock();
+        this.#exitEasel();
         break;
+
       case 'codex':
         this.ui.closeCodex();
         this.mode = this.#modeBeforeCodex;
@@ -415,7 +416,16 @@ class Game {
     }
   }
 
+  #exitEasel() {
+    if (this.mode !== 'easel') return;
+    this.paint.close();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    this.input.requestLock();
+  }
+
   #onOption(i) {
+
     if (this.mode !== 'dialogue') return;
     if (this.ui.isTyping) { this.ui.completeLine(); return; }
     this.audio.uiMove();
@@ -486,9 +496,12 @@ class Game {
       }
       case 'easel':
         this.mode = 'easel';
+        this.player.setFrozen(true);       // feet freeze; the world keeps breathing
+        this.ui.interactPrompt(null);
         this.input.exitLock();
         this.paint.open();
         break;
+
       case 'bed':
         if (this.quests.bedArmed) {
           this.quests.notify('bedUsed');
@@ -593,7 +606,9 @@ class Game {
     const dt = Math.min(now - (this.#t || now), 0.05);
     this.#t = now;
 
-    const playing = this.mode === 'playing' || this.mode === 'dialogue' || this.mode === 'codex';
+    // the world simulates in every in-run mode; only the player's body freezes
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming'].includes(this.mode);
+
     if (playing) {
       this.#swingCooldown = Math.max(0, this.#swingCooldown - dt);
       this.#shrineCooldown = Math.max(0, this.#shrineCooldown - dt);

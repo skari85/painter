@@ -180,7 +180,9 @@ export class PaintSystem extends Emitter {
       brushPreview: $('brush-preview'),
       clear: $('easel-clear'),
       finish: $('easel-finish'),
+      back: $('easel-back'),
     };
+
     this.#ctx = this.#ui.canvas.getContext('2d', { willReadFrequently: true });
 
     // palette swatches
@@ -196,6 +198,17 @@ export class PaintSystem extends Emitter {
 
     this.#ui.clear.addEventListener('click', () => this.#prime());
     this.#ui.finish.addEventListener('click', () => this.#finish());
+    this.#ui.back.addEventListener('click', () => { this.close(); this.emit('closed'); });
+
+    // live brush ring — the visible "hand" of the easel
+    this.#brushCursor = document.createElement('div');
+    this.#brushCursor.className = 'brush-cursor';
+    document.body.appendChild(this.#brushCursor);
+    const canvasEl = this.#ui.canvas;
+    canvasEl.addEventListener('pointerenter', (e) => this.#moveCursor(e));
+    canvasEl.addEventListener('pointermove', (e) => this.#moveCursor(e));
+    canvasEl.addEventListener('pointerleave', () => { this.#brushCursor.style.display = 'none'; });
+
 
     // stroke input
     const posOf = (e) => {
@@ -222,11 +235,28 @@ export class PaintSystem extends Emitter {
     this.#ui.canvas.addEventListener('pointercancel', up);
   }
 
+  #brushCursor = null;
+
+  #moveCursor(e) {
+    if (!this.isOpen) return;
+    const r = this.#ui.canvas.getBoundingClientRect();
+    const scale = r.width / this.#ui.canvas.width;
+    const px = Math.max(10, this.brushSize * scale);
+    const c = this.#brushCursor.style;
+    c.display = 'block';
+    c.width = `${px}px`;
+    c.height = `${px}px`;
+    c.left = `${e.clientX}px`;
+    c.top = `${e.clientY}px`;
+    c.borderColor = this.color;
+  }
+
   setColor(i) {
     this.colorIndex = clamp(i, 0, PAINT.palette.length - 1);
     for (const [j, el] of [...this.#ui.palette.children].entries()) {
       el.classList.toggle('active', j === this.colorIndex);
     }
+    if (this.#brushCursor) this.#brushCursor.style.borderColor = this.color;
     this.emit('color', this.color);
   }
 
@@ -234,6 +264,7 @@ export class PaintSystem extends Emitter {
     this.brushIndex = clamp(this.brushIndex + dir, 0, PAINT.brushSizes.length - 1);
     this.#ui.brushPreview.style.setProperty('--dot', `${6 + this.brushIndex * 6}px`);
   }
+
 
   open() {
     this.isOpen = true;
@@ -246,9 +277,11 @@ export class PaintSystem extends Emitter {
   close() {
     this.isOpen = false;
     this.#ui.root.classList.add('hidden');
+    if (this.#brushCursor) this.#brushCursor.style.display = 'none';
     if (this.#raf) cancelAnimationFrame(this.#raf);
     this.#raf = null;
   }
+
 
   #prime() {
     const { canvas } = this.#ui;
