@@ -354,7 +354,26 @@ export class World {
 
     door(z, { x: 5.8, z: 1.6, ry: -Math.PI / 2, label: 'THE SCENE →', to: 'galleria' });
 
+    // the framed scene-map by the door — diegetic fast travel
+    const mapFrame = new THREE.Group();
+    mapFrame.position.set(5.86, 2.0, -0.6);
+    mapFrame.rotation.y = -Math.PI / 2;
+    const mapBack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.05), mat(0x2b2118, { roughness: 0.5 }));
+    const mapFace = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.08, 0.78),
+      new THREE.MeshBasicMaterial({ map: textTexture('THE SCENE\n~ a map ~', { fg: '#e8c15a', bg: '#14161c', size: 40, h: 192 }) })
+    );
+    mapFace.position.z = 0.03;
+    mapFace.userData.noSplat = true;
+    mapFrame.add(mapBack, mapFace);
+    z.group.add(mapFrame);
+    z.interactables.push({
+      id: 'map', type: 'map', label: 'Study the scene map',
+      pos: new THREE.Vector3(5.6, 1.5, -0.6), radius: 2.0,
+    });
+
     z.waypoints = [
+
       new THREE.Vector3(-3, 0, 2.5), new THREE.Vector3(3, 0, 2.8),
       new THREE.Vector3(-2, 0, -0.5), new THREE.Vector3(2.5, 0, 0.2),
       new THREE.Vector3(0.5, 0, 3.5), new THREE.Vector3(-4.5, 0, -1.5),

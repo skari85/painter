@@ -247,8 +247,34 @@ export class UIManager {
   hideOptions() { this.el.dlgOptions.innerHTML = ''; }
 
   /* ============================================================
+     The Map — fast travel between the three studios
+     ============================================================ */
+
+  openMap({ current, vaultOpen }, onPick) {
+    const grid = $('map-grid');
+    grid.innerHTML = '';
+    for (const z of MAP_ZONES) {
+      const locked = z.key === 'vault' && !vaultOpen;
+      const here = z.key === current;
+      const card = document.createElement('button');
+      card.className = 'map-card' + (here ? ' here' : '') + (locked ? ' locked' : '');
+      card.innerHTML =
+        `<span class="map-name">${z.name}</span>` +
+        `<span class="map-desc">${z.desc}</span>` +
+        `<span class="map-status">${here ? 'YOU ARE HERE' : locked ? 'LOCKED — NIGHT THREE' : 'TRAVEL →'}</span>`;
+      if (!locked) card.addEventListener('click', () => onPick(z.key));
+      else card.disabled = true;
+      grid.appendChild(card);
+    }
+    this.show('map');
+  }
+
+  closeMap() { this.hide('map'); }
+
+  /* ============================================================
      Codex (virtues)
      ============================================================ */
+
 
   openCodex(state) {
     const grid = this.el.codexGrid;
@@ -354,7 +380,15 @@ export class UIManager {
   }
 }
 
+/* Map destinations — copy lives with the UI that renders it. */
+const MAP_ZONES = [
+  { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
+  { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
+  { key: 'vault', name: 'THE VAULT', desc: 'Mister Index’s collection. Invitation only. Bring nerve.' },
+];
+
 /* Ending prose lives with the UI that renders it. */
+
 const ENDING_TEXT = {
   ascension:
     'Mister Index came apart like a bad investment.\nThe cages opened. Nobody took anything — it was never the point.\n\nYou walk home at dawn with paint on your hands and all eight virtues humming.\nIn the garret, the last canvas waits, blank as forgiveness.\n\nYou begin. Nobody is watching. That is why it matters.',

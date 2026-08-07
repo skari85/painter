@@ -84,7 +84,8 @@ const LPOSE = {
   kind:   { pos: [-0.22, -0.3, -0.55],  rot: [-0.9, 0.5, -0.4] },   // open, offering
   witty:  { pos: [-0.2, -0.26, -0.5],   rot: [-0.35, 0.9, -0.55] }, // finger guns adjacent
   brutal: { pos: [-0.12, -0.28, -0.5],  rot: [-0.15, 1.1, 0.0] },   // accusatory point
-  carry:  { pos: [-0.4, -0.42, -0.6],   rot: [-0.5, 0.55, -0.2] },
+  carry:  { pos: [-0.3, -0.3, -0.56],   rot: [-0.35, 0.5, -0.15] },
+
 };
 
 export class HandRig {
@@ -112,8 +113,9 @@ export class HandRig {
       new THREE.BoxGeometry(0.42, 0.52, 0.025),
       new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.85 })
     );
-    this.carryMesh.position.set(-0.05, -0.02, 0.1);
-    this.carryMesh.rotation.set(0.15, 0.35, 0.12);
+    this.carryMesh.position.set(-0.02, 0.06, 0.05);
+    this.carryMesh.rotation.set(0.1, 0.3, 0.1);
+
     this.carryMesh.visible = false;
     this.left.add(this.carryMesh);
 

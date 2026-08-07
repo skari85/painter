@@ -18,7 +18,9 @@ const KEY_ACTIONS = {
   KeyD: 'right', ArrowRight: 'right',
   ShiftLeft: 'sprint', ShiftRight: 'sprint',
   KeyE: 'interact',
+  KeyM: 'map',
   Escape: 'pause',
+
   Tab: 'codex',
   Digit1: 'option1', Digit2: 'option2', Digit3: 'option3',
   BracketLeft: 'brushSmaller', BracketRight: 'brushBigger',

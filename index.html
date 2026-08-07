@@ -166,6 +166,8 @@
         <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><p>Move. Your hands are yours — watch them.</p>
         <div><kbd>Mouse</kbd></div><p>Look. <kbd>LMB</kbd> swings the brush. Paint sticks to walls, egos, outfits.</p>
         <div><kbd>E</kbd></div><p>Talk / use / pick up. Talking is duelling. Choose your tone.</p>
+        <div><kbd>M</kbd></div><p>The map. Click a studio, appear there. Cheaper than a cab.</p>
+
         <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><p>In dialogue: Kind, Witty or Brutal comebacks. Everyone has a weakness.</p>
         <div><kbd>Tab</kbd></div><p>Meditate on the Eight Virtues — and what The Market made of them.</p>
         <div><kbd>Esc</kbd></div><p>Pause. Step back from the canvas.</p>
@@ -205,7 +207,18 @@
     </div>
   </section>
 
+  <!-- The Map -->
+  <section id="map" class="hidden" role="dialog" aria-modal="true" aria-label="The map">
+    <div class="modal-card wide">
+      <h2 class="modal-title">THE MAP</h2>
+      <p class="modal-note">Three rooms. One reputation. Click a destination.</p>
+      <div class="map-grid" id="map-grid"></div>
+      <div class="modal-actions"><button class="btn primary" id="map-close">Close <kbd>M</kbd></button></div>
+    </div>
+  </section>
+
   <!-- Virtue codex -->
+
   <section id="codex" class="hidden" role="dialog" aria-modal="true" aria-label="The Eight Virtues">
     <div class="modal-card wide">
       <h2 class="modal-title">THE EIGHT VIRTUES</h2>

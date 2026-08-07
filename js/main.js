@@ -134,6 +134,8 @@ class Game {
     click('pause-settings', () => this.ui.show('settings'));
     click('pause-quit', () => this.#quitToTitle());
     click('codex-close', () => { this.ui.closeCodex(); if (this.mode === 'codex') this.mode = this.#modeBeforeCodex; });
+    click('map-close', () => this.#closeMap());
+
     click('ending-again', () => this.#startRun());
 
     this.ui.bindSettings(this.settings, (key) => {
@@ -144,7 +146,9 @@ class Game {
 
     // ---- global keys ----
     this.input.on('press:pause', () => this.#onEscape());
+    this.input.on('press:map', () => this.#toggleMap());
     this.input.on('press:codex', () => this.#toggleCodex());
+
     this.input.on('press:interact', () => this.#onInteract());
     this.input.on('press:swing', () => this.#onSwing());
     this.input.on('press:option1', () => this.#onOption(0));
@@ -285,8 +289,13 @@ class Game {
         this.audio.pickup();
         this.mode = 'playing';
         this.input.requestLock();
+        if (this.quests.currentStep?.id === 'hang') {
+          this.ui.hint('Press M — the map knows the way to the Bianca. Or walk: the door glows.');
+          setTimeout(() => this.ui.hint(null), 9000);
+        }
       });
     });
+
 
     // ---- heat → banishment ----
     this.state.on('meter', ({ key, value }) => {
@@ -327,7 +336,8 @@ class Game {
 
     this.mode = 'playing';
     this.ui.show('hud');
-    this.ui.hint('WASD move · E talk/use · LMB swing brush · Tab virtues · Esc pause');
+    this.ui.hint('WASD move · E talk/use · LMB brush · M map · Tab virtues · Esc pause');
+
     setTimeout(() => this.ui.hint(null), 9000);
     this.quests.startNight(n);
     this.input.requestLock();
@@ -379,10 +389,14 @@ class Game {
         this.#exitEasel();
         break;
 
+      case 'map':
+        this.#closeMap();
+        break;
       case 'codex':
         this.ui.closeCodex();
         this.mode = this.#modeBeforeCodex;
         break;
+
       case 'dialogue': break;   // you finish what you started
       default: break;
     }
@@ -423,6 +437,41 @@ class Game {
     this.mode = 'playing';
     this.input.requestLock();
   }
+
+  /* ---- the map ---- */
+
+  #toggleMap() {
+    if (this.mode === 'playing') this.#openMap();
+    else if (this.mode === 'map') this.#closeMap();
+  }
+
+  #openMap() {
+    this.mode = 'map';                     // set before exitLock: suppresses auto-pause
+    this.player.setFrozen(true);
+    this.ui.interactPrompt(null);
+    this.input.exitLock();
+    this.ui.openMap(
+      { current: this.world.current, vaultOpen: this.state.getFlag('vaultOpen') },
+      (zone) => this.#mapTravel(zone)
+    );
+    this.audio.uiMove();
+  }
+
+  #closeMap() {
+    this.ui.closeMap();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    this.input.requestLock();
+  }
+
+  #mapTravel(zone) {
+    this.ui.closeMap();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    if (zone !== this.world.current) this.#travelTo(zone);
+    this.input.requestLock();
+  }
+
 
   #onOption(i) {
 
@@ -529,6 +578,10 @@ class Game {
         this.ui.toast('THE DESK', pick(it.lines));
         this.audio.uiMove();
         break;
+      case 'map':
+        this.#openMap();
+        break;
+
       case 'display': {
         const carried = this.state.getPainting(this.state.carrying);
         if (!carried) {
@@ -607,7 +660,8 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map'].includes(this.mode);
+
 
     if (playing) {
       this.#swingCooldown = Math.max(0, this.#swingCooldown - dt);

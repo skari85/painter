@@ -216,7 +216,8 @@ kbd {
 /* ============================================================
    MODALS
    ============================================================ */
-#howto, #settings, #pause, #naming, #codex, #night-end, #fatal {
+#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map {
+
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
   background: rgba(5, 5, 8, 0.6);
@@ -559,8 +560,31 @@ kbd {
 
 
 /* ============================================================
+   MAP
+   ============================================================ */
+.map-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+.map-card {
+  display: flex; flex-direction: column; gap: 8px; text-align: left;
+  padding: 20px;
+  border-radius: var(--r-chip);
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.map-card:hover:not(.locked) { transform: translateY(-3px); background: rgba(255,255,255,0.09); border-color: var(--accent); }
+.map-card .map-name { font-weight: 800; font-size: 14px; letter-spacing: 0.06em; }
+.map-card .map-desc { font-size: 12.5px; color: var(--ink-dim); line-height: 1.45; min-height: 54px; }
+.map-card .map-status { font-size: 10px; font-weight: 800; letter-spacing: 0.18em; color: var(--accent); }
+.map-card.here { border-color: var(--integrity); }
+.map-card.here .map-status { color: var(--integrity); }
+.map-card.locked { opacity: 0.45; cursor: not-allowed; }
+.map-card.locked .map-status { color: var(--ink-faint); }
+@media (max-width: 720px) { .map-grid { grid-template-columns: 1fr; } }
+
+/* ============================================================
    NIGHT END / SUMMARY
    ============================================================ */
+
 .night-summary { display: flex; flex-direction: column; gap: 8px; }
 .night-row {
   display: flex; justify-content: space-between; align-items: center;
