@@ -1,0 +1,148 @@
+/**
+ * state.js — the single source of truth for run state.
+ *
+ * Run state (meters, virtues, flags, paintings) resets every playthrough.
+ * Meta state (settings, unlocked endings) persists to localStorage.
+ *
+ * Everything mutates through methods that emit events — the UI never polls.
+ */
+
+import { Emitter, clamp } from './utils.js';
+import { METERS, VIRTUES, VIRTUE_START, VIRTUE_MIN, VIRTUE_MAX, STORAGE } from './config.js';
+
+export class GameState extends Emitter {
+  constructor() {
+    super();
+    this.reset();
+  }
+
+  reset() {
+    this.night = 1;
+    this.meters = Object.fromEntries(
+      Object.entries(METERS).map(([k, m]) => [k, m.start])
+    );
+    this.virtues = Object.fromEntries(VIRTUES.map((v) => [v.key, VIRTUE_START]));
+    this.flags = new Map();
+    this.paintings = [];        // { id, title, texture, quality, sold }
+    this.carrying = null;       // painting id
+    this.nightLog = [];         // rows for the end-of-night summary
+    this.stats = { duelsWon: 0, meltdowns: 0, splats: 0, paintingsMade: 0, sold: 0, refused: 0 };
+    this.emit('reset');
+  }
+
+  /* ---------------- meters ---------------- */
+
+  addMeter(key, delta, reason = '') {
+    if (!(key in this.meters)) return;
+    const def = METERS[key];
+    const next = clamp(this.meters[key] + delta, def.min, def.max);
+    const applied = next - this.meters[key];
+    this.meters[key] = next;
+    if (applied !== 0) {
+      this.emit('meter', { key, value: next, delta: applied, reason });
+      if (Math.abs(applied) >= 1) {
+        this.nightLog.push({ label: reason || key, delta: applied, meter: key });
+      }
+    }
+    return applied;
+  }
+
+  get heatMaxed() { return this.meters.heat >= METERS.heat.max; }
+
+  /* ---------------- virtues ---------------- */
+
+  shiftVirtue(key, delta, reason = '') {
+    if (!(key in this.virtues)) return;
+    const next = clamp(this.virtues[key] + delta, VIRTUE_MIN, VIRTUE_MAX);
+    const applied = next - this.virtues[key];
+    this.virtues[key] = next;
+    if (applied !== 0) this.emit('virtue', { key, value: next, delta: applied, reason });
+    return applied;
+  }
+
+  get virtueAverage() {
+    const vals = Object.values(this.virtues);
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+
+  /* ---------------- flags ---------------- */
+
+  setFlag(key, value = true) {
+    if (this.flags.get(key) === value) return;
+    this.flags.set(key, value);
+    this.emit('flag', { key, value });
+  }
+  getFlag(key) { return this.flags.get(key) ?? false; }
+
+  /* ---------------- paintings ---------------- */
+
+  addPainting(p) {
+    this.paintings.push(p);
+    this.stats.paintingsMade++;
+    this.emit('paintings');
+  }
+
+  getPainting(id) { return this.paintings.find((p) => p.id === id) ?? null; }
+
+  unsoldPaintings() { return this.paintings.filter((p) => !p.sold); }
+
+  /* ---------------- night log ---------------- */
+
+  record(label, delta = null) {
+    this.nightLog.push({ label, delta });
+  }
+
+  drainNightLog() {
+    const log = this.nightLog.slice(-8);
+    this.nightLog = [];
+    return log;
+  }
+}
+
+/* ============================================================
+   Meta persistence — settings & unlocked endings.
+   Fail-soft: private browsing / full storage must never crash.
+   ============================================================ */
+
+function read(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
+  } catch { return { ...fallback }; }
+}
+
+function write(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* fail-soft */ }
+}
+
+const defaultSettings = () => ({
+  sens: 1,
+  vol: 0.8,
+  quality: 1,
+  reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  invertY: false,
+});
+
+export function loadSettings() {
+  return read(STORAGE.settings, defaultSettings());
+}
+
+export function saveSettings(settings) {
+  write(STORAGE.settings, settings);
+}
+
+export function loadEndings() {
+  try {
+    const raw = localStorage.getItem(STORAGE.endings);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function unlockEnding(key) {
+  const list = loadEndings();
+  if (!list.includes(key)) {
+    list.push(key);
+    write(STORAGE.endings, list);
+  }
+  return list;
+}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0b0f" />
+  <meta name="description" content="PAINTER: ASCENSION — a first-person artworld satire. Three nights. Eight corrupted virtues. One canvas." />
+  <title>PAINTER: ASCENSION</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- 3D viewport -->
+  <canvas id="gl" aria-hidden="true"></canvas>
+
+  <!-- Vignette / damage pulse layers -->
+  <div id="vignette" aria-hidden="true"></div>
+  <div id="cred-pulse" aria-hidden="true"></div>
+
+  <!-- ============ HUD ============ -->
+  <div id="hud" class="hidden" aria-live="off">
+    <!-- Objective -->
+    <section id="objective-card" class="card" aria-label="Current objective">
+      <div class="obj-kicker" id="night-label">NIGHT ONE</div>
+      <div class="obj-text" id="objective-text">Wake up.</div>
+    </section>
+
+    <!-- Meters -->
+    <section id="meters" aria-label="Your standing">
+      <div class="meter" data-meter="fame">
+        <span class="meter-label">FAME</span>
+        <div class="meter-track"><div class="meter-fill" id="meter-fame"></div></div>
+        <span class="meter-num" id="meter-fame-num">0</span>
+      </div>
+      <div class="meter" data-meter="integrity">
+        <span class="meter-label">INTEGRITY</span>
+        <div class="meter-track"><div class="meter-fill" id="meter-integrity"></div></div>
+        <span class="meter-num" id="meter-integrity-num">50</span>
+      </div>
+      <div class="meter" data-meter="cash">
+        <span class="meter-label">CASH</span>
+        <div class="meter-track"><div class="meter-fill" id="meter-cash"></div></div>
+        <span class="meter-num" id="meter-cash-num">0</span>
+      </div>
+      <div class="meter" data-meter="heat">
+        <span class="meter-label">HEAT</span>
+        <div class="meter-track"><div class="meter-fill heat" id="meter-heat"></div></div>
+        <span class="meter-num" id="meter-heat-num">0</span>
+      </div>
+    </section>
+
+    <!-- Carried painting chip -->
+    <div id="carrying-chip" class="hidden">
+      <span class="chip-icon">🖼</span><span id="carrying-title">Untitled</span>
+    </div>
+
+    <!-- Crosshair + hitmarker -->
+    <div id="crosshair" aria-hidden="true"><div class="dot"></div></div>
+    <div id="hitmarker" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+
+    <!-- Interact prompt -->
+    <div id="interact-prompt" class="hidden">
+      <kbd>E</kbd><span id="interact-text">Talk</span>
+    </div>
+
+    <!-- Subtitles for ambient barks -->
+    <div id="subtitle" class="hidden" role="status"></div>
+
+    <!-- Toast stack -->
+    <div id="toasts" aria-live="polite"></div>
+
+    <!-- Damage numbers -->
+    <div id="damage-layer" aria-hidden="true"></div>
+
+    <!-- Hint -->
+    <div id="hint-bar" class="hidden"></div>
+  </div>
+
+  <!-- ============ DIALOGUE ============ -->
+  <section id="dialogue" class="hidden" role="dialog" aria-modal="true" aria-label="Conversation">
+    <div class="dlg-panel">
+      <header class="dlg-header">
+        <div class="dlg-speaker">
+          <span class="dlg-name" id="dlg-name">???</span>
+          <span class="dlg-role" id="dlg-role"></span>
+        </div>
+        <div class="dlg-ego" aria-label="Their ego">
+          <span class="ego-label">EGO</span>
+          <div class="ego-track"><div class="ego-fill" id="dlg-ego-fill"></div></div>
+        </div>
+      </header>
+      <p class="dlg-line" id="dlg-line"></p>
+      <div class="dlg-options" id="dlg-options" role="group" aria-label="Your comeback"></div>
+      <footer class="dlg-foot">
+        <span class="dlg-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> to answer</span>
+        <span class="dlg-hint dim" id="dlg-weakness-hint"></span>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ============ EASEL (painting overlay) ============ -->
+  <section id="easel" class="hidden" role="dialog" aria-modal="true" aria-label="Paint on canvas">
+    <div class="easel-stage">
+      <canvas id="paint-canvas" width="768" height="960" aria-label="Your canvas. Drag to paint."></canvas>
+      <div class="easel-tools">
+        <div class="palette" id="palette" role="group" aria-label="Colours"></div>
+        <div class="easel-row">
+          <label class="tool-label">BRUSH <kbd>[</kbd><kbd>]</kbd></label>
+          <div class="brush-size-preview" id="brush-preview"></div>
+        </div>
+        <div class="flow-track" aria-label="Flow">
+          <div class="flow-fill" id="flow-fill"></div>
+        </div>
+        <div class="easel-actions">
+          <button class="btn ghost" id="easel-clear">Scrape clean</button>
+          <button class="btn primary" id="easel-finish">Sign it</button>
+        </div>
+      </div>
+    </div>
+    <p class="easel-hint">Drag to lay pigment. Long unbroken strokes build <em>flow</em>. <kbd>Esc</kbd> steps back.</p>
+  </section>
+
+  <!-- Naming modal -->
+  <section id="naming" class="hidden" role="dialog" aria-modal="true" aria-label="Title your work">
+    <div class="modal-card">
+      <h2 class="modal-title">TITLE THE WORK</h2>
+      <input id="naming-input" type="text" maxlength="42" placeholder="Untitled Nº 1" autocomplete="off" spellcheck="false" />
+      <div class="modal-actions">
+        <button class="btn primary" id="naming-confirm">It is called that now</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MENUS ============ -->
+  <section id="title-screen" role="main" aria-label="Title screen">
+    <div class="title-inner">
+      <p class="title-kicker">AN ARTWORLD DESCENT IN THREE NIGHTS</p>
+      <h1 class="wordmark">PAINTER<span class="wordmark-sub">ASCENSION</span></h1>
+      <p class="title-tag">The Market has corrupted the Eight Virtues of Art.<br/>You have a brush, a grudge, and three studios left to survive.</p>
+      <nav class="title-menu" aria-label="Main menu">
+        <button class="btn primary xl" id="btn-begin">Begin Night One</button>
+        <button class="btn ghost" id="btn-howto">How to Play</button>
+        <button class="btn ghost" id="btn-settings">Settings</button>
+      </nav>
+      <div class="endings-strip" id="endings-strip" aria-label="Endings discovered"></div>
+      <p class="title-foot">A keyboard & mouse are required. Headphones recommended. No critics were harmed irreversibly.</p>
+    </div>
+  </section>
+
+  <section id="howto" class="hidden" role="dialog" aria-modal="true" aria-label="How to play">
+    <div class="modal-card wide">
+      <h2 class="modal-title">HOW TO PLAY</h2>
+      <div class="howto-grid">
+        <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div><p>Move. Your hands are yours — watch them.</p>
+        <div><kbd>Mouse</kbd></div><p>Look. <kbd>LMB</kbd> swings the brush. Paint sticks to walls, egos, outfits.</p>
+        <div><kbd>E</kbd></div><p>Talk / use / pick up. Talking is duelling. Choose your tone.</p>
+        <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><p>In dialogue: Kind, Witty or Brutal comebacks. Everyone has a weakness.</p>
+        <div><kbd>Tab</kbd></div><p>Meditate on the Eight Virtues — and what The Market made of them.</p>
+        <div><kbd>Esc</kbd></div><p>Pause. Step back from the canvas.</p>
+      </div>
+      <p class="modal-note">Brutality wins rooms and loses souls. Heat above the red line gets you banned from galleries. Paint something honest once in a while.</p>
+      <div class="modal-actions"><button class="btn primary" id="howto-close">Understood</button></div>
+    </div>
+  </section>
+
+  <section id="settings" class="hidden" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="modal-card">
+      <h2 class="modal-title">SETTINGS</h2>
+      <div class="setting-row"><label for="set-sens">Mouse sensitivity</label><input id="set-sens" type="range" min="0.3" max="2.5" step="0.05" value="1" /></div>
+      <div class="setting-row"><label for="set-vol">Volume</label><input id="set-vol" type="range" min="0" max="1" step="0.05" value="0.8" /></div>
+      <div class="setting-row"><label for="set-quality">Render scale</label>
+        <select id="set-quality">
+          <option value="1">Native</option>
+          <option value="0.75">Performance</option>
+          <option value="0.5">Potato (affectionate)</option>
+        </select>
+      </div>
+      <div class="setting-row check"><label for="set-motion">Reduce camera motion</label><input id="set-motion" type="checkbox" /></div>
+      <div class="setting-row check"><label for="set-inverty">Invert Y</label><input id="set-inverty" type="checkbox" /></div>
+      <div class="modal-actions"><button class="btn primary" id="settings-close">Done</button></div>
+    </div>
+  </section>
+
+  <section id="pause" class="hidden" role="dialog" aria-modal="true" aria-label="Paused">
+    <div class="modal-card">
+      <h2 class="modal-title">PAUSED</h2>
+      <p class="modal-note">The artworld waits. It is very patient and slightly drunk.</p>
+      <div class="modal-actions col">
+        <button class="btn primary" id="pause-resume">Resume</button>
+        <button class="btn ghost" id="pause-settings">Settings</button>
+        <button class="btn ghost" id="pause-quit">Abandon the night</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Virtue codex -->
+  <section id="codex" class="hidden" role="dialog" aria-modal="true" aria-label="The Eight Virtues">
+    <div class="modal-card wide">
+      <h2 class="modal-title">THE EIGHT VIRTUES</h2>
+      <p class="modal-note">What you were. What The Market is making of you.</p>
+      <div id="codex-grid"></div>
+      <div class="modal-actions"><button class="btn primary" id="codex-close">Close <kbd>Tab</kbd></button></div>
+    </div>
+  </section>
+
+  <!-- Night transition -->
+  <section id="night-end" class="hidden" role="dialog" aria-modal="true" aria-label="The night ends">
+    <div class="modal-card wide">
+      <h2 class="modal-title" id="night-end-title">THE NIGHT ENDS</h2>
+      <div id="night-end-summary" class="night-summary"></div>
+      <div class="modal-actions"><button class="btn primary" id="night-end-continue">Sleep. Dream of pigment.</button></div>
+    </div>
+  </section>
+
+  <!-- Ending -->
+  <section id="ending" class="hidden" role="main" aria-label="Ending">
+    <div class="title-inner">
+      <p class="title-kicker" id="ending-kicker">THE THIRD NIGHT IS OVER</p>
+      <h1 class="wordmark sm" id="ending-title">ENDING</h1>
+      <p class="ending-body" id="ending-body"></p>
+      <div class="ending-stats" id="ending-stats"></div>
+      <nav class="title-menu">
+        <button class="btn primary xl" id="ending-again">Paint it all again</button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- Fade curtain -->
+  <div id="curtain" aria-hidden="true"></div>
+
+  <!-- Failure / notice states -->
+  <section id="fatal" class="hidden" role="alert">
+    <div class="modal-card">
+      <h2 class="modal-title">THE STUDIO IS DARK</h2>
+      <p class="modal-note" id="fatal-text">Something failed to load.</p>
+      <div class="modal-actions"><button class="btn primary" onclick="location.reload()">Try again</button></div>
+    </div>
+  </section>
+
+  <noscript>
+    <div class="noscript-card">PAINTER: ASCENSION needs JavaScript — like the artworld needs plausible deniability.</div>
+  </noscript>
+
+  <script>
+    // CDN watchdog — if the module graph hasn't booted in 8s, say so plainly.
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        if (!window.__painterBooted) {
+          var f = document.getElementById('fatal');
+          var t = document.getElementById('fatal-text');
+          if (f && t) {
+            t.textContent = 'The engine (three.js) could not be reached from the CDN. Check the connection, then reload. The art will wait. It always does.';
+            f.classList.remove('hidden');
+          }
+        }
+      }, 8000);
+    });
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
+

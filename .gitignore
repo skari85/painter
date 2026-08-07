@@ -1,0 +1,10 @@
+# macOS metadata
+.DS_Store
+._*
+
+# editors
+.vscode/
+.idea/
+
+# node (if tooling is added later)
+node_modules/
