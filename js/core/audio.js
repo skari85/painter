@@ -6,6 +6,8 @@
  */
 
 import { clamp, rand } from './utils.js';
+import { MUSIC_LEVEL } from './config.js';
+
 
 const MOODS = {
   garret:   { freqs: [110, 164.8, 220], cutoff: 640,  gain: 0.05 },
@@ -21,6 +23,11 @@ export class AudioEngine {
   #moodNodes = null;
   #volume = 0.8;
   #stepFlip = false;
+  #music = null;
+  #musicKey = null;
+  #musicTarget = 0;
+  #fadeTimer = null;
+
 
   /** Must be called from a user-gesture handler at least once. */
   ensure() {
@@ -41,14 +48,66 @@ export class AudioEngine {
     } catch {
       this.#ctx = null; // audio is a garnish, never a dependency
     }
+    // if music was requested before the first gesture, retry now
+    if (this.#music?.paused) this.#music.play().catch(() => {});
   }
 
   setVolume(v) {
     this.#volume = clamp(v, 0, 1);
     if (this.#master) this.#master.gain.value = this.#volume;
+    this.#musicTarget = this.#volume * MUSIC_LEVEL;
+    if (this.#music) this.#music.volume = Math.min(this.#music.volume, this.#musicTarget);
   }
 
+  /* ---------------- music (the record collection) ---------------- */
+
+  /** Crossfade to a track (key into MUSIC map), or null to stop. Fail-soft. */
+  setMusic(key, tracks) {
+    if (this.#musicKey === key) return;
+    this.#stopMusic();
+    this.#musicKey = key;
+    if (!key || !tracks?.[key]) return;
+    try {
+      const a = new Audio(encodeURI(tracks[key]));
+      a.loop = true;
+      a.volume = 0;
+      a.addEventListener('error', () => { if (this.#music === a) this.#music = null; });
+      this.#music = a;
+      this.#musicTarget = this.#volume * MUSIC_LEVEL;
+      const p = a.play();
+      if (p?.catch) p.catch(() => {});   // pre-gesture: ensure() will retry
+      this.#fadeMusic();
+    } catch { /* music is a garnish, never a dependency */ }
+  }
+
+  #fadeMusic() {
+    clearInterval(this.#fadeTimer);
+    this.#fadeTimer = setInterval(() => {
+      if (!this.#music) { clearInterval(this.#fadeTimer); return; }
+      const cur = this.#music.volume;
+      const diff = this.#musicTarget - cur;
+      if (Math.abs(diff) <= 0.03) { this.#music.volume = this.#musicTarget; clearInterval(this.#fadeTimer); }
+      else this.#music.volume = clamp(cur + Math.sign(diff) * 0.03, 0, 1);
+    }, 50);
+  }
+
+  #stopMusic() {
+    clearInterval(this.#fadeTimer);
+    if (!this.#music) { this.#musicKey = null; return; }
+    const a = this.#music;
+    this.#music = null;
+    this.#musicKey = null;
+    const t = setInterval(() => {
+      a.volume = Math.max(0, a.volume - 0.08);
+      if (a.volume <= 0) { a.pause(); clearInterval(t); }
+    }, 40);
+  }
+
+
   get ready() { return !!this.#ctx; }
+  get ctx() { return this.#ctx; }
+  get master() { return this.#master; }
+
 
   /* ---------------- primitives ---------------- */
 
@@ -184,3 +243,96 @@ export class AudioEngine {
     this.#moodNodes = { gain, oscs };
   }
 }
+
+/* ============================================================
+   DeckEngine — the garret radio. A tiny remix desk:
+   tape → bass shelf → treble shelf → dry ┐
+                                   echo → ┴→ master
+   Speed fader rides playbackRate with pitch shift (vinyl rules).
+   ============================================================ */
+
+export class DeckEngine extends Emitter {
+  #engine;
+  #el = null;
+  #nodes = null;
+
+  constructor(engine) {
+    super();
+    this.#engine = engine;
+    this.trackTitle = null;
+    this.params = { bass: 0, treble: 0, rate: 1, echoMix: 0.18, echoTime: 0.28 };
+  }
+
+  get playing() { return !!this.#el && !this.#el.paused; }
+  get loaded() { return !!this.#el; }
+  get currentTime() { return this.#el?.currentTime ?? 0; }
+  get duration() { return this.#el?.duration || 0; }
+
+  /** Returns false if the audio graph can't be built (no ctx / dead file). */
+  load(url, title) {
+    this.unload();
+    const ctx = this.#engine.ctx;
+    if (!ctx) return false;
+    try {
+      const el = new Audio(encodeURI(url));
+      el.loop = true;
+      el.preservesPitch = false;          // speed fader = vinyl slow-down/squeal
+      el.playbackRate = this.params.rate;
+
+      const src = ctx.createMediaElementSource(el);
+      const bass = ctx.createBiquadFilter();
+      bass.type = 'lowshelf'; bass.frequency.value = 220; bass.gain.value = this.params.bass;
+      const treble = ctx.createBiquadFilter();
+      treble.type = 'highshelf'; treble.frequency.value = 3200; treble.gain.value = this.params.treble;
+      const dry = ctx.createGain();
+      const wet = ctx.createGain();
+      const delay = ctx.createDelay(1.5);
+      delay.delayTime.value = this.params.echoTime;
+      const fb = ctx.createGain();
+      fb.gain.value = 0.34;
+
+      src.connect(bass).connect(treble);
+      treble.connect(dry).connect(this.#engine.master);
+      treble.connect(delay);
+      delay.connect(fb).connect(delay);
+      delay.connect(wet).connect(this.#engine.master);
+
+      el.addEventListener('error', () => this.emit('trackError', title));
+      this.#applyEcho(this.params.echoMix);
+      this.#el = el;
+      this.#nodes = { src, bass, treble, dry, wet, delay, fb };
+      this.trackTitle = title;
+      this.emit('loaded', title);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  play()  { this.#el?.play().catch(() => {}); this.emit('state'); }
+  pause() { this.#el?.pause(); this.emit('state'); }
+  stop()  { if (this.#el) { this.#el.pause(); this.#el.currentTime = 0; } this.emit('state'); }
+  rewind() { if (this.#el) this.#el.currentTime = 0; this.emit('state'); }
+
+  unload() {
+    if (this.#el) { try { this.#el.pause(); this.#nodes?.src.disconnect(); } catch { /* garnish */ } }
+    this.#el = null;
+    this.#nodes = null;
+    this.trackTitle = null;
+  }
+
+  setBass(db)   { this.params.bass = db;   if (this.#nodes) this.#nodes.bass.gain.value = db; }
+  setTreble(db) { this.params.treble = db; if (this.#nodes) this.#nodes.treble.gain.value = db; }
+  setRate(r)    { this.params.rate = r;    if (this.#el) this.#el.playbackRate = r; }
+  setEchoMix(v) { this.params.echoMix = v; if (this.#nodes) this.#applyEcho(v); }
+  setEchoTime(t) {
+    this.params.echoTime = t;
+    if (this.#nodes) this.#nodes.delay.delayTime.setTargetAtTime(t, this.#engine.ctx.currentTime, 0.05);
+  }
+
+  #applyEcho(v) {
+    this.#nodes.wet.gain.value = v;
+    this.#nodes.dry.gain.value = 1 - v * 0.55;
+  }
+}
+

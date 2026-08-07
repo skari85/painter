@@ -92,3 +92,20 @@ export const ENDINGS = {
 };
 
 export const CAMERA = { fov: 72, near: 0.05, far: 120 };
+
+/** The soundtrack — warm songs in personal spaces, cold drones in market spaces. */
+export const MUSIC = {
+  title: 'puplic/songs/Alt er tungt alt er fint 2.mp3',
+  garret: 'puplic/songs/sa sliten.mp3',
+  ending: 'puplic/songs/jeg liker deg demo.mp3',
+};
+export const MUSIC_LEVEL = 0.42;   // fraction of master volume
+
+/** The radio's tapes — all three tracks, remixable. */
+export const RADIO_TRACKS = [
+  { title: 'SA SLITEN', url: 'puplic/songs/sa sliten.mp3' },
+  { title: 'ALT ER TUNGT ALT ER FINT 2', url: 'puplic/songs/Alt er tungt alt er fint 2.mp3' },
+  { title: 'JEG LIKER DEG (DEMO)', url: 'puplic/songs/jeg liker deg demo.mp3' },
+];
+
+

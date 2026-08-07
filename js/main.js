@@ -1,5 +1,6 @@
 /**
  * main.js — boot, orchestration, and the game loop.
+
  *
  * Modes: title → playing ⇄ dialogue / easel / naming / codex / paused
  *        → nightSummary → … → ending
@@ -9,10 +10,13 @@
 
 import * as THREE from 'three';
 
-import { CAMERA, PLAYER, SWING, ZONES } from './core/config.js';
+import { CAMERA, PLAYER, SWING, ZONES, MUSIC, RADIO_TRACKS } from './core/config.js';
+
+
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
-import { AudioEngine } from './core/audio.js';
+import { AudioEngine, DeckEngine } from './core/audio.js';
+
 import { pick } from './core/utils.js';
 
 
@@ -75,7 +79,9 @@ class Game {
 
     // ---- modules ----
     this.audio = new AudioEngine();
+    this.deck = new DeckEngine(this.audio);
     this.input = new InputManager(canvas);
+
     this.world = new World(this.scene);
     this.player = new PlayerController(this.camera, this.input);
     this.hand = new HandRig(this.camera);
@@ -98,8 +104,10 @@ class Game {
     this.hand.setReduceMotion(this.settings.reduceMotion);
 
     window.__painterBooted = true;
+    this.audio.setMusic('title', MUSIC);   // fades in on the first user gesture
     this.renderer.setAnimationLoop((t) => this.#frame(t));
   }
+
 
   #resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -135,6 +143,8 @@ class Game {
     click('pause-quit', () => this.#quitToTitle());
     click('codex-close', () => { this.ui.closeCodex(); if (this.mode === 'codex') this.mode = this.#modeBeforeCodex; });
     click('map-close', () => this.#closeMap());
+    click('deck-close', () => this.#closeRadio());
+
 
     click('ending-again', () => this.#startRun());
 
@@ -350,8 +360,10 @@ class Game {
     this.ui.renderEndingsStrip(loadEndings());
     this.mode = 'title';
     this.audio.setMood('off');
+    this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
   }
+
 
   #showEnding() {
     const key = this.quests.computeEnding();
@@ -359,8 +371,10 @@ class Game {
     this.mode = 'transition';              // suppress auto-pause on unlock
     this.input.exitLock();
     this.audio.setMood('off');
+    this.audio.setMusic('ending', MUSIC);
 
     this.ui.transition(() => {
+
       this.ui.hide('hud');
       this.ui.showEnding(key, this.state);
       this.mode = 'ending';
@@ -392,6 +406,10 @@ class Game {
       case 'map':
         this.#closeMap();
         break;
+      case 'radio':
+        this.#closeRadio();
+        break;
+
       case 'codex':
         this.ui.closeCodex();
         this.mode = this.#modeBeforeCodex;
@@ -471,6 +489,20 @@ class Game {
     if (zone !== this.world.current) this.#travelTo(zone);
     this.input.requestLock();
   }
+
+  /* ---- the radio ---- */
+
+  #closeRadio() {
+    this.ui.closeRadio();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    // if the deck is silent, the garret's own music can resume
+    if (!this.deck.playing && this.world.current === 'garret') {
+      this.audio.setMusic('garret', MUSIC);
+    }
+    this.input.requestLock();
+  }
+
 
 
   #onOption(i) {
@@ -581,6 +613,17 @@ class Game {
       case 'map':
         this.#openMap();
         break;
+      case 'radio':
+        this.audio.ensure();
+        this.mode = 'radio';
+        this.player.setFrozen(true);
+        this.ui.interactPrompt(null);
+        this.input.exitLock();
+        this.audio.setMusic(null);          // the deck owns the room now
+        this.audio.setMood('off');
+        this.ui.openRadio(this.deck, RADIO_TRACKS);
+        break;
+
 
       case 'display': {
         const carried = this.state.getPainting(this.state.carrying);
@@ -611,8 +654,13 @@ class Game {
   }
 
   #travelTo(zoneKey) {
+    if (zoneKey !== 'garret' && this.deck.playing) {
+      this.deck.stop();
+      this.ui.toast('THE RADIO', 'It stays in the garret, playing to an empty room. You hear it fade behind you.');
+    }
     this.audio.uiConfirm();
     this.ui.transition(() => {
+
       const z = this.world.setZone(zoneKey);
       this.paint.attachTo(z.group);
       this.#applyZoneAtmosphere(zoneKey);
@@ -631,8 +679,18 @@ class Game {
     this.scene.fog.color.set(z.fog.color);
     this.scene.fog.density = z.fog.density;
     this.scene.background.set(z.fog.color);
-    this.audio.setMood(ZONES[zoneKey].mood);
+    // the garret gets the record player; market spaces get the drone
+    if (zoneKey === 'garret') {
+      this.audio.setMood('off');
+      // the radio wins the room while a tape is playing
+      this.audio.setMusic(this.deck?.playing ? null : 'garret', MUSIC);
+    } else {
+      this.audio.setMusic(null);
+      this.audio.setMood(ZONES[zoneKey].mood);
+    }
   }
+
+
 
   #syncCarry() {
     const p = this.state.getPainting(this.state.carrying);
@@ -660,14 +718,17 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'radio'].includes(this.mode);
+
 
 
     if (playing) {
       this.#swingCooldown = Math.max(0, this.#swingCooldown - dt);
       this.#shrineCooldown = Math.max(0, this.#shrineCooldown - dt);
+      this.world.radioOn = this.deck.playing;   // the little green LED
 
       const moving = this.player.update(dt, this.world.colliders());
+
       this.npcs.update(dt, now, this.player.position);
       this.world.update(dt, now);
       this.paint.update(dt);

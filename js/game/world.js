@@ -221,6 +221,8 @@ export class World {
     this.#splatTex = splatTexture();
     this.zones = new Map();
     this.current = null;
+    this.radioOn = false;      // main syncs this from the deck each frame
+
     this.#buildGarret();
     this.#buildGalleria();
     this.#buildVault();
@@ -330,6 +332,47 @@ export class World {
     box(z, { w: 0.9, h: 1.15, d: 0.06, x: -5.3, y: 0, z: 0.4, ry: 0.22, material: mat(0xd8d2c2), solid: false });
     box(z, { w: 0.8, h: 1.0, d: 0.06, x: -5.0, y: 0, z: 0.9, ry: 0.35, material: mat(0xc9bfae), solid: false });
     box(z, { w: 1.3, h: 0.75, d: 0.7, x: 4.5, z: 1.8, material: mat(0x4a3626), name: 'desk' });
+
+    // the radio on the desk — radio.png face, bent antenna, gold LED
+    {
+      const radio = new THREE.Group();
+      radio.position.set(4.35, 0.75, 1.55);
+      radio.rotation.y = -Math.PI / 2 - 0.25;   // face the room
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.3, 0.2), mat(0x5e2430, { roughness: 0.55 }));
+      body.position.y = 0.15;
+      const face = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.48, 0.26),
+        new THREE.MeshStandardMaterial({ color: 0xd8d2c2, roughness: 0.8 })
+      );
+      face.position.set(0, 0.15, 0.105);
+      face.userData.noSplat = true;
+      new THREE.TextureLoader().load(encodeURI('puplic/visual assets/radio.png'), (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        face.material.map = tex;
+        face.material.color.set(0xffffff);
+        face.material.needsUpdate = true;
+      });
+      const antenna = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.006, 0.008, 0.5, 6),
+        mat(0xb8b2a4, { metalness: 0.8, roughness: 0.3 })
+      );
+      antenna.position.set(-0.2, 0.48, 0);
+      antenna.rotation.z = 0.5;
+      const led = new THREE.Mesh(
+        new THREE.CircleGeometry(0.014, 8),
+        new THREE.MeshBasicMaterial({ color: 0xe8c15a })
+      );
+      led.position.set(0.19, 0.06, 0.106);
+      led.userData.noSplat = true;
+      radio.add(body, face, antenna, led);
+      z.group.add(radio);
+      z.animated.radioLed = led;
+      z.interactables.push({
+        id: 'radio', type: 'radio', label: 'The radio — remix the tapes',
+        pos: new THREE.Vector3(4.35, 1.0, 1.55), radius: 1.8,
+      });
+    }
+
     z.interactables.push({
       id: 'desk', type: 'flavor', label: 'Read rejection letters',
       pos: new THREE.Vector3(4.5, 0.9, 1.8), radius: 1.6,
@@ -646,5 +689,15 @@ export class World {
     for (const g of z.animated.glows) {
       g.rotation.y += dt * 0.12;
     }
+    if (z.animated.radioLed) {
+      // green pulse while a tape plays, dim gold standby otherwise
+      z.animated.radioLed.material.color.set(
+        this.radioOn
+          ? (Math.sin(t * 6) > 0 ? 0x7fb285 : 0x2e5f4a)
+          : 0x6b5a28
+      );
+    }
   }
 }
+
+

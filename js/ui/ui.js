@@ -247,8 +247,79 @@ export class UIManager {
   hideOptions() { this.el.dlgOptions.innerHTML = ''; }
 
   /* ============================================================
+     The Radio — remix deck (tapes, transport, faders, knobs)
+     ============================================================ */
+
+  #deckBound = false;
+  #deckTimer = null;
+
+  openRadio(deck, tracks) {
+    this.show('radio');
+    this.#bindDeck(deck, tracks);
+    this.#syncDeck(deck);
+    clearInterval(this.#deckTimer);
+    this.#deckTimer = setInterval(() => this.#deckTime(deck), 400);
+  }
+
+  closeRadio() {
+    this.hide('radio');
+    clearInterval(this.#deckTimer);
+    this.#deckTimer = null;
+  }
+
+  #bindDeck(deck, tracks) {
+    if (this.#deckBound) return;
+    this.#deckBound = true;
+    const tapes = $('deck-tapes');
+    tracks.forEach((t) => {
+      const b = document.createElement('button');
+      b.className = 'tape';
+      b.textContent = t.title;
+      b.addEventListener('click', () => {
+        if (deck.load(t.url, t.title)) {
+          deck.play();
+          for (const x of tapes.children) x.classList.toggle('active', x === b);
+        }
+      });
+      tapes.appendChild(b);
+    });
+    $('deck-play').addEventListener('click', () => {
+      if (!deck.loaded) { tapes.children[0]?.click(); return; }
+      deck.playing ? deck.pause() : deck.play();
+    });
+    $('deck-stop').addEventListener('click', () => deck.stop());
+    $('deck-rewind').addEventListener('click', () => deck.rewind());
+    deck.on('state', () => this.#syncDeck(deck));
+    deck.on('loaded', () => this.#syncDeck(deck));
+    deck.on('trackError', (title) =>
+      this.toast('THE RADIO', `The tape “${title}” is chewed up. Tragic. Silence.`, 'bad'));
+
+    $('fader-bass').addEventListener('input', (e) => deck.setBass(parseFloat(e.target.value)));
+    $('fader-treble').addEventListener('input', (e) => deck.setTreble(parseFloat(e.target.value)));
+    $('fader-speed').addEventListener('input', (e) => {
+      const r = parseFloat(e.target.value);
+      deck.setRate(r);
+      $('fader-speed-label').textContent = `${r.toFixed(2)}×`;
+    });
+    bindKnob($('knob-echo'), { min: 0, max: 1, value: deck.params.echoMix, onChange: (v) => deck.setEchoMix(v) });
+    bindKnob($('knob-time'), { min: 0.05, max: 0.8, value: deck.params.echoTime, onChange: (v) => deck.setEchoTime(v) });
+  }
+
+  #syncDeck(deck) {
+    $('deck-track').textContent = deck.trackTitle ?? 'NO TAPE';
+    $('deck-play').textContent = deck.playing ? 'Pause' : 'Play';
+    $('deck-led').classList.toggle('on', deck.playing);
+  }
+
+  #deckTime(deck) {
+    const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+    $('deck-time').textContent = deck.loaded ? `${fmt(deck.currentTime)} / ${fmt(deck.duration)}` : '0:00';
+  }
+
+  /* ============================================================
      The Map — fast travel between the three studios
      ============================================================ */
+
 
   openMap({ current, vaultOpen }, onPick) {
     const grid = $('map-grid');
@@ -380,7 +451,39 @@ export class UIManager {
   }
 }
 
+/* Rotary knob widget — drag vertically, arrows when focused. */
+function bindKnob(el, { min, max, value, onChange }) {
+  const rot = el.querySelector('.knob-rot');
+  let v = value;
+  const render = () => {
+    rot.style.transform = `rotate(${-135 + ((v - min) / (max - min)) * 270}deg)`;
+    el.setAttribute('aria-valuenow', v.toFixed(2));
+  };
+  render();
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    const y0 = e.clientY, v0 = v;
+    const move = (ev) => {
+      v = clamp(v0 + ((y0 - ev.clientY) / 130) * (max - min), min, max);
+      render(); onChange(v);
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+    };
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+  });
+  el.addEventListener('keydown', (e) => {
+    const step = (max - min) / 20;
+    if (['ArrowUp', 'ArrowRight'].includes(e.key)) { v = clamp(v + step, min, max); render(); onChange(v); e.preventDefault(); }
+    if (['ArrowDown', 'ArrowLeft'].includes(e.key)) { v = clamp(v - step, min, max); render(); onChange(v); e.preventDefault(); }
+  });
+}
+
 /* Map destinations — copy lives with the UI that renders it. */
+
 const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },

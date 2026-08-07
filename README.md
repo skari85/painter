@@ -27,6 +27,8 @@ Open the printed URL. Desktop browser with keyboard & mouse required.
 | `W A S D` + mouse | Move / look (pointer lock) |
 | `LMB` | Swing the brush — paint splatters walls, canvases, and egos |
 | `E` | Talk / use / hang work / sleep |
+| `M` | The map — click a studio, appear there |
+
 | `1 2 3` | In dialogue: **Kind / Witty / Brutal** comebacks |
 | `Tab` | The Eight Virtues codex |
 | `Esc` | Pause / step back |
@@ -45,7 +47,19 @@ each tilts the virtues.
 
 Four endings. Dots on the title screen track which you've found.
 
+## Soundtrack & the radio
+
+Warm songs from `puplic/songs/` play on the title screen, in the garret, and
+over the endings — the market spaces get cold procedural drones. (The folder
+is spelled `puplic`; left as found.)
+
+**The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
+face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
+(the speed fader is vinyl-style pitch shift), and ECHO + TIME knobs — drag
+knobs vertically. It keeps playing when you step back. It does not travel.
+
 ## Architecture
+
 
 ```
 index.html            shell + all UI layers (HUD, dialogue, menus)

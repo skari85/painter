@@ -132,7 +132,51 @@
     <p class="easel-hint">Drag to lay pigment. Long unbroken strokes build <em>flow</em>. <kbd>Esc</kbd> steps back.</p>
   </section>
 
+  <!-- ============ THE RADIO (remix deck) ============ -->
+  <section id="radio" class="hidden" role="dialog" aria-modal="true" aria-label="The radio">
+    <div class="deck">
+      <header class="deck-head">
+        <span class="deck-brand">GARRET-2000</span>
+        <div class="deck-display">
+          <div class="deck-track" id="deck-track">NO TAPE</div>
+          <div class="deck-time" id="deck-time">0:00</div>
+        </div>
+        <div class="deck-led" id="deck-led" aria-hidden="true"></div>
+      </header>
+
+      <div class="deck-tapes" id="deck-tapes" role="group" aria-label="Tapes"></div>
+
+      <div class="deck-transport">
+        <button class="btn primary" id="deck-play">Play</button>
+        <button class="btn ghost" id="deck-stop">Stop</button>
+        <button class="btn ghost" id="deck-rewind">⏪ Rewind</button>
+      </div>
+
+      <div class="deck-mixer">
+        <div class="deck-faders">
+          <div class="fader-unit"><input type="range" class="fader" id="fader-bass" min="-14" max="14" step="0.5" value="0" aria-label="Bass" /><span class="fader-label">BASS</span></div>
+          <div class="fader-unit"><input type="range" class="fader" id="fader-treble" min="-14" max="14" step="0.5" value="0" aria-label="Treble" /><span class="fader-label">TREB</span></div>
+          <div class="fader-unit"><input type="range" class="fader" id="fader-speed" min="0.5" max="1.6" step="0.01" value="1" aria-label="Tape speed" /><span class="fader-label" id="fader-speed-label">1.00×</span></div>
+        </div>
+        <div class="deck-knobs">
+          <div class="knob" id="knob-echo" role="slider" aria-label="Echo mix" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.18" tabindex="0">
+            <div class="knob-rot"><div class="knob-pin"></div></div><span class="knob-label">ECHO</span>
+          </div>
+          <div class="knob" id="knob-time" role="slider" aria-label="Echo time" aria-valuemin="0.05" aria-valuemax="0.8" aria-valuenow="0.28" tabindex="0">
+            <div class="knob-rot"><div class="knob-pin"></div></div><span class="knob-label">TIME</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="deck-foot">
+        <span>It keeps playing when you step back. It stays in the garret, though — radios don't travel.</span>
+        <button class="btn ghost" id="deck-close">Step back <kbd>Esc</kbd></button>
+      </footer>
+    </div>
+  </section>
+
   <!-- Naming modal -->
+
   <section id="naming" class="hidden" role="dialog" aria-modal="true" aria-label="Title your work">
     <div class="modal-card">
       <h2 class="modal-title">TITLE THE WORK</h2>
