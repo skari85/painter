@@ -511,7 +511,7 @@ export const MAINS = {
 
   milo: {
     id: 'milo', name: 'Milo “Mister M” Madsen', shortRole: 'collector', role: 'Collector — Host of the Private Party',
-    face: 'puplic/people/collector.png',
+    face: 'puplic/people/collector.png', photoHead: true,
     ego: 145, weak: 'witty', resist: 'brutal',
     hint: 'He is dressed for a yacht that is not here. Make him laugh before he asks what you cost.',
     pace: 0.55, pitch: 0.72, accessory: 'hat', anchor: 'milo', underwear: true,
@@ -595,7 +595,7 @@ export const MAINS = {
 
   bob: {
     id: 'bob', name: 'Bob', shortRole: 'collector', role: 'Collector of Small Joys',
-    face: 'puplic/people/bob.png',
+    face: 'puplic/people/bob.png', photoHead: true,
     ego: 55, weak: 'kind', resist: 'brutal',
     hint: 'A happy man with a happy little fortune. He cannot be insulted; he does not have the equipment.',
     pace: 0.75, pitch: 0.95, accessory: 'wine', anchor: null,
@@ -631,7 +631,7 @@ export const MAINS = {
 
   bobgirl: {
     id: 'bobgirl', name: 'Bob’s Girlfriend', shortRole: 'muse', role: 'Co-Collector of Small Joys',
-    face: 'puplic/people/bobgirl.png',
+    face: 'puplic/people/bobgirl.png', photoHead: true,
     ego: 60, weak: 'witty', resist: 'kind',
     hint: 'She has a system. The system is vibes. The system has never failed.',
     pace: 0.85, pitch: 1.2, accessory: 'wine', anchor: null,
@@ -667,7 +667,7 @@ export const MAINS = {
 
   gimp: {
     id: 'gimp', name: 'The Gimp', shortRole: 'mystery', role: 'Mystery Guest — Do Not Ask',
-    face: 'puplic/people/gimp.png',
+    face: 'puplic/people/gimp.png', photoHead: true,
     ego: 40, weak: 'kind', resist: 'brutal',
     hint: 'Nobody knows who invited him. Everybody assumes somebody else did. He is having a wonderful time.',
     pace: 0.4, pitch: 0.6, accessory: null, anchor: null,
@@ -703,7 +703,7 @@ export const MAINS = {
 
   fashion: {
     id: 'fashion', name: 'Gilda Vauge', shortRole: 'fashion', role: 'Fashion Editor-at-Large',
-    face: 'puplic/people/fashion.png',
+    face: 'puplic/people/fashion.png', photoHead: true,
     ego: 75, weak: 'witty', resist: 'kind',
     hint: 'She has seen every look, including several that have not happened yet. Hers is wrong on purpose.',
     pace: 1.05, pitch: 1.15, accessory: null, anchor: null,

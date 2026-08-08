@@ -211,11 +211,12 @@ const ACCESSORY = {
     sg.position.set(0, 1.64, 0.1);
     g.add(sg);
   },
-  hat(g, mats) {
+  hat(g, mats, def) {
+    const hy = def?.photoHead ? 2.06 : 1.82;    // photo heads are taller; the hat rides higher
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.12, 12), mats.hat ?? mats.hair);
-    crown.position.set(0, 1.82, 0);
+    crown.position.set(0, hy, 0);
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.035, 16), mats.hat ?? mats.hair);
-    brim.position.set(0, 1.76, 0);
+    brim.position.set(0, hy - 0.06, 0);
     g.add(crown, brim);
   },
 };
@@ -259,21 +260,36 @@ function buildBody(def) {
 
   const head = new THREE.Group();
   head.position.y = 1.38;
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
-  skull.position.y = 0.24;
-  // the face — a pen sketch wrapped over the front of the skull, under the hairline
-  const face = new THREE.Mesh(
-    new THREE.SphereGeometry(0.142, 18, 14, Math.PI / 2 - 1.05, 2.1, 1.45, 1.45),
-    // white base for illustrated portraits so skin tone doesn't tint the art
-    new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
-  );
-  face.position.y = 0.24;
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    mats.hair
-  );
-  hair.position.y = 0.27;
-  head.add(skull, face, hair);
+  if (def.photoHead) {
+    // the REAL photo, mounted as the head — the portrait is the face now
+    const edge = new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.6 });
+    const photo = new THREE.MeshStandardMaterial({ color: 0xffffff, map: faceTexture(def), roughness: 0.7 });
+    const card = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.45, 0.03),
+      [edge, edge, edge, edge, photo, edge]      // photo faces +z, framed in dark card
+    );
+    card.position.y = 0.33;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.14, 8), mats.skin);
+    neck.position.y = 0.04;
+    head.add(neck, card);
+  } else {
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
+    skull.position.y = 0.24;
+    // the face — a pen sketch wrapped over the front of the skull, under the hairline
+    const face = new THREE.Mesh(
+      new THREE.SphereGeometry(0.142, 18, 14, Math.PI / 2 - 1.05, 2.1, 1.45, 1.45),
+      // white base for illustrated portraits so skin tone doesn't tint the art
+      new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
+    );
+    face.position.y = 0.24;
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      mats.hair
+    );
+    hair.position.y = 0.27;
+    head.add(skull, face, hair);
+  }
+  const headRise = def.photoHead ? 0.19 : 0;   // photo cards sit taller than skulls
 
   // blob shadow
   const shadow = new THREE.Mesh(
@@ -288,20 +304,20 @@ function buildBody(def) {
     map: labelTexture(def.name, def.shortRole ?? def.role), transparent: true, depthWrite: false,
   }));
   label.scale.set(1.5, 0.375, 1);
-  label.position.y = 2.12;
+  label.position.y = 2.12 + headRise;
 
   // ego bar (billboarded pair)
   const egoBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1c1c22, transparent: true, opacity: 0.85, depthWrite: false }));
   egoBg.scale.set(0.72, 0.055, 1);
-  egoBg.position.y = 1.9;
+  egoBg.position.y = 1.9 + headRise;
   const egoFill = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x8a5cf6, depthWrite: false }));
   egoFill.center.set(0, 0.5);
   egoFill.scale.set(0.7, 0.035, 1);
-  egoFill.position.set(-0.35, 1.9, 0);
+  egoFill.position.set(-0.35, 1.9 + headRise, 0);
   egoFill.visible = egoBg.visible = false;
 
   g.add(legL, legR, torso, armL, armR, head, shadow, label, egoBg, egoFill);
-  if (def.accessory && ACCESSORY[def.accessory]) ACCESSORY[def.accessory](g, mats);
+  if (def.accessory && ACCESSORY[def.accessory]) ACCESSORY[def.accessory](g, mats, def);
 
   return { group: g, head, armL, armR, egoBg, egoFill, torso, mats };
 }
