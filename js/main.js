@@ -16,6 +16,7 @@ import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES } from './core/config
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
+import { Ghostwriter } from './core/ai.js';
 
 import { pick, chance } from './core/utils.js';
 
@@ -29,6 +30,7 @@ import { castForNight, MAINS } from './game/characters.js';
 import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
 import { ArtiEngine } from './game/arti.js';
 import { DialogueEngine } from './game/dialogue.js';
+import { ChatterEngine } from './game/chatter.js';
 import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
 import { UIManager } from './ui/ui.js';
@@ -311,6 +313,12 @@ class Game {
 
     // ---- ambient barks → subtitles ----
     this.npcs.on('bark', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
+
+    // ---- the ghostwriter: AI party chatter, when the key is in the room ----
+    this.ai = new Ghostwriter();
+    this.chatter = new ChatterEngine(this.ai, this.state);
+    this.chatter.on('line', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
+    void this.ai.init();
 
     // ---- ARTI — the app is watching, and now it buzzes ----
     ui.setArtiRoster(Object.values(MAINS).map((m) => ({ id: m.id, name: m.name, face: m.face ?? null })));
@@ -946,6 +954,11 @@ class Game {
       const moving = this.player.update(dt, this.world.colliders());
 
       this.npcs.update(dt, now, this.player.position);
+      this.chatter.update(dt, this.npcs.inCurrentZone, {
+        zoneName: ZONES[this.world.current]?.name ?? 'the scene',
+        night: this.state.night,
+        busy: () => this.mode !== 'playing',
+      });
       this.world.update(dt, now);
       this.paint.update(dt);
       this.hand.update(dt, { moving, sprinting: this.player.sprinting });
