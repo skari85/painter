@@ -212,7 +212,7 @@ const ACCESSORY = {
     g.add(sg);
   },
   hat(g, mats, def) {
-    const hy = def?.photoHead ? 2.06 : 1.82;    // photo heads are taller; the hat rides higher
+    const hy = def?.cutout ? 1.68 : 1.82;       // on a walking photo it sits like a party hat
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.12, 12), mats.hat ?? mats.hair);
     crown.position.set(0, hy, 0);
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.035, 16), mats.hat ?? mats.hair);
@@ -234,45 +234,56 @@ function buildBody(def) {
     wood: new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0.7 }),
   };
 
-  const legMat = def.underwear ? mats.skin : mats.bottom;
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.13), legMat);
-  legL.position.set(-0.09, 0.26, 0);
-  const legR = legL.clone(); legR.position.x = 0.09;
+  let head, armL = null, armR = null, torso = null, cutout = null;
 
-  // Milo is not wearing a shirt: keep the torso skin-toned and add a small,
-  // deliberately visible brief around the hips instead.
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.58, 0.22), def.underwear ? mats.skin : mats.top);
-  torso.position.y = 0.82;
-  torso.name = 'torso';
-  if (def.underwear) {
-    const briefs = new THREE.Mesh(
-      new THREE.BoxGeometry(0.42, 0.18, 0.24),
-      new THREE.MeshStandardMaterial({ color: p.underwear ?? p.bottom, roughness: 0.75 })
+  if (def.cutout) {
+    // a WALKING PHOTOGRAPH — no procedural body, the picture is the person.
+    // flat card with a dark back; alpha-cut if the png has transparency.
+    const H = 1.55, W = H * (2 / 3);
+    const card = new THREE.Group();
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(W + 0.06, H + 0.06, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.6 })
     );
-    briefs.position.set(0, 0.57, 0);
-    briefs.name = 'underwear';
-    g.add(briefs);
-  }
-
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.48, 0.11), def.underwear ? mats.skin : mats.top);
-  armL.position.set(-0.26, 0.82, 0);
-  const armR = armL.clone(); armR.position.x = 0.26;
-
-  const head = new THREE.Group();
-  head.position.y = 1.38;
-  if (def.photoHead) {
-    // the REAL photo, mounted as the head — the portrait is the face now
-    const edge = new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.6 });
-    const photo = new THREE.MeshStandardMaterial({ color: 0xffffff, map: faceTexture(def), roughness: 0.7 });
-    const card = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 0.45, 0.03),
-      [edge, edge, edge, edge, photo, edge]      // photo faces +z, framed in dark card
+    back.position.y = H / 2;
+    const photo = new THREE.Mesh(
+      new THREE.PlaneGeometry(W, H),
+      new THREE.MeshStandardMaterial({
+        color: 0xffffff, map: faceTexture(def), roughness: 0.85,
+        transparent: true, alphaTest: 0.15,
+      })
     );
-    card.position.y = 0.33;
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.14, 8), mats.skin);
-    neck.position.y = 0.04;
-    head.add(neck, card);
+    photo.position.set(0, H / 2, 0.012);
+    card.add(back, photo);
+    head = card;                  // head-tracking turns the whole photo toward you
+    cutout = card;
   } else {
+    const legMat = def.underwear ? mats.skin : mats.bottom;
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.13), legMat);
+    legL.position.set(-0.09, 0.26, 0);
+    const legR = legL.clone(); legR.position.x = 0.09;
+
+    // Milo is not wearing a shirt: keep the torso skin-toned and add a small,
+    // deliberately visible brief around the hips instead.
+    torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.58, 0.22), def.underwear ? mats.skin : mats.top);
+    torso.position.y = 0.82;
+    torso.name = 'torso';
+    if (def.underwear) {
+      const briefs = new THREE.Mesh(
+        new THREE.BoxGeometry(0.42, 0.18, 0.24),
+        new THREE.MeshStandardMaterial({ color: p.underwear ?? p.bottom, roughness: 0.75 })
+      );
+      briefs.position.set(0, 0.57, 0);
+      briefs.name = 'underwear';
+      g.add(briefs);
+    }
+
+    armL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.48, 0.11), def.underwear ? mats.skin : mats.top);
+    armL.position.set(-0.26, 0.82, 0);
+    armR = armL.clone(); armR.position.x = 0.26;
+
+    head = new THREE.Group();
+    head.position.y = 1.38;
     const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
     skull.position.y = 0.24;
     // the face — a pen sketch wrapped over the front of the skull, under the hairline
@@ -288,8 +299,11 @@ function buildBody(def) {
     );
     hair.position.y = 0.27;
     head.add(skull, face, hair);
+    g.add(legL, legR, torso, armL, armR);
   }
-  const headRise = def.photoHead ? 0.19 : 0;   // photo cards sit taller than skulls
+
+  const labelY = def.cutout ? 1.88 : 2.12;
+  const egoY = def.cutout ? 1.7 : 1.9;
 
   // blob shadow
   const shadow = new THREE.Mesh(
@@ -304,22 +318,22 @@ function buildBody(def) {
     map: labelTexture(def.name, def.shortRole ?? def.role), transparent: true, depthWrite: false,
   }));
   label.scale.set(1.5, 0.375, 1);
-  label.position.y = 2.12 + headRise;
+  label.position.y = labelY;
 
   // ego bar (billboarded pair)
   const egoBg = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1c1c22, transparent: true, opacity: 0.85, depthWrite: false }));
   egoBg.scale.set(0.72, 0.055, 1);
-  egoBg.position.y = 1.9 + headRise;
+  egoBg.position.y = egoY;
   const egoFill = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x8a5cf6, depthWrite: false }));
   egoFill.center.set(0, 0.5);
   egoFill.scale.set(0.7, 0.035, 1);
-  egoFill.position.set(-0.35, 1.9 + headRise, 0);
+  egoFill.position.set(-0.35, egoY, 0);
   egoFill.visible = egoBg.visible = false;
 
-  g.add(legL, legR, torso, armL, armR, head, shadow, label, egoBg, egoFill);
+  g.add(head, shadow, label, egoBg, egoFill);
   if (def.accessory && ACCESSORY[def.accessory]) ACCESSORY[def.accessory](g, mats, def);
 
-  return { group: g, head, armL, armR, egoBg, egoFill, torso, mats };
+  return { group: g, head, armL, armR, egoBg, egoFill, torso, mats, cutout };
 }
 
 /* ---------------- the NPC ---------------- */
@@ -347,6 +361,7 @@ export class NPC {
     this.egoBg = parts.egoBg;
     this.egoFill = parts.egoFill;
     this.torso = parts.torso;
+    this.cutout = parts.cutout ?? null;
 
     this.#target = null;
     this.#idleFor = rand(1, 4);
@@ -391,7 +406,8 @@ export class NPC {
       new THREE.MeshBasicMaterial({ map: getSplatTex(), color: colorHex, transparent: true, depthWrite: false })
     );
     const face = this.#splats % 3 === 2;
-    m.position.set(rand(-0.1, 0.1), face ? 1.62 : rand(0.7, 1.1), 0.13);
+    if (this.def.cutout) m.position.set(rand(-0.28, 0.28), rand(0.35, 1.45), 0.02);  // paint ON the photograph
+    else m.position.set(rand(-0.1, 0.1), face ? 1.62 : rand(0.7, 1.1), 0.13);
     m.rotation.z = rand(0, 6.28);
     m.scale.setScalar(rand(0.7, 1.3));
     this.group.add(m);
@@ -466,8 +482,15 @@ export class NPC {
         const to = ctx.playerPos.clone().sub(pos);
         const yaw = Math.atan2(to.x, to.z);
         this.group.rotation.y = damp(this.group.rotation.y, yaw, 8, dt);
-        this.armR.rotation.x = Math.sin(t * 2.2 + this.uid) * 0.28 - 0.2;
-        this.armL.rotation.x = Math.sin(t * 1.9 + this.uid * 2) * 0.22;
+        if (this.armR) {
+          this.armR.rotation.x = Math.sin(t * 2.2 + this.uid) * 0.28 - 0.2;
+          this.armL.rotation.x = Math.sin(t * 1.9 + this.uid * 2) * 0.22;
+        }
+        if (this.cutout) {
+          // the photograph emotes — agitated little paper person
+          this.cutout.rotation.z = Math.sin(t * 3.4 + this.uid) * 0.05;
+          this.cutout.position.y = Math.abs(Math.sin(t * 2.8 + this.uid)) * 0.025;
+        }
         this.#trackHead(ctx.playerPos, dt);
         break;
       }
@@ -480,8 +503,7 @@ export class NPC {
           if (dist < 0.35) {
             this.#target = null;
             this.#idleFor = rand(2, 6);
-            this.armL.rotation.x = 0;
-            this.armR.rotation.x = 0;
+            if (this.armL) { this.armL.rotation.x = 0; this.armR.rotation.x = 0; }
           } else {
 
             d.normalize();
@@ -495,6 +517,12 @@ export class NPC {
           this.#idleFor = rand(2, 6);
         }
 
+        if (this.cutout && !this.#target) {
+          // standing still: a quiet paper breathing
+          this.cutout.rotation.z = damp(this.cutout.rotation.z, Math.sin(t * 1.6 + this.uid) * 0.03, 6, dt);
+          this.cutout.position.y = damp(this.cutout.position.y, 0, 8, dt);
+        }
+
         // head tracks the player when near — the artworld is watching
         if (pos.distanceTo(ctx.playerPos) < 4.5) this.#trackHead(ctx.playerPos, dt);
         else this.head.rotation.y = damp(this.head.rotation.y, 0, 4, dt);
@@ -503,6 +531,13 @@ export class NPC {
   }
 
   #animateWalk(intensity) {
+    if (this.cutout) {
+      // paper-doll locomotion: the photo rocks and hops its way across the room
+      this.cutout.rotation.z = Math.sin(this.#walkPhase) * 0.09 * intensity;
+      this.cutout.position.y = Math.abs(Math.sin(this.#walkPhase)) * 0.055 * intensity;
+      return;
+    }
+    if (!this.armL) return;
     const s = Math.sin(this.#walkPhase) * 0.4 * intensity;
     this.armL.rotation.x = s;
     this.armR.rotation.x = -s;
