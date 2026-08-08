@@ -5,8 +5,9 @@
  * Every method is safe to call before that: they simply no-op.
  */
 
-import { clamp, rand } from './utils.js';
+import { Emitter, clamp, rand } from './utils.js';
 import { MUSIC_LEVEL } from './config.js';
+
 
 
 const MOODS = {
