@@ -7,6 +7,7 @@
 
 import { VIRTUES, ENDINGS } from '../core/config.js';
 import { escapeHtml, clamp, formatSigned } from '../core/utils.js';
+import { NPC_HANDLES } from '../game/arti.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -14,6 +15,12 @@ export class UIManager {
   #typing = null;         // interval id
   #subtitleTimer = null;
   #typingFull = '';
+  #nowPlaying = null;
+  #scandalTimer = null;
+  #sponsorTimer = null;
+  #artiUnread = 0;
+  #artiDeltaTimer = null;
+  #artiBuzzTimer = null;
 
   constructor() {
     this.el = {
@@ -36,7 +43,11 @@ export class UIManager {
       toasts: $('toasts'),
       damageLayer: $('damage-layer'),
       hint: $('hint-bar'),
+      hotkeys: $('hotkeys'),
+      hotkeysTitle: $('hotkeys-title'),
+      hotkeysList: $('hotkeys-list'),
       dialogue: $('dialogue'),
+      dlgPortrait: $('dlg-portrait'),
       dlgName: $('dlg-name'),
       dlgRole: $('dlg-role'),
       dlgLine: $('dlg-line'),
@@ -136,6 +147,43 @@ export class UIManager {
     this.show('hint-bar');
   }
 
+  /** Keep the keyboard legend visible, while changing it for each overlay. */
+  setHotkeys(mode) {
+    const presets = {
+      playing: {
+        title: 'CONTROLS',
+        items: [
+          ['WASD / arrows', 'move'], ['Shift', 'sprint'], ['Mouse', 'look'],
+          ['LMB', 'paint / swing'], ['E', 'talk / use'], ['Q', 'appraise'],
+          ['N', 'ARTI'], ['M', 'map'], ['Tab', 'virtues'], ['Esc', 'pause'],
+        ],
+      },
+      dialogue: { title: 'CONVERSATION', items: [['1', 'kind'], ['2', 'witty'], ['3', 'brutal']] },
+      easel: { title: 'EASEL', items: [['Mouse drag', 'paint'], ['[ / ]', 'brush size'], ['Esc', 'step back']] },
+      map: { title: 'MAP', items: [['Mouse', 'choose room'], ['M / Esc', 'close']] },
+      codex: { title: 'VIRTUES', items: [['Tab / Esc', 'close']] },
+      arti: { title: 'ARTI', items: [['Mouse', 'use phone'], ['N / Esc', 'close']] },
+      seance: { title: 'SÉANCE', items: [['Mouse', 'choose / ask'], ['Esc', 'leave']] },
+      naming: { title: 'TITLE THE WORK', items: [['Type', 'name painting'], ['Enter', 'confirm'], ['Esc', 'cancel']] },
+      paused: { title: 'PAUSED', items: [['Esc', 'resume'], ['Mouse', 'choose menu']] },
+    };
+    const preset = presets[mode] ?? presets.playing;
+    if (!this.el.hotkeys || this.#hotkeyMode === mode) return;
+    this.#hotkeyMode = mode;
+    this.el.hotkeys.classList.remove('hidden');
+    this.el.hotkeysTitle.textContent = preset.title;
+    this.el.hotkeysList.innerHTML = preset.items
+      .map(([key, label]) => `<span class="hotkey"><kbd>${escapeHtml(key)}</kbd><span>${escapeHtml(label)}</span></span>`)
+      .join('');
+  }
+
+  hideHotkeys() {
+    this.el.hotkeys?.classList.add('hidden');
+    this.#hotkeyMode = null;
+  }
+
+  #hotkeyMode = null;
+
   hitmarker(brutal = false) {
     const h = this.el.hitmarker;
     h.classList.toggle('brutal', brutal);
@@ -179,14 +227,57 @@ export class UIManager {
     this.#subtitleTimer = setTimeout(() => this.hide('subtitle'), 4200);
   }
 
+  /** Now-playing chip: pass a title to show it, null to hide. */
+  setNowPlaying(title) {
+    if (title === this.#nowPlaying) return;
+    this.#nowPlaying = title;
+    const chip = $('now-playing');
+    if (!title) { chip.classList.add('hidden'); return; }
+    $('np-title').textContent = title;
+    chip.classList.remove('hidden');
+  }
+
+  bindNowPlaying(onStop) {
+    $('np-stop').addEventListener('click', () => onStop());
+  }
+
+  /** Tabloid slam: a full-frontal SCANDAL! headline. */
+  scandal(headline) {
+    const b = $('scandal-banner');
+    $('scandal-text').textContent = headline;
+    b.classList.remove('hidden', 'slam');
+    void b.offsetWidth;               // restart the slam
+    b.classList.add('slam');
+    clearTimeout(this.#scandalTimer);
+    this.#scandalTimer = setTimeout(() => b.classList.add('hidden'), 4650);
+  }
+
+  /** The brush's brief corporate era. */
+  showSponsor(ms = 25000) {
+    const el = $('sponsor-tag');
+    el.classList.remove('hidden');
+    clearTimeout(this.#sponsorTimer);
+    this.#sponsorTimer = setTimeout(() => el.classList.add('hidden'), ms);
+  }
+
   /* ============================================================
      Dialogue view
      ============================================================ */
 
-  openDialogue({ name, role, hint }) {
+  openDialogue({ name, role, hint, face }) {
     this.el.dlgName.textContent = name;
     this.el.dlgRole.textContent = role ?? '';
     this.el.dlgHint.textContent = hint ?? '';
+    const img = this.el.dlgPortrait;
+    if (face) {
+      img.src = encodeURI(face);
+      img.alt = name;
+      img.classList.remove('hidden');
+    } else {
+      img.classList.add('hidden');
+      img.removeAttribute('src');
+      img.alt = '';
+    }
     this.setEgo(1);
     this.show('dialogue');
   }
@@ -289,74 +380,117 @@ export class UIManager {
   closeSeance() { this.hide('seance'); }
 
   /* ============================================================
-     The Radio — remix deck (tapes, transport, faders, knobs)
+     ARTI — the social app for artists
      ============================================================ */
 
+  #artiHandlers = null;
+  artiRoster = null;        // [{ id, name, face }] — the followable artworld
 
-  #deckBound = false;
-  #deckTimer = null;
+  setArtiRoster(roster) { this.artiRoster = roster; }
 
-  openRadio(deck, tracks) {
-    this.show('radio');
-    this.#bindDeck(deck, tracks);
-    this.#syncDeck(deck);
-    clearInterval(this.#deckTimer);
-    this.#deckTimer = setInterval(() => this.#deckTime(deck), 400);
+  /** The HUD phone chip: live follower count with floating deltas. */
+  updateArtiChip(count) {
+    const el = $('arti-count');
+    if (!el) return;
+    const prev = el.dataset.v == null ? count : parseInt(el.dataset.v, 10);
+    el.dataset.v = String(count);
+    el.textContent = count;
+    const diff = count - prev;
+    if (!diff) return;
+    const d = $('arti-delta');
+    d.textContent = (diff > 0 ? '+' : '') + diff;
+    d.className = (diff > 0 ? 'up' : 'down') + ' pop';
+    clearTimeout(this.#artiDeltaTimer);
+    this.#artiDeltaTimer = setTimeout(() => { d.textContent = ''; d.className = ''; }, 1300);
   }
 
-  closeRadio() {
-    this.hide('radio');
-    clearInterval(this.#deckTimer);
-    this.#deckTimer = null;
+  /** The phone demands to be looked at. */
+  artiBuzz() {
+    const chip = $('arti-chip');
+    if (!chip) return;
+    chip.classList.remove('buzz');
+    void chip.offsetWidth;
+    chip.classList.add('buzz');
+    clearTimeout(this.#artiBuzzTimer);
+    this.#artiBuzzTimer = setTimeout(() => chip.classList.remove('buzz'), 600);
+    this.#artiUnread++;
+    const b = $('arti-badge');
+    b.textContent = this.#artiUnread > 9 ? '9+' : String(this.#artiUnread);
+    b.classList.remove('hidden');
   }
 
-  #bindDeck(deck, tracks) {
-    if (this.#deckBound) return;
-    this.#deckBound = true;
-    const tapes = $('deck-tapes');
-    tracks.forEach((t) => {
-      const b = document.createElement('button');
-      b.className = 'tape';
-      b.textContent = t.title;
-      b.addEventListener('click', () => {
-        if (deck.load(t.url, t.title)) {
-          deck.play();
-          for (const x of tapes.children) x.classList.toggle('active', x === b);
-        }
-      });
-      tapes.appendChild(b);
-    });
-    $('deck-play').addEventListener('click', () => {
-      if (!deck.loaded) { tapes.children[0]?.click(); return; }
-      deck.playing ? deck.pause() : deck.play();
-    });
-    $('deck-stop').addEventListener('click', () => deck.stop());
-    $('deck-rewind').addEventListener('click', () => deck.rewind());
-    deck.on('state', () => this.#syncDeck(deck));
-    deck.on('loaded', () => this.#syncDeck(deck));
-    deck.on('trackError', (title) =>
-      this.toast('THE RADIO', `The tape “${title}” is chewed up. Tragic. Silence.`, 'bad'));
-
-    $('fader-bass').addEventListener('input', (e) => deck.setBass(parseFloat(e.target.value)));
-    $('fader-treble').addEventListener('input', (e) => deck.setTreble(parseFloat(e.target.value)));
-    $('fader-speed').addEventListener('input', (e) => {
-      const r = parseFloat(e.target.value);
-      deck.setRate(r);
-      $('fader-speed-label').textContent = `${r.toFixed(2)}×`;
-    });
-    bindKnob($('knob-echo'), { min: 0, max: 1, value: deck.params.echoMix, onChange: (v) => deck.setEchoMix(v) });
-    bindKnob($('knob-time'), { min: 0.05, max: 0.8, value: deck.params.echoTime, onChange: (v) => deck.setEchoTime(v) });
+  clearArtiUnread() {
+    this.#artiUnread = 0;
+    $('arti-badge')?.classList.add('hidden');
   }
 
-  #syncDeck(deck) {
-    $('deck-track').textContent = deck.trackTitle ?? 'NO TAPE';
-    $('deck-play').textContent = deck.playing ? 'Pause' : 'Play';
-    $('deck-led').classList.toggle('on', deck.playing);
+  openArti(arti, handlers) {
+    this.#artiHandlers = handlers;
+    $('arti-boost').onclick = () => handlers.onBoost();
+    this.clearArtiUnread();
+    this.renderArti(arti);
+    this.show('arti');
   }
 
-  #deckTime(deck) {
-    const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-    $('deck-time').textContent = deck.loaded ? `${fmt(deck.currentTime)} / ${fmt(deck.duration)}` : '0:00';
+  closeArti() { this.hide('arti'); }
+
+  renderArti(arti) {
+    $('arti-followers').textContent = arti.followers;
+    $('arti-following').textContent = arti.following;
+    $('arti-posts').textContent = arti.posts.length;
+
+    // the people of the artworld — follow them, be followed, regret both
+    const people = $('arti-people');
+    if (people && this.artiRoster) {
+      people.innerHTML = '';
+      for (const r of this.artiRoster) {
+        const following = arti.followingNPCs.has(r.id);
+        const followsYou = arti.npcFollowsYou.has(r.id);
+        const row = document.createElement('div');
+        row.className = 'arti-person';
+        row.innerHTML =
+          (r.face
+            ? `<img class="arti-ava" src="${encodeURI(r.face)}" alt="" />`
+            : `<span class="arti-ava">${escapeHtml(r.name[0])}</span>`) +
+          `<div class="arti-p-meta">` +
+            `<div class="arti-p-name">${escapeHtml(r.name)}</div>` +
+            `<div class="arti-p-handle">${escapeHtml(NPC_HANDLES[r.id] ?? '')}</div>` +
+          `</div>` +
+          (followsYou ? '<span class="arti-fyou">FOLLOWS YOU</span>' : '') +
+          `<button class="arti-follow-btn${following ? ' following' : ''}">${following ? 'Following' : 'Follow'}</button>`;
+        row.querySelector('button').addEventListener('click', () => {
+          this.#artiHandlers?.onToggleFollow(r.id);
+        });
+        people.appendChild(row);
+      }
+    }
+
+    const feed = $('arti-feed');
+    feed.innerHTML = '';
+    for (const n of arti.notes) {
+      const row = document.createElement('div');
+      row.className = `arti-note${n.kind === 'sorry' ? ' sorry' : ''}${n.kind === 'follow' ? ' follow' : ''}`;
+      const span = document.createElement('span');
+      span.textContent = n.text;
+      row.appendChild(span);
+      if (n.followBack) {
+        const b = document.createElement('button');
+        b.className = 'arti-fb';
+        b.textContent = 'Follow back';
+        b.addEventListener('click', () => this.#artiHandlers?.onFollowBack());
+        row.appendChild(b);
+      }
+      feed.appendChild(row);
+    }
+    for (const p of arti.posts) {
+      const el = document.createElement('div');
+      el.className = 'arti-post';
+      el.innerHTML =
+        `<div class="arti-post-title">${escapeHtml(p.title)}</div>` +
+        `<div class="arti-post-likes">♥ ${p.likes} likes</div>` +
+        p.comments.map((c) => `<div class="arti-comment"><b>${escapeHtml(c.who)}</b> ${escapeHtml(c.text)}</div>`).join('');
+      feed.appendChild(el);
+    }
   }
 
   /* ============================================================
@@ -494,43 +628,13 @@ export class UIManager {
   }
 }
 
-/* Rotary knob widget — drag vertically, arrows when focused. */
-function bindKnob(el, { min, max, value, onChange }) {
-  const rot = el.querySelector('.knob-rot');
-  let v = value;
-  const render = () => {
-    rot.style.transform = `rotate(${-135 + ((v - min) / (max - min)) * 270}deg)`;
-    el.setAttribute('aria-valuenow', v.toFixed(2));
-  };
-  render();
-  el.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    el.setPointerCapture(e.pointerId);
-    const y0 = e.clientY, v0 = v;
-    const move = (ev) => {
-      v = clamp(v0 + ((y0 - ev.clientY) / 130) * (max - min), min, max);
-      render(); onChange(v);
-    };
-    const up = () => {
-      el.removeEventListener('pointermove', move);
-      el.removeEventListener('pointerup', up);
-    };
-    el.addEventListener('pointermove', move);
-    el.addEventListener('pointerup', up);
-  });
-  el.addEventListener('keydown', (e) => {
-    const step = (max - min) / 20;
-    if (['ArrowUp', 'ArrowRight'].includes(e.key)) { v = clamp(v + step, min, max); render(); onChange(v); e.preventDefault(); }
-    if (['ArrowDown', 'ArrowLeft'].includes(e.key)) { v = clamp(v - step, min, max); render(); onChange(v); e.preventDefault(); }
-  });
-}
-
 /* Map destinations — copy lives with the UI that renders it. */
 
 const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index’s collection. Invitation only. Bring nerve.' },
+  { key: 'collectorHome', name: 'THE COLLECTOR’S HOME', desc: 'A private party. Underwear, hats, bright artists, one terrible mood.' },
 ];
 
 /* Ending prose lives with the UI that renders it. */

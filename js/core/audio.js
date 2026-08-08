@@ -5,13 +5,18 @@
  * Every method is safe to call before that: they simply no-op.
  */
 
-import { Emitter, clamp, rand } from './utils.js';
+import { clamp, rand, pick } from './utils.js';
 import { MUSIC_LEVEL } from './config.js';
+
+
+/* Vowel formant pairs (F1, F2) — the mumble alphabet: a, e, i, o, u. */
+const VOWELS = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870]];
 
 
 
 const MOODS = {
   garret:   { freqs: [110, 164.8, 220], cutoff: 640,  gain: 0.05 },
+  collectorHome: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
   galleria: { freqs: [146.8, 220, 293.7], cutoff: 900, gain: 0.035 },
   vault:    { freqs: [55, 82.4, 110], cutoff: 380,   gain: 0.07 },
   off:      { freqs: [], cutoff: 400, gain: 0 },
@@ -108,6 +113,7 @@ export class AudioEngine {
   get ready() { return !!this.#ctx; }
   get ctx() { return this.#ctx; }
   get master() { return this.#master; }
+  get musicKey() { return this.#musicKey; }
 
 
   /* ---------------- primitives ---------------- */
@@ -185,8 +191,40 @@ export class AudioEngine {
     this.#tone({ freq: 380, freqEnd: 760, type: 'sine', peak: 0.1, decay: 0.18 });
   }
 
+  /** A mumble-voice syllable: buzzy glottal saw → throat → two vowel formants. */
   talkBlip(pitch = 1) {
-    this.#tone({ freq: 300 * pitch * rand(0.92, 1.08), type: 'square', peak: 0.035, decay: 0.045 });
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    const dur = rand(0.07, 0.12);
+    const f0 = 118 * pitch * rand(0.94, 1.06);
+
+    const osc = this.#ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(f0 * rand(0.9, 0.98), t);
+    osc.frequency.exponentialRampToValueAtTime(f0, t + dur);
+
+    const throat = this.#ctx.createBiquadFilter();
+    throat.type = 'lowpass';
+    throat.frequency.value = 2400;
+    throat.Q.value = 0.5;
+
+    const voice = this.#ctx.createGain();
+    voice.gain.setValueAtTime(0.0001, t);
+    voice.gain.exponentialRampToValueAtTime(0.38, t + 0.02);
+    voice.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(throat);
+    const [f1, f2] = pick(VOWELS);
+    for (const f of [f1, f2]) {
+      const bp = this.#ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f * rand(0.97, 1.03);
+      bp.Q.value = 7;
+      throat.connect(bp).connect(voice);
+    }
+    voice.connect(this.#master);
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
   }
 
   footstep() {
@@ -202,6 +240,26 @@ export class AudioEngine {
   banSting() {
     this.#tone({ freq: 160, freqEnd: 80, type: 'sawtooth', peak: 0.2, decay: 0.7 });
     this.#noise({ peak: 0.14, decay: 0.6, filterFreq: 300 });
+  }
+
+  /** Tabloid slam: two dissonant thuds and a paparazzi flash. */
+  scandal() {
+    this.#tone({ freq: 92, freqEnd: 46, type: 'sawtooth', peak: 0.22, decay: 0.5 });
+    this.#tone({ freq: 98, freqEnd: 49, type: 'sawtooth', peak: 0.18, decay: 0.5 });
+    this.#noise({ peak: 0.16, decay: 0.08, filterFreq: 6200, type: 'highpass' });
+  }
+
+  /** The gift shop till: two bright pings and a drawer. */
+  register() {
+    this.#tone({ freq: 990, type: 'triangle', peak: 0.12, decay: 0.12 });
+    this.#tone({ freq: 1320, type: 'triangle', peak: 0.1, decay: 0.2 });
+    setTimeout(() => this.#noise({ peak: 0.1, decay: 0.08, filterFreq: 2600 }), 90);
+  }
+
+  /** ARTI wants attention: two impatient phone buzzes. */
+  buzz() {
+    this.#tone({ freq: 185, type: 'square', peak: 0.07, decay: 0.08 });
+    setTimeout(() => this.#tone({ freq: 160, type: 'square', peak: 0.07, decay: 0.12 }), 110);
   }
 
   /** Ghostly shimmer for the séance. */
@@ -251,98 +309,6 @@ export class AudioEngine {
     });
     filter.connect(gain).connect(this.#master);
     this.#moodNodes = { gain, oscs };
-  }
-}
-
-/* ============================================================
-   DeckEngine — the garret radio. A tiny remix desk:
-   tape → bass shelf → treble shelf → dry ┐
-                                   echo → ┴→ master
-   Speed fader rides playbackRate with pitch shift (vinyl rules).
-   ============================================================ */
-
-export class DeckEngine extends Emitter {
-  #engine;
-  #el = null;
-  #nodes = null;
-
-  constructor(engine) {
-    super();
-    this.#engine = engine;
-    this.trackTitle = null;
-    this.params = { bass: 0, treble: 0, rate: 1, echoMix: 0.18, echoTime: 0.28 };
-  }
-
-  get playing() { return !!this.#el && !this.#el.paused; }
-  get loaded() { return !!this.#el; }
-  get currentTime() { return this.#el?.currentTime ?? 0; }
-  get duration() { return this.#el?.duration || 0; }
-
-  /** Returns false if the audio graph can't be built (no ctx / dead file). */
-  load(url, title) {
-    this.unload();
-    const ctx = this.#engine.ctx;
-    if (!ctx) return false;
-    try {
-      const el = new Audio(encodeURI(url));
-      el.loop = true;
-      el.preservesPitch = false;          // speed fader = vinyl slow-down/squeal
-      el.playbackRate = this.params.rate;
-
-      const src = ctx.createMediaElementSource(el);
-      const bass = ctx.createBiquadFilter();
-      bass.type = 'lowshelf'; bass.frequency.value = 220; bass.gain.value = this.params.bass;
-      const treble = ctx.createBiquadFilter();
-      treble.type = 'highshelf'; treble.frequency.value = 3200; treble.gain.value = this.params.treble;
-      const dry = ctx.createGain();
-      const wet = ctx.createGain();
-      const delay = ctx.createDelay(1.5);
-      delay.delayTime.value = this.params.echoTime;
-      const fb = ctx.createGain();
-      fb.gain.value = 0.34;
-
-      src.connect(bass).connect(treble);
-      treble.connect(dry).connect(this.#engine.master);
-      treble.connect(delay);
-      delay.connect(fb).connect(delay);
-      delay.connect(wet).connect(this.#engine.master);
-
-      el.addEventListener('error', () => this.emit('trackError', title));
-      this.#applyEcho(this.params.echoMix);
-      this.#el = el;
-      this.#nodes = { src, bass, treble, dry, wet, delay, fb };
-      this.trackTitle = title;
-      this.emit('loaded', title);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  play()  { this.#el?.play().catch(() => {}); this.emit('state'); }
-  pause() { this.#el?.pause(); this.emit('state'); }
-  stop()  { if (this.#el) { this.#el.pause(); this.#el.currentTime = 0; } this.emit('state'); }
-  rewind() { if (this.#el) this.#el.currentTime = 0; this.emit('state'); }
-
-  unload() {
-    if (this.#el) { try { this.#el.pause(); this.#nodes?.src.disconnect(); } catch { /* garnish */ } }
-    this.#el = null;
-    this.#nodes = null;
-    this.trackTitle = null;
-  }
-
-  setBass(db)   { this.params.bass = db;   if (this.#nodes) this.#nodes.bass.gain.value = db; }
-  setTreble(db) { this.params.treble = db; if (this.#nodes) this.#nodes.treble.gain.value = db; }
-  setRate(r)    { this.params.rate = r;    if (this.#el) this.#el.playbackRate = r; }
-  setEchoMix(v) { this.params.echoMix = v; if (this.#nodes) this.#applyEcho(v); }
-  setEchoTime(t) {
-    this.params.echoTime = t;
-    if (this.#nodes) this.#nodes.delay.delayTime.setTargetAtTime(t, this.#engine.ctx.currentTime, 0.05);
-  }
-
-  #applyEcho(v) {
-    this.#nodes.wet.gain.value = v;
-    this.#nodes.dry.gain.value = 1 - v * 0.55;
   }
 }
 

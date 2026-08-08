@@ -18,6 +18,8 @@ const KEY_ACTIONS = {
   KeyD: 'right', ArrowRight: 'right',
   ShiftLeft: 'sprint', ShiftRight: 'sprint',
   KeyE: 'interact',
+  KeyQ: 'appraise',
+  KeyN: 'arti',
   KeyM: 'map',
   Escape: 'pause',
 

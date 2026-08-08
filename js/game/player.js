@@ -80,7 +80,7 @@ export class PlayerController {
     // camera-relative wish velocity
     const sin = Math.sin(this.#yaw), cos = Math.cos(this.#yaw);
     const wishX = ((tx * cos) - (tz * sin)) / len * speed;
-    const wishZ = ((tz * cos) + (tx * sin)) / len * speed;
+    const wishZ = (-(tz * cos) - (tx * sin)) / len * speed;
 
     this.#vel.x = damp(this.#vel.x, wishX, PLAYER.accel, dt);
     this.#vel.y = damp(this.#vel.y, wishZ, PLAYER.accel, dt);

@@ -77,6 +77,7 @@ export const ZONES = {
   garret:   { name: 'THE GARRET',      mood: 'garret' },
   galleria: { name: 'GALLERIA BIANCA', mood: 'galleria' },
   vault:    { name: 'THE VAULT',       mood: 'vault' },
+  collectorHome: { name: 'THE COLLECTOR’S HOME', mood: 'collectorHome' },
 };
 
 export const STORAGE = {
@@ -101,11 +102,11 @@ export const MUSIC = {
 };
 export const MUSIC_LEVEL = 0.42;   // fraction of master volume
 
-/** The radio's tapes — all three tracks, remixable. */
-export const RADIO_TRACKS = [
-  { title: 'SA SLITEN', url: 'puplic/songs/sa sliten.mp3' },
-  { title: 'ALT ER TUNGT ALT ER FINT 2', url: 'puplic/songs/Alt er tungt alt er fint 2.mp3' },
-  { title: 'JEG LIKER DEG (DEMO)', url: 'puplic/songs/jeg liker deg demo.mp3' },
-];
+/** Display titles for the now-playing chip (keys mirror MUSIC). */
+export const MUSIC_TITLES = {
+  title: 'ALT ER TUNGT ALT ER FINT 2',
+  garret: 'SA SLITEN',
+  ending: 'JEG LIKER DEG (DEMO)',
+};
 
 

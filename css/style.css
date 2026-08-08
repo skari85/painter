@@ -216,7 +216,7 @@ kbd {
 /* ============================================================
    MODALS
    ============================================================ */
-#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #radio, #seance {
+#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #arti, #seance {
 
 
 
@@ -432,6 +432,22 @@ kbd {
   background: rgba(0,0,0,0.35); padding: 7px 16px; border-radius: 999px;
 }
 
+/* ---------- persistent controls legend ---------- */
+#hotkeys {
+  position: fixed; right: var(--s3); bottom: var(--s3); z-index: 80;
+  width: min(310px, 34vw); padding: 10px 12px;
+  pointer-events: none; color: var(--ink-dim);
+  background: rgba(8, 8, 12, 0.68); border: 1px solid var(--line);
+  border-radius: var(--r-chip); backdrop-filter: blur(12px);
+}
+#hotkeys-title {
+  margin-bottom: 7px; color: var(--accent);
+  font-size: 9px; font-weight: 800; letter-spacing: 0.22em;
+}
+#hotkeys-list { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.hotkey { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; white-space: nowrap; }
+.hotkey kbd { padding: 2px 5px; font-size: 9px; }
+
 /* ============================================================
    DIALOGUE
    ============================================================ */
@@ -449,6 +465,12 @@ kbd {
 .dlg-header { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); margin-bottom: var(--s2); }
 .dlg-name { font-weight: 800; font-size: 16px; letter-spacing: 0.02em; }
 .dlg-role { color: var(--ink-faint); font-size: 12.5px; margin-left: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.dlg-speaker { display: flex; align-items: center; }
+.dlg-portrait {
+  width: 54px; height: 54px; border-radius: 10px; object-fit: cover;
+  margin-right: 12px; border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.45); background: #14161c;
+}
 .dlg-ego { display: flex; align-items: center; gap: 10px; min-width: 200px; }
 .ego-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.2em; color: var(--ink-faint); }
 .ego-track { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.10); overflow: hidden; }
@@ -562,104 +584,59 @@ kbd {
 
 
 /* ============================================================
-   THE RADIO (remix deck)
+   ARTI — the social app for artists
    ============================================================ */
-.deck {
-  width: min(560px, calc(100vw - 48px));
-  padding: var(--s3) var(--s4);
-  background: linear-gradient(160deg, #2a1c20, #17121a 70%);
-  border: 1px solid rgba(232, 193, 90, 0.22);
-  border-radius: 24px;
-  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255,255,255,0.08);
+.arti-phone {
+  width: min(420px, calc(100vw - 48px));
+  max-height: calc(100vh - 96px);
+  display: flex; flex-direction: column;
+  background: linear-gradient(170deg, #16161e, #0d0d12);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  box-shadow: var(--shadow-card);
+  padding: var(--s3);
   animation: pop var(--dur-med) var(--ease-out) both;
-  display: flex; flex-direction: column; gap: var(--s2);
 }
-.deck-head { display: flex; align-items: center; gap: var(--s2); }
-.deck-brand {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.26em; color: var(--accent);
-  writing-mode: vertical-rl; text-orientation: mixed;
-  opacity: 0.8;
+.arti-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--s2); }
+.arti-logo { font-weight: 900; letter-spacing: 0.34em; color: var(--accent); font-size: 15px; }
+.arti-handle { color: var(--ink-faint); font-size: 12px; }
+.arti-stats {
+  display: flex; gap: var(--s4); justify-content: center;
+  padding: var(--s1) var(--s2);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  margin-bottom: var(--s2);
 }
-.deck-display {
-  flex: 1;
-  background: #0d1f16;
-  border: 1px solid rgba(127, 178, 133, 0.25);
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-family: var(--font-mono);
-  color: #9fe6b0;
-  text-shadow: 0 0 8px rgba(127, 178, 133, 0.5);
+.arti-stats b { display: block; font-size: 19px; font-variant-numeric: tabular-nums; text-align: center; }
+.arti-stats span { font-size: 10px; letter-spacing: 0.14em; color: var(--ink-faint); }
+.arti-feed {
+  flex: 1; overflow-y: auto; min-height: 220px;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.deck-track { font-size: 13px; letter-spacing: 0.08em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.deck-time { font-size: 11px; opacity: 0.75; }
-.deck-led {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #4a4438;
-  transition: background var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+.arti-note {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--ink-dim);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 9px 12px;
+  animation: rise var(--dur-med) var(--ease-out) both;
 }
-.deck-led.on { background: #7fb285; box-shadow: 0 0 10px #7fb285; }
-
-.deck-tapes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.tape {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,0.05);
-  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em;
-  color: var(--ink-dim);
-  transition: border-color var(--dur-fast) ease, color var(--dur-fast) ease, background var(--dur-fast) ease;
+.arti-note.sorry { color: var(--ink-faint); font-style: italic; }
+.arti-fb {
+  font-size: 11px; padding: 4px 12px; white-space: nowrap;
+  border-radius: 999px; border: 1px solid var(--accent); color: var(--accent);
 }
-.tape:hover { border-color: var(--accent); color: var(--ink); }
-.tape.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
-
-.deck-transport { display: flex; gap: 8px; }
-.deck-transport .btn { flex: 1; padding: 10px; font-size: 13.5px; }
-
-.deck-mixer {
-  display: flex; justify-content: space-between; align-items: center; gap: var(--s3);
-  background: rgba(0,0,0,0.28);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: var(--s2) var(--s3);
+.arti-fb:hover { background: var(--accent-soft); }
+.arti-post {
+  border: 1px solid var(--line); border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  padding: 10px 14px;
 }
-.deck-faders { display: flex; gap: var(--s3); }
-.fader-unit { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.fader {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 22px; height: 110px;
-  accent-color: var(--accent);
-  cursor: ns-resize;
-}
-.fader-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.14em; color: var(--ink-dim); }
-
-.deck-knobs { display: flex; gap: var(--s3); }
-.knob {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  cursor: ns-resize;
-}
-.knob-rot {
-  width: 54px; height: 54px; border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #4a4452, #211d28 70%);
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12);
-  position: relative;
-  transition: box-shadow var(--dur-fast) ease;
-}
-.knob:hover .knob-rot, .knob:focus-visible .knob-rot { box-shadow: 0 4px 14px rgba(232,193,90,0.35), inset 0 1px 0 rgba(255,255,255,0.12); }
-.knob-pin {
-  position: absolute; left: 50%; top: 6%;
-  width: 3px; height: 34%;
-  background: var(--accent);
-  border-radius: 2px;
-  transform: translateX(-50%);
-}
-.knob-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.14em; color: var(--ink-dim); }
-
-.deck-foot {
-  display: flex; justify-content: space-between; align-items: center; gap: var(--s2);
-  font-size: 11.5px; color: var(--ink-faint);
-}
+.arti-post-title { font-weight: 700; font-size: 13.5px; }
+.arti-post-likes { font-size: 11.5px; color: var(--accent); margin: 4px 0 6px; }
+.arti-comment { font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+.arti-comment b { color: var(--ink); font-weight: 600; }
+.arti-actions { display: flex; gap: 8px; margin-top: var(--s2); }
+.arti-actions .btn { flex: 1; font-size: 13px; padding: 10px; }
 
 /* ============================================================
    THE SÉANCE
@@ -788,6 +765,140 @@ kbd {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ============ now-playing chip ============ */
+#now-playing {
+  position: absolute; top: var(--s3); right: var(--s3);
+  display: flex; align-items: center; gap: 0.55em;
+  padding: 0.5em 0.75em; pointer-events: auto;
+  background: var(--bg-glass); border: 1px solid var(--line);
+  border-radius: 3px; backdrop-filter: blur(6px);
+  font-size: 13px; letter-spacing: 0.08em;
+}
+#now-playing .np-icon { color: var(--accent); animation: np-bob 1.2s ease-in-out infinite; }
+@keyframes np-bob { 50% { transform: translateY(-2px); } }
+#np-title {
+  color: var(--ink-dim); font-style: italic;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#np-stop {
+  background: none; border: 1px solid var(--line); color: var(--ink-dim);
+  width: 1.8em; height: 1.8em; border-radius: 2px; cursor: pointer;
+  font-size: 9px; line-height: 1; display: grid; place-items: center;
+}
+#np-stop:hover { color: var(--brutal); border-color: var(--brutal); }
+
+/* ============ ARTI chip — the phone is watching ============ */
+#arti-chip {
+  position: absolute; top: calc(var(--s3) + 38px); right: var(--s3);
+  display: flex; align-items: center; gap: 0.5em;
+  padding: 0.45em 0.75em;
+  background: var(--bg-glass); border: 1px solid var(--line);
+  border-radius: 3px; backdrop-filter: blur(6px);
+  font-size: 13px; letter-spacing: 0.05em;
+}
+#arti-chip .arti-icon { font-size: 12px; }
+#arti-count { font-weight: 800; font-variant-numeric: tabular-nums; }
+#arti-delta { font-family: var(--font-mono); font-size: 11px; }
+#arti-delta.up { color: var(--integrity); }
+#arti-delta.down { color: var(--danger); }
+#arti-delta.pop { animation: deltaPop 1.3s var(--ease-out) both; }
+@keyframes deltaPop {
+  0% { opacity: 0; transform: translateY(4px); }
+  20% { opacity: 1; transform: none; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+#arti-badge {
+  min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 999px; background: var(--danger); color: #fff;
+  font-size: 10px; font-weight: 800; display: grid; place-items: center;
+}
+#arti-chip.buzz { animation: artiBuzz 0.55s ease; border-color: var(--accent); }
+@keyframes artiBuzz {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-3deg) translateX(-2px); }
+  40% { transform: rotate(3deg) translateX(2px); }
+  60% { transform: rotate(-2deg) translateX(-1px); }
+  80% { transform: rotate(2deg) translateX(1px); }
+}
+
+/* ARTI people — the followable artworld */
+.arti-people {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 172px; overflow-y: auto;
+  padding-bottom: var(--s2); margin-bottom: var(--s1);
+  border-bottom: 1px solid var(--line);
+}
+.arti-person { display: flex; align-items: center; gap: 10px; }
+.arti-ava {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none;
+  background: rgba(255,255,255,0.07); border: 1px solid var(--line);
+  display: grid; place-items: center; font-weight: 800; font-size: 14px; color: var(--accent);
+}
+.arti-p-meta { min-width: 0; }
+.arti-p-name { font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.arti-p-handle { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+.arti-fyou {
+  font-size: 8.5px; font-weight: 800; letter-spacing: 0.12em; white-space: nowrap;
+  color: var(--accent); border: 1px solid rgba(232,193,90,0.5);
+  padding: 2px 7px; border-radius: 999px;
+}
+.arti-follow-btn {
+  margin-left: auto; flex: none;
+  font-size: 11px; font-weight: 700; padding: 4px 14px;
+  border-radius: 999px; border: 1px solid var(--accent); color: var(--accent);
+  transition: background var(--dur-fast) ease;
+}
+.arti-follow-btn:hover { background: var(--accent-soft); }
+.arti-follow-btn.following { border-color: var(--line); color: var(--ink-faint); }
+.arti-feed-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.22em;
+  color: var(--ink-faint); margin-bottom: 6px;
+}
+.arti-note.follow { border-left: 3px solid var(--accent); }
+
+/* ============ SCANDAL! tabloid banner ============ */
+#scandal-banner {
+  position: absolute; left: 50%; top: 34%;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  width: min(680px, 86vw);
+  background: #f4efe4; color: #101014;
+  border: 3px solid #101014;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.sc-mast {
+  background: #c1272d; color: #fff;
+  font-weight: 900; letter-spacing: 0.3em; font-size: 15px;
+  padding: 6px 16px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.sc-ex { font-size: 10px; letter-spacing: 0.2em; }
+.sc-head {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 800; font-size: clamp(17px, 2.6vw, 26px); line-height: 1.25;
+  padding: 14px 18px 18px;
+}
+#scandal-banner.slam { animation: scandalSlam 4.6s var(--ease-out) both; }
+@keyframes scandalSlam {
+  0%   { opacity: 0; transform: translate(-50%, -50%) rotate(-4deg) scale(2.4); }
+  6%   { opacity: 1; transform: translate(-50%, -50%) rotate(-4deg) scale(0.94); }
+  10%  { transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
+  88%  { opacity: 1; transform: translate(-50%, -50%) rotate(-4deg); }
+  100% { opacity: 0; transform: translate(-50%, -56%) rotate(-4deg); }
+}
+
+/* ============ sponsor tag (corporate era) ============ */
+#sponsor-tag {
+  position: absolute; left: 50%; top: 46%; transform: translateX(-50%);
+  font-size: 11px; letter-spacing: 0.14em; color: var(--accent);
+  background: rgba(10, 10, 14, 0.6);
+  border: 1px solid rgba(232, 193, 90, 0.45);
+  padding: 4px 12px; border-radius: 999px;
+  animation: np-bob 1.6s ease-in-out infinite;
+  pointer-events: none;
 }
 
 @media (max-width: 720px) {

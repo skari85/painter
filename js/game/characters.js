@@ -19,6 +19,7 @@ import { pick, rand, randInt } from '../core/utils.js';
 export const MAINS = {
   victoria: {
     id: 'victoria', name: 'Victoria Vane', shortRole: 'gallerist', role: 'Gallerist, Galleria Bianca',
+    face: 'puplic/visual assets/character_faces/03-stern-older-woman.png',
     ego: 130, weak: 'witty', resist: 'brutal',
     hint: 'Her armor is money. Wit gets under it. Rage only raises her prices.',
     pace: 0.9, pitch: 0.85, accessory: null, anchor: 'victoria',
@@ -65,6 +66,7 @@ export const MAINS = {
 
   kreyo: {
     id: 'kreyo', name: 'KREYO', shortRole: 'rival artist', role: 'Rival Artist',
+    face: 'puplic/visual assets/character_faces/09-street-artist.png',
     ego: 90, weak: 'brutal', resist: 'kind',
     hint: 'All swagger, no floor underneath. Kindness confuses him. Brutality finds the crack.',
     pace: 1.2, pitch: 1.15, accessory: 'sunglasses', anchor: 'kreyo',
@@ -109,6 +111,7 @@ export const MAINS = {
 
   dolores: {
     id: 'dolores', name: 'Dolores Pang', shortRole: 'critic', role: 'Critic, The Pale Review',
+    face: 'puplic/visual assets/character_faces/08-exhausted-nurse.png',
     ego: 110, weak: 'kind', resist: 'witty',
     hint: 'She has heard every joke — she wrote most. No one has ever simply been kind to her.',
     pace: 0.7, pitch: 0.8, accessory: 'clipboard', anchor: 'dolores',
@@ -155,6 +158,7 @@ export const MAINS = {
 
   chad: {
     id: 'chad', name: 'Chad Sterling', shortRole: 'collector', role: 'Collector (Marine Assets)',
+    face: 'puplic/visual assets/character_faces/12-office-worker.png',
     ego: 80, weak: 'brutal', resist: 'kind',
     hint: 'A golden retriever in a quarter-zip. Respects dominance. Kindness reads as weakness — his, somehow.',
     pace: 1.0, pitch: 0.95, accessory: 'wine', anchor: 'chadMuffy',
@@ -198,6 +202,7 @@ export const MAINS = {
 
   muffy: {
     id: 'muffy', name: 'Muffy Sterling', shortRole: 'collector', role: 'Collector (Feelings Division)',
+    face: 'puplic/visual assets/character_faces/14-kind-grandmother.png',
     ego: 80, weak: 'witty', resist: 'brutal',
     hint: 'She speaks in interiors and oceans. Charm her. Brutality just makes it weird for everyone.',
     pace: 0.8, pitch: 1.3, accessory: 'wine', anchor: 'chadMuffy',
@@ -238,6 +243,7 @@ export const MAINS = {
 
   docent: {
     id: 'docent', name: 'The Docent', shortRole: 'docent', role: 'Senior Docent (Year Nine)',
+    face: 'puplic/visual assets/character_faces/01-tired-bartender.png',
     ego: 70, weak: 'kind', resist: 'witty',
     hint: 'Nine years of the same tour. Jokes bounce off the script. Only sincerity reaches the person inside.',
     pace: 0.6, pitch: 1.0, accessory: 'clipboard', anchor: 'docent',
@@ -281,6 +287,7 @@ export const MAINS = {
 
   index: {
     id: 'index', name: 'Mister Index', shortRole: 'the collector', role: 'The Market, Approximated',
+    face: 'puplic/visual assets/character_faces/07-elegant-older-man.png',
     ego: 230,
     dmgMods: { brutal: -0.45, witty: 1.5, kind: 1.0 },   // anger FEEDS him
     hint: 'Brutality HEALS him — your anger is his liquidity. Only wit prices him out.',
@@ -329,6 +336,7 @@ export const MAINS = {
 
   barnaby: {
     id: 'barnaby', name: 'Barnaby Crisp', shortRole: 'collector (liquidity)', role: 'Collector — Liquidity Division',
+    face: 'puplic/visual assets/character_faces/04-anxious-young-man.png',
     ego: 100, weak: 'brutal', resist: 'kind',
     hint: 'A bully in loafers. Reads kindness as a bid. Only savagery gets a callback.',
     pace: 1.1, pitch: 1.05, accessory: 'phone',
@@ -373,6 +381,7 @@ export const MAINS = {
 
   petra: {
     id: 'petra', name: 'Petra Voss', shortRole: 'advisor (exclusions)', role: 'Advisor — Gatekeeping Emerita',
+    face: 'puplic/visual assets/character_faces/05-punk-woman.png',
     ego: 120, weak: 'witty', resist: 'kind',
     hint: 'Ice-cold gatekeeper. Kindness is a weakness she bills by the hour. Out-clever her.',
     pace: 0.8, pitch: 0.9, accessory: null,
@@ -419,6 +428,7 @@ export const MAINS = {
 
   baron: {
     id: 'baron', name: 'Baron von Carpark', shortRole: 'collector (hereditary)', role: 'Collector — Hereditary, Obviously',
+    face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png',
     ego: 90, weak: 'kind', resist: 'witty',
     hint: 'Eight centuries of ancestors, one soft heart. Jokes bounce off the title. Warmth breaches the walls.',
     pace: 0.5, pitch: 0.75, accessory: 'cane',
@@ -463,6 +473,7 @@ export const MAINS = {
   lucia: {
 
     id: 'lucia', name: 'Lucia Fenn', shortRole: 'advisor', role: 'Art Advisor to the Vault',
+    face: 'puplic/visual assets/character_faces/13-rebellious-redhead.png',
     ego: 100, weak: 'witty', resist: 'brutal',
     hint: 'She diversifies people. Unimpressed by heat; allergic to being out-clevered.',
     pace: 0.9, pitch: 1.05, accessory: 'phone', anchor: 'lucia',
@@ -497,6 +508,234 @@ export const MAINS = {
       brutal: ['You\'re not an advisor, you\'re a receipt that learned to walk.'],
     },
   },
+
+  milo: {
+    id: 'milo', name: 'Milo “Mister M” Madsen', shortRole: 'collector', role: 'Collector — Host of the Private Party',
+    face: 'puplic/people/collector.png',
+    ego: 145, weak: 'witty', resist: 'brutal',
+    hint: 'He is dressed for a yacht that is not here. Make him laugh before he asks what you cost.',
+    pace: 0.55, pitch: 0.72, accessory: 'hat', anchor: 'milo', underwear: true,
+    palette: { skin: 0xd9a184, hair: 0xc9a86a, top: 0xf0b6d2, underwear: 0x3b6ea5, bottom: 0x3b6ea5, hat: 0xe8c15a },
+    openers: [
+      'Welcome to my home. Please ignore the dress code; I am wearing the only thing I could find with pockets.',
+      'The hat is vintage. The underwear is current. The party is an investment in both.',
+      'I collect artists who make me feel something — preferably something I can expense.',
+      'Everyone here has brought a masterpiece. I brought a torso and a very good hat.',
+      'Do you see the room? The room is called “liquidity with snacks.”',
+    ],
+    countered: [
+      'Wit is dangerous in a private home. The insurance does not cover it.',
+      'I invited color, not consequences. Please put your consequences near the coat rack.',
+      'That joke has no provenance. I like it anyway.',
+    ],
+    reactions: {
+      kind: ['How sweet. Do not make me put on trousers about this.', 'You noticed the person and not the purchase. Unsettling.'],
+      witty: ['Ha! The hat has been defeated. I can feel it sagging.', 'Excellent. I will tell everyone you said that, inaccurately.'],
+      brutal: ['No need to shout. The house already knows I am ridiculous.', 'That is not how one speaks to a host. It is, however, how one speaks to a man in underwear.'],
+    },
+    weakHit: ['Stop making the party feel observed.', 'The hat is a symbol. Do not interrogate the symbol.'],
+    disarmed: ['Fine. Stay for the cake. It is the only honest thing I own.'],
+    dismiss: ['I must circulate before someone asks me to wear pants.', 'The party needs me elsewhere — emotionally and near the cheese.'],
+    meltdown: 'THE PARTY IS A PORTFOLIO. THE PORTFOLIO IS A PARTY. WHY IS EVERYONE LOOKING AT MY UNDERWEAR?',
+    barks: [
+      'The hat is not a cry for help. The hat is a cry for attention.',
+      'I bought this house for the acoustics and the plausible deniability.',
+      'Please compliment someone before the canapés lose faith.',
+      'I call this room “the reserve,” because nobody is allowed to relax in it.',
+    ],
+    playerJabs: {
+      kind: ['You made a room full of people feel welcome. The hat can stay.'],
+      witty: ['Milo, you are not underdressed — you are a walking limited edition with no return policy.'],
+      brutal: ['You bought a house to avoid having a personality in public, then hosted a party in your underwear. Pick a lane.'],
+    },
+  },
+
+  sol: {
+    id: 'sol', name: 'Sol “Chromatic” Vale', shortRole: 'artist', role: 'Artist — Chromatic Maximalist',
+    face: 'puplic/visual assets/character_faces/13-rebellious-redhead.png',
+    ego: 82, weak: 'kind', resist: 'witty', pace: 1.0, pitch: 1.1, accessory: 'clipboard', anchor: 'sol',
+    palette: { skin: 0xe8c4a8, hair: 0xd98cff, top: 0xe8c15a, bottom: 0x8a5cf6 },
+    openers: [
+      'I brought six colors the collector has never seen and one he will pretend to have invented.',
+      'This painting is joy with a grant application attached.',
+      'I am not loud. The palette is simply refusing to whisper.',
+    ],
+    countered: ['That is a gray thought. Please leave it at the door.', 'I can hear your beige approaching.'],
+    reactions: { kind: ['You see the heart of it. Oh. Thank you.', 'That is exactly what I wanted someone to say.'], witty: ['Funny, but the yellow still wins.', 'A good line. I will paint it in magenta.'], brutal: ['No. I reject your darkness on chromatic grounds.'] },
+    weakHit: ['Do not be kind to me in front of the collector. I will cry in every color.'],
+    disarmed: ['Come see the blue one. It is trying very hard.'],
+    dismiss: ['I have another wall to impress. It is currently losing.'],
+    meltdown: 'NO ONE CAN BUY JOY IN BULK. I TRIED. I BROUGHT TOO MUCH.',
+    barks: ['The red is a little too honest, so I put glitter on it.', 'Color is just optimism with better lighting.', 'Milo! Look at this yellow! Milo!'],
+    playerJabs: { kind: ['Your work is trying to keep the room alive. That matters.'], witty: ['You brought enough color to make the collector’s underwear look tasteful.'], brutal: ['Your palette is doing all the emotional labor and you are taking the credit.'] },
+  },
+
+  bea: {
+    id: 'bea', name: 'Bea “Gloom” Nilsen', shortRole: 'artist', role: 'Artist — Gloom Division',
+    face: 'puplic/visual assets/character_faces/08-exhausted-nurse.png',
+    ego: 96, weak: 'kind', resist: 'brutal', pace: 0.45, pitch: 0.78, accessory: null, anchor: 'bea',
+    palette: { skin: 0x827d7d, hair: 0x24242b, top: 0x29272d, bottom: 0x34313a },
+    openers: [
+      'I brought a painting of the exact moment this party becomes a memory nobody admits attending.',
+      'The other artists brought color. I brought the invoice for losing hope.',
+      'Do not worry. The gray is not contagious. Probably.',
+      'He asked for something that would look good over the fireplace. I painted the fireplace after it knows.',
+    ],
+    countered: ['Wit is a bright room I cannot afford.', 'That joke arrived wearing a tiny sun. I dislike it.'],
+    reactions: { kind: ['Please do not be kind. I will have to become a person.', 'That was almost warm. I had forgotten warmth had a voice.'], witty: ['A joke. Fine. It can sit in the corner with the dead plants.', 'I smiled. It was involuntary and therefore not mine.'], brutal: ['Yes. Good. Make it accurate.', 'At last, a language the room understands.'] },
+    weakHit: ['Stop looking at me like I could still be helped.', 'Kindness is a trapdoor. I know because I installed one.'],
+    disarmed: ['Stay near the window. It is the least enthusiastic part of the house.'],
+    dismiss: ['I am going to stand beside my painting until someone mistakes me for furniture.'],
+    meltdown: 'THE PARTY IS BEAUTIFUL AND I AM NOT. THAT IS THE WHOLE REVIEW.',
+    barks: ['The gray is not unfinished. It is exhausted.', 'I made the shadows darker so the room would stop asking questions.', 'Someone laughed. I wrote down the time.'],
+    playerJabs: { kind: ['You do not have to impress him tonight. You are allowed to be tired.'], witty: ['Your painting is the only guest here not pretending the house is a home.'], brutal: ['You are not gloomy because you are deep. You are gloomy because this room keeps asking you to perform pain.'] },
+  },
+
+  /* ---- the people from the puplic folder. they live at the party now ---- */
+
+  bob: {
+    id: 'bob', name: 'Bob', shortRole: 'collector', role: 'Collector of Small Joys',
+    face: 'puplic/people/bob.png',
+    ego: 55, weak: 'kind', resist: 'brutal',
+    hint: 'A happy man with a happy little fortune. He cannot be insulted; he does not have the equipment.',
+    pace: 0.75, pitch: 0.95, accessory: 'wine', anchor: null,
+    palette: { skin: 0xd9a184, hair: 0xc9a86a, top: 0x7fb285, bottom: 0x4a4438 },
+    openers: [
+      'You made this? My girlfriend painted a sunset once. It changed our whole hallway.',
+      'I don\'t know art, but I know what I like, and I like almost everything. It\'s a blessing.',
+      'We bought the blue one because it looked calm. We named him Gustav.',
+    ],
+    countered: ['Ha! She said the same thing. You two should talk.', 'That\'s exactly the kind of joke I almost understand.'],
+    reactions: {
+      kind: ['See, THIS is why we come to parties.', 'You\'re nice. The art people are never nice. Keep it up.'],
+      witty: ['Ha! I\'m going to say that at work on Monday and not explain.', 'She laughed too. You heard her. That\'s two laughs.'],
+      brutal: ['Oh. Oh no. He\'s doing the serious voice. I get this at the bank.', 'I\'m going to stand near the cake until this passes.'],
+    },
+    weakHit: ['You can\'t hurt me. I had a nap today.', 'Kindness? At a party? In THIS economy? I accept.'],
+    disarmed: ['Come over Sunday. We grill. It\'s not art, it\'s just meat, but it\'s honest.'],
+    dismiss: ['I need to find my girlfriend. She\'s explaining the fireplace to someone again.'],
+    meltdown: 'NOBODY TOLD ME THE ART COULD LOOK BACK. GUSTAV KNOWS THINGS. WE\'RE DONATING GUSTAV.',
+    barks: [
+      'We don\'t read the little cards. We like to be surprised by the rectangles.',
+      'Babe. BABE. The cake has a market crash in the middle. It\'s beautiful.',
+      'I told the man in the hat I have forty euros and a dream. He hugged me.',
+      'Our hallway has twelve paintings now. The hallway is the gallery. The door is the gift shop.',
+      'If you stand here long enough someone hands you a glass. It\'s the best system in Oslo.',
+    ],
+    playerJabs: {
+      kind: ['Bob, you like everything because you actually look at it. That\'s the whole trick.'],
+      witty: ['Gustav the blue painting is the best provenance story in this room, and it\'s not close.'],
+      brutal: ['You collect small joys because the big ones require a personality, Bob.'],
+    },
+  },
+
+  bobgirl: {
+    id: 'bobgirl', name: 'Bob’s Girlfriend', shortRole: 'muse', role: 'Co-Collector of Small Joys',
+    face: 'puplic/people/bobgirl.png',
+    ego: 60, weak: 'witty', resist: 'kind',
+    hint: 'She has a system. The system is vibes. The system has never failed.',
+    pace: 0.85, pitch: 1.2, accessory: 'wine', anchor: null,
+    palette: { skin: 0xe8c4a8, hair: 0x8c3b2e, top: 0xc9466f, bottom: 0x2a2d3a },
+    openers: [
+      'Bob picks with his heart. I pick with a system. The system is vibes.',
+      'We\'re not saying we\'re buying anything. We\'re saying the hallway has ROOM.',
+      'I chose every painting we own. Bob chose the frames. We are both geniuses at different things.',
+    ],
+    countered: ['Careful, that\'s nearly a feeling and I\'m off duty.', 'Ha! No. Feelings are for the hallway.'],
+    reactions: {
+      kind: ['Oh, you\'re sweet. Bob! This one\'s sweet!', 'That\'s lovely. I\'m putting it in the newsletter I don\'t write.'],
+      witty: ['Okay, that\'s going on the fridge. We have a fridge for quotes now. It\'s a whole thing.', 'You\'re funny. Stay. Bob needs new material; he\'s been doing the cake joke all night.'],
+      brutal: ['Bob. BOB. The art is yelling.', 'I\'m telling the fireplace what you said. The fireplace and I are close.'],
+    },
+    weakHit: ['Stop being funny, I\'m trying to have a system tonight.', 'One more joke and I\'m adopting you. That\'s a threat.'],
+    disarmed: ['Fine. You can see the hallway. Nobody sees the hallway. Gustav will be told.'],
+    dismiss: ['I\'m going to go laugh at the big one with the red dot. It knows what it did.'],
+    meltdown: 'THE SYSTEM FAILED. THE VIBES WERE WRONG. BOB, START THE CAR, THE GOOD CAR, THE ONE WITH THE PAINTING IN IT.',
+    barks: [
+      'Yes, WE have a hallway gallery. Yes, the door IS the gift shop. Next question.',
+      'The red dot means someone loved it first. I respect the dot. I fear the dot.',
+      'Bob thinks the sculpture is "twisty and brave". I love that man. He\'s never been right.',
+      'I only trust paintings that look like they\'ve made a mistake and kept it.',
+      'If the fireplace is gas I\'m leaving. It\'s gas, isn\'t it. I\'m staying, but I\'m furious.',
+    ],
+    playerJabs: {
+      kind: ['The two of you wandering around liking things is the best review this party will get.'],
+      witty: ['The system is vibes and the vibes are undefeated. I checked. There\'s a spreadsheet.'],
+      brutal: ['You curate a hallway and call it a collection. The gift shop is a DOOR.'],
+    },
+  },
+
+  gimp: {
+    id: 'gimp', name: 'The Gimp', shortRole: 'mystery', role: 'Mystery Guest — Do Not Ask',
+    face: 'puplic/people/gimp.png',
+    ego: 40, weak: 'kind', resist: 'brutal',
+    hint: 'Nobody knows who invited him. Everybody assumes somebody else did. He is having a wonderful time.',
+    pace: 0.4, pitch: 0.6, accessory: null, anchor: null,
+    palette: { skin: 0x8a8a92, hair: 0x14161c, top: 0x17171c, bottom: 0x17171c },
+    openers: [
+      '...',
+      '(A slow, approving nod toward the buffet.)',
+      '(He points at the painting, then at you, then gives a thumbs up.)',
+    ],
+    countered: ['...!', '(A respectful silence. The loudest silence in the room.)'],
+    reactions: {
+      kind: ['(His eyes soften, visibly, through the whole outfit.)', '(He pats his heart twice. This means something.)'],
+      witty: ['(A muffled sound that is definitely laughing.)', '(He writes nothing down. Somehow this feels like a review.)'],
+      brutal: ['(He takes one step back and one step toward the cake.)', '(A slow blink. Even the zipper seems disappointed in you.)'],
+    },
+    weakHit: ['(He is moved. The whole suit is moved.)'],
+    disarmed: ['(He hands you a napkin. On it: a drawing of a heart wearing a little hat.)'],
+    dismiss: ['(He drifts away, nodding at the furniture as he goes.)'],
+    meltdown: '(HE SAYS NOTHING. IT IS THE MOST DEVASTATING SPEECH OF THE EVENING.)',
+    barks: [
+      '...',
+      '...(he is pointing at the chandelier now)',
+      '...(somewhere in there, a man is networking)',
+      '...(he knows who bought the red-dot painting. he will never tell)',
+      '...(he has been to every party. he has never been invited to any party)',
+    ],
+    playerJabs: {
+      kind: ['You\'re the only honest guest here. Nothing to say, nothing to sell. Respect.'],
+      witty: ['Strong silent type. You\'ve said less than the sculpture and meant it more.'],
+      brutal: ['The outfit is a cry for help and the help is also wearing the outfit.'],
+    },
+  },
+
+  fashion: {
+    id: 'fashion', name: 'Gilda Vauge', shortRole: 'fashion', role: 'Fashion Editor-at-Large',
+    face: 'puplic/people/fashion.png',
+    ego: 75, weak: 'witty', resist: 'kind',
+    hint: 'She has seen every look, including several that have not happened yet. Hers is wrong on purpose.',
+    pace: 1.05, pitch: 1.15, accessory: null, anchor: null,
+    palette: { skin: 0xd9c2a8, hair: 0x14161c, top: 0xd98cff, bottom: 0x17171c },
+    openers: [
+      'You are wearing paint. On PURPOSE? Brave. Documenting it either way.',
+      'The underwear man is a moment. The hat is a decision. The party is a lookbook.',
+      'I don\'t do art. I do the space between the art and the person blocking it.',
+    ],
+    countered: ['Kindness is very last season. Which means it\'s two seasons from huge.', 'Cute. I\'ll pretend you planned that.'],
+    reactions: {
+      kind: ['Oh. Warmth. Unexpected fabric. Let me sit with it.', 'That is the nicest thing anyone has said to me since Thursday\'s fitting.'],
+      witty: ['Funny AND vertical. You\'re hired. The job pays in exposure to me.', 'I\'m putting that line in the September issue of my personality.'],
+      brutal: ['Okay, harsh. Harsh is a silhouette. I\'m not mad, I\'m inspired.', 'The claws are OUT. Finally, an accessory.'],
+    },
+    weakHit: ['Stop it. I can only be charmed twice per event and the doorman used one.'],
+    disarmed: ['Fine. Front row. Metaphorically. There are no chairs. There is no show. You understand.'],
+    dismiss: ['I have to go stand near the window and be misunderstood by Oslo.'],
+    meltdown: 'THE LOOK IS INCOMPLETE. THE LOOK HAS ALWAYS BEEN INCOMPLETE. I HAVE TO GO LIE DOWN IN A CONCEPT.',
+    barks: [
+      'The cake is serving recession-core. I respect it.',
+      'Bob\'s girlfriend has a system. The system is vibes. I wrote it down. It\'s fashion now.',
+      'Someone here is wearing art and someone here IS art and the lighting refuses to tell me which.',
+      'I don\'t circulate. I arrive, repeatedly, at shorter intervals.',
+      'The silent one in the suit? Best dressed. No notes. Some fear.',
+    ],
+    playerJabs: {
+      kind: ['You make the room feel styled and the people feel seen. That\'s rarer than the dress.'],
+      witty: ['Gilda, you don\'t follow trends — you loiter near them until they confess.'],
+      brutal: ['Editor-at-large? Darling, you\'re a caption in search of a photo.'],
+    },
+  },
 };
 
 /* ============================================================
@@ -509,6 +748,7 @@ const CROWD_TYPES = [
     role: 'opening regular',
     palette: () => ({ skin: pick([0xe8c4a8, 0xd9a184]), hair: pick([0xc9a86a, 0x8a5a33]), top: pick([0x8c3b2e, 0x8a5cf6, 0x2e5f4a]), bottom: 0x2a2d3a }),
     accessory: 'wine', pitch: 1.25,
+    face: 'puplic/visual assets/character_faces/14-kind-grandmother.png',
     barks: [
       'This is EXACTLY what our powder room is about.',
       'I only buy pieces that match a wine I\'ve cried into.',
@@ -522,6 +762,7 @@ const CROWD_TYPES = [
     role: 'cultural investor',
     palette: () => ({ skin: pick([0xd9a184, 0xb0703f]), hair: pick([0x2a2018, 0xc9a86a]), top: pick([0x2b3a67, 0x3b6ea5, 0x1c1c22]), bottom: 0x1c1c22 }),
     accessory: 'phone', pitch: 1.0,
+    face: 'puplic/visual assets/character_faces/12-office-worker.png',
     barks: [
       'What\'s the exit liquidity on a painting? Asking for a fund.',
       'I\'m long on red, short on meaning.',
@@ -535,6 +776,7 @@ const CROWD_TYPES = [
     role: 'here for the content',
     palette: () => ({ skin: pick([0xe8c4a8, 0x9a6a48, 0xd9a184]), hair: pick([0xd98cff, 0xefe9dc, 0x14161c]), top: pick([0xd98cff, 0xe8c15a, 0xc9463d]), bottom: 0x14161c }),
     accessory: 'phone', pitch: 1.35,
+    face: 'puplic/visual assets/character_faces/10-quiet-teen.png',
     barks: [
       'Is this content? Can I stand in front of it?',
       'I did a 40-part series on this room and I\'ve never been here.',
@@ -548,6 +790,7 @@ const CROWD_TYPES = [
     role: 'still believes',
     palette: () => ({ skin: pick([0xe8c4a8, 0xd9a184, 0x9a6a48]), hair: pick([0x2e5f4a, 0x8c3b2e, 0x14161c]), top: pick([0x4a4438, 0x2e5f4a, 0x6e3532]), bottom: 0x2a2d3a }),
     accessory: 'clipboard', pitch: 1.1,
+    face: 'puplic/visual assets/character_faces/02-cheerful-student.png',
     barks: [
       'My professor said color is a scam by Big Pigment.',
       'I came to network but I keep accidentally feeling things.',
@@ -561,6 +804,7 @@ const CROWD_TYPES = [
     role: 'holds, never looks',
     palette: () => ({ skin: pick([0xd9a184, 0xc9a684]), hair: pick([0x3a3430, 0x8a8378]), top: pick([0x4a4a52, 0x6b4a30]), bottom: 0x1c1c22 }),
     accessory: null, pitch: 0.9,
+    face: 'puplic/visual assets/character_faces/06-middle-aged-mechanic.png',
     barks: [
       'I don\'t look at them. I hold them. Like crypto, but rectangular.',
       'Bought it, crated it, forgot it. Best review I\'ve ever given.',
@@ -573,6 +817,7 @@ const CROWD_TYPES = [
     role: 'nepo-collector',
     palette: () => ({ skin: pick([0xd9a184, 0xe0b89a]), hair: pick([0xc9a86a, 0x2a2018]), top: pick([0x8c3b2e, 0x2b3a67]), bottom: 0x1c1c22 }),
     accessory: 'phone', pitch: 1.2,
+    face: 'puplic/visual assets/character_faces/04-anxious-young-man.png',
     barks: [
       'My uncle owns a museum. And a country. Same paperwork.',
       'I\'m not buying art, I\'m buying the artist\'s gratitude. It vests.',
@@ -586,6 +831,7 @@ const CROWD_TYPES = [
     role: 'unimpressed, continental',
     palette: () => ({ skin: 0xd9c2a8, hair: 0x8a8378, top: 0x1c1c22, bottom: 0x1c1c22 }),
     accessory: 'cane', pitch: 0.75,
+    face: 'puplic/visual assets/character_faces/15-guarded-biker.png',
     barks: [
       'In Vienna we would call this "Tuesday".',
       'I knew the real scandal. This is the commemorative plate of the scandal.',
@@ -616,6 +862,7 @@ export function buildCrowd(zoneKey, night, count) {
       pace: rand(0.7, 1.3),
       pitch: t.pitch * rand(0.94, 1.06),
       accessory: t.accessory,
+      face: t.face ?? null,
       palette: t.palette(),
       ambient: true,
       barks: t.barks,
@@ -639,6 +886,7 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 1, 4),
         ],
         vault: [],
+        collectorHome: [m.bob, m.bobgirl, m.gimp, m.fashion],
       };
     case 2:
       return {
@@ -648,12 +896,14 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 2, 5),
         ],
         vault: [],
+        collectorHome: [m.bob, m.bobgirl, m.gimp, m.fashion],
       };
     default:
       return {
         garret: [],
         galleria: [m.docent, ...buildCrowd('galleria', 3, 2)],
         vault: [m.index, m.lucia, m.chad, m.barnaby, m.petra, ...buildCrowd('vault', 3, 2)],
+        collectorHome: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion],
       };
 
   }

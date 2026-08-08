@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { Emitter, clamp, damp, rand, pick } from '../core/utils.js';
+import { Emitter, clamp, damp, rand, pick, mulberry32 } from '../core/utils.js';
 
 /* ---------------- shared textures ---------------- */
 
@@ -49,6 +49,136 @@ function labelTexture(name, role) {
   return t;
 }
 
+/* ---------------- scribble faces ---------------- */
+
+/** Deterministic hash of a character id → seed. */
+function hashSeed(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/** Hand-tuned expressions for the mains; crowd faces roll from their id. */
+const FACE_STYLE = {
+  victoria: { brow: 0.8,  mouth: -0.5,  lip: '#8c2b2e' },  // arched, unimpressed
+  kreyo:    { brow: -0.3, mouth: 0.4 },                    // smug, shades pushed up
+  dolores:  { brow: 0.2,  mouth: -0.45 },                  // professional frown
+  chad:     { brow: -0.35, mouth: 0.65, stubble: true },   // boat-shoe grin
+  muffy:    { brow: -0.5, mouth: 0.6,   lip: '#c9566a' },
+  docent:   { brow: 0.35, mouth: -0.1,  weary: true },     // year nine
+  index:    { brow: 0.0,  mouth: -0.05, gaunt: true },     // the market, approximated
+  barnaby:  { brow: -0.2, mouth: 0.3,   shift: 2.5 },      // shifty eyes
+  petra:    { brow: 0.6,  mouth: -0.3,  lip: '#3a3a44' },  // severe
+  baron:    { brow: 0.25, mouth: 0.15,  moustache: true },
+  lucia:    { brow: -0.1, mouth: 0.25,  lip: '#6e2f3a' },
+};
+
+const faceCache = new Map();
+const texLoader = new THREE.TextureLoader();
+
+/** A quick pen-sketch face: wobbly doubled strokes, deterministic per character. */
+function faceTexture(def) {
+  if (faceCache.has(def.id)) return faceCache.get(def.id);
+
+  // The illustrated face pack — an authored portrait beats the pen sketch.
+  if (def.face) {
+    const tex = texLoader.load(encodeURI(def.face));
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    faceCache.set(def.id, tex);
+    return tex;
+  }
+
+  const rng = mulberry32(hashSeed(def.id));
+  const st = FACE_STYLE[def.id]
+    ?? { brow: rng() * 1.2 - 0.6, mouth: rng() * 1.1 - 0.55, shift: (rng() - 0.5) * 4 };
+
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';             // white × skin tone = skin tone
+  ctx.fillRect(0, 0, 256, 256);
+
+  const INK = 'rgba(40,34,28,0.9)';
+  const jit = (amt) => (rng() - 0.5) * 2 * amt;
+  // every stroke drawn twice with jitter — the hand is nervous
+  const stroke = (path, w = 4.5, color = INK) => {
+    for (let p = 0; p < 2; p++) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w - p * 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      path(p * 2.2);
+      ctx.stroke();
+    }
+  };
+
+  for (const side of [-1, 1]) {
+    const ex = 128 + side * 46 + jit(2);
+    const ey = 72 + jit(3);
+    // eye — a scribbled oval
+    stroke((o) => ctx.ellipse(ex + jit(o), ey + jit(o), 9.5 + jit(1.5), 8 + jit(1.5), jit(0.2), 0, Math.PI * 2));
+    // pupil — the gaze wanders a little
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.arc(ex + (st.shift ?? 0) + jit(1.5), ey + jit(1.5), 3.6, 0, Math.PI * 2);
+    ctx.fill();
+    // brow — tilt carries the attitude, mirrored per side
+    const tilt = (st.brow ?? 0) * 9 * side;
+    stroke((o) => {
+      ctx.moveTo(ex - 16 + jit(o), 50 - tilt + jit(o));
+      ctx.quadraticCurveTo(ex + jit(o), 46 + jit(o), ex + 16 + jit(o), 50 + tilt + jit(o));
+    }, 5);
+    // the docent's decade, under the eyes
+    if (st.weary) {
+      stroke((o) => {
+        ctx.moveTo(ex - 8 + jit(o), 88 + jit(o));
+        ctx.quadraticCurveTo(ex + jit(o), 92 + jit(o), ex + 8 + jit(o), 88 + jit(o));
+      }, 3);
+    }
+  }
+
+  // nose — one confident hook
+  stroke((o) => {
+    ctx.moveTo(126 + jit(o), 92 + jit(o));
+    ctx.quadraticCurveTo(122 + jit(o), 112 + jit(o), 120 + jit(o), 118 + jit(o));
+    ctx.quadraticCurveTo(124 + jit(o), 124 + jit(o), 134 + jit(o), 120 + jit(o));
+  });
+
+  // mouth — curvature is the whole personality
+  stroke((o) => {
+    ctx.moveTo(96 + jit(o), 158 + jit(o));
+    ctx.quadraticCurveTo(128 + jit(o), 158 + (st.mouth ?? 0) * 22 + jit(o), 160 + jit(o), 158 + jit(o));
+  }, 5.5, st.lip ?? INK);
+
+  if (st.moustache) {
+    for (const side of [-1, 1]) {
+      stroke((o) => {
+        ctx.moveTo(128 + side * 4 + jit(o), 148 + jit(o));
+        ctx.quadraticCurveTo(128 + side * 22 + jit(o), 140 + jit(o), 128 + side * 34 + jit(o), 148 + jit(o));
+      }, 5, '#6b625a');
+    }
+  }
+  if (st.stubble) {
+    ctx.fillStyle = 'rgba(40,34,28,0.35)';
+    for (let i = 0; i < 30; i++) ctx.fillRect(96 + rng() * 64, 168 + rng() * 34, 1.6, 1.6);
+  }
+  if (st.gaunt) {
+    for (const side of [-1, 1]) {
+      stroke((o) => {
+        ctx.moveTo(128 + side * 40 + jit(o), 108 + jit(o));
+        ctx.lineTo(128 + side * 32 + jit(o), 134 + jit(o));
+      }, 3, 'rgba(40,34,28,0.5)');
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  faceCache.set(def.id, tex);
+  return tex;
+}
+
 /* ---------------- body factory ---------------- */
 
 const ACCESSORY = {
@@ -81,6 +211,13 @@ const ACCESSORY = {
     sg.position.set(0, 1.64, 0.1);
     g.add(sg);
   },
+  hat(g, mats) {
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.12, 12), mats.hat ?? mats.hair);
+    crown.position.set(0, 1.82, 0);
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.035, 16), mats.hat ?? mats.hair);
+    brim.position.set(0, 1.76, 0);
+    g.add(crown, brim);
+  },
 };
 
 function buildBody(def) {
@@ -91,19 +228,32 @@ function buildBody(def) {
     top: new THREE.MeshStandardMaterial({ color: p.top, roughness: 0.85 }),
     bottom: new THREE.MeshStandardMaterial({ color: p.bottom, roughness: 0.9 }),
     hair: new THREE.MeshStandardMaterial({ color: p.hair, roughness: 0.95 }),
+    hat: new THREE.MeshStandardMaterial({ color: p.hat ?? p.hair, roughness: 0.8 }),
     glass: new THREE.MeshStandardMaterial({ color: 0x8a2f3a, roughness: 0.25 }),
     wood: new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0.7 }),
   };
 
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.13), mats.bottom);
+  const legMat = def.underwear ? mats.skin : mats.bottom;
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.13), legMat);
   legL.position.set(-0.09, 0.26, 0);
   const legR = legL.clone(); legR.position.x = 0.09;
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.58, 0.22), mats.top);
+  // Milo is not wearing a shirt: keep the torso skin-toned and add a small,
+  // deliberately visible brief around the hips instead.
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.58, 0.22), def.underwear ? mats.skin : mats.top);
   torso.position.y = 0.82;
   torso.name = 'torso';
+  if (def.underwear) {
+    const briefs = new THREE.Mesh(
+      new THREE.BoxGeometry(0.42, 0.18, 0.24),
+      new THREE.MeshStandardMaterial({ color: p.underwear ?? p.bottom, roughness: 0.75 })
+    );
+    briefs.position.set(0, 0.57, 0);
+    briefs.name = 'underwear';
+    g.add(briefs);
+  }
 
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.48, 0.11), mats.top);
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.48, 0.11), def.underwear ? mats.skin : mats.top);
   armL.position.set(-0.26, 0.82, 0);
   const armR = armL.clone(); armR.position.x = 0.26;
 
@@ -111,12 +261,19 @@ function buildBody(def) {
   head.position.y = 1.38;
   const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
   skull.position.y = 0.24;
+  // the face — a pen sketch wrapped over the front of the skull, under the hairline
+  const face = new THREE.Mesh(
+    new THREE.SphereGeometry(0.142, 18, 14, Math.PI / 2 - 1.05, 2.1, 1.45, 1.45),
+    // white base for illustrated portraits so skin tone doesn't tint the art
+    new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
+  );
+  face.position.y = 0.24;
   const hair = new THREE.Mesh(
     new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
     mats.hair
   );
   hair.position.y = 0.27;
-  head.add(skull, hair);
+  head.add(skull, face, hair);
 
   // blob shadow
   const shadow = new THREE.Mesh(

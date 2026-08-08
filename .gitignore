@@ -8,3 +8,8 @@
 
 # node (if tooling is added later)
 node_modules/
+
+# local secrets — never commit API keys
+*.env
+*.env.*
+js/local.env.*

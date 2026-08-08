@@ -62,6 +62,28 @@
       <span class="chip-icon">🖼</span><span id="carrying-title">Untitled</span>
     </div>
 
+    <!-- Now playing chip -->
+    <div id="now-playing" class="hidden">
+      <span class="np-icon">♫</span><span id="np-title">…</span>
+      <button id="np-stop" aria-label="Stop the music">■</button>
+    </div>
+
+    <!-- ARTI chip — the phone is watching -->
+    <div id="arti-chip" title="ARTI — press N">
+      <span class="arti-icon">📱</span><span id="arti-count">241</span>
+      <span id="arti-delta"></span>
+      <span id="arti-badge" class="hidden">0</span>
+    </div>
+
+    <!-- Tabloid scandal banner -->
+    <div id="scandal-banner" class="hidden">
+      <div class="sc-mast">SCANDAL!<span class="sc-ex">EXCLUSIVE</span></div>
+      <div class="sc-head" id="scandal-text"></div>
+    </div>
+
+    <!-- Corporate era tag -->
+    <div id="sponsor-tag" class="hidden">⚡ VERVE — official energy of the avant-garde</div>
+
     <!-- Crosshair + hitmarker -->
     <div id="crosshair" aria-hidden="true"><div class="dot"></div></div>
     <div id="hitmarker" aria-hidden="true">
@@ -84,15 +106,25 @@
 
     <!-- Hint -->
     <div id="hint-bar" class="hidden"></div>
+
   </div>
+
+  <!-- Persistent keyboard guide: outside HUD so it remains above every in-game overlay. -->
+  <aside id="hotkeys" class="hidden" aria-label="Keyboard controls">
+    <div id="hotkeys-title">CONTROLS</div>
+    <div id="hotkeys-list"></div>
+  </aside>
 
   <!-- ============ DIALOGUE ============ -->
   <section id="dialogue" class="hidden" role="dialog" aria-modal="true" aria-label="Conversation">
     <div class="dlg-panel">
       <header class="dlg-header">
         <div class="dlg-speaker">
-          <span class="dlg-name" id="dlg-name">???</span>
-          <span class="dlg-role" id="dlg-role"></span>
+          <img class="dlg-portrait hidden" id="dlg-portrait" alt="" />
+          <div class="dlg-speaker-text">
+            <span class="dlg-name" id="dlg-name">???</span>
+            <span class="dlg-role" id="dlg-role"></span>
+          </div>
         </div>
         <div class="dlg-ego" aria-label="Their ego">
           <span class="ego-label">EGO</span>
@@ -132,46 +164,25 @@
     <p class="easel-hint">Drag to lay pigment. Long unbroken strokes build <em>flow</em>. <kbd>Esc</kbd> steps back.</p>
   </section>
 
-  <!-- ============ THE RADIO (remix deck) ============ -->
-  <section id="radio" class="hidden" role="dialog" aria-modal="true" aria-label="The radio">
-    <div class="deck">
-      <header class="deck-head">
-        <span class="deck-brand">GARRET-2000</span>
-        <div class="deck-display">
-          <div class="deck-track" id="deck-track">NO TAPE</div>
-          <div class="deck-time" id="deck-time">0:00</div>
-        </div>
-        <div class="deck-led" id="deck-led" aria-hidden="true"></div>
+  <!-- ============ ARTI — the social app for artists ============ -->
+  <section id="arti" class="hidden" role="dialog" aria-modal="true" aria-label="ARTI">
+    <div class="arti-phone">
+      <header class="arti-head">
+        <span class="arti-logo">ARTI</span>
+        <span class="arti-handle">@theartist</span>
       </header>
-
-      <div class="deck-tapes" id="deck-tapes" role="group" aria-label="Tapes"></div>
-
-      <div class="deck-transport">
-        <button class="btn primary" id="deck-play">Play</button>
-        <button class="btn ghost" id="deck-stop">Stop</button>
-        <button class="btn ghost" id="deck-rewind">⏪ Rewind</button>
+      <div class="arti-stats">
+        <div><b id="arti-followers">241</b><span>followers</span></div>
+        <div><b id="arti-following">0</b><span>following</span></div>
+        <div><b id="arti-posts">0</b><span>posts</span></div>
       </div>
-
-      <div class="deck-mixer">
-        <div class="deck-faders">
-          <div class="fader-unit"><input type="range" class="fader" id="fader-bass" min="-14" max="14" step="0.5" value="0" aria-label="Bass" /><span class="fader-label">BASS</span></div>
-          <div class="fader-unit"><input type="range" class="fader" id="fader-treble" min="-14" max="14" step="0.5" value="0" aria-label="Treble" /><span class="fader-label">TREB</span></div>
-          <div class="fader-unit"><input type="range" class="fader" id="fader-speed" min="0.5" max="1.6" step="0.01" value="1" aria-label="Tape speed" /><span class="fader-label" id="fader-speed-label">1.00×</span></div>
-        </div>
-        <div class="deck-knobs">
-          <div class="knob" id="knob-echo" role="slider" aria-label="Echo mix" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.18" tabindex="0">
-            <div class="knob-rot"><div class="knob-pin"></div></div><span class="knob-label">ECHO</span>
-          </div>
-          <div class="knob" id="knob-time" role="slider" aria-label="Echo time" aria-valuemin="0.05" aria-valuemax="0.8" aria-valuenow="0.28" tabindex="0">
-            <div class="knob-rot"><div class="knob-pin"></div></div><span class="knob-label">TIME</span>
-          </div>
-        </div>
+      <div class="arti-people" id="arti-people"></div>
+      <div class="arti-feed-label">THE WOUND FEED</div>
+      <div class="arti-feed" id="arti-feed"></div>
+      <div class="arti-actions">
+        <button class="btn ghost" id="arti-boost">Boost latest post ($5)</button>
+        <button class="btn primary" id="arti-close">Put the phone away <kbd>N</kbd></button>
       </div>
-
-      <footer class="deck-foot">
-        <span>It keeps playing when you step back. It stays in the garret, though — radios don't travel.</span>
-        <button class="btn ghost" id="deck-close">Step back <kbd>Esc</kbd></button>
-      </footer>
     </div>
   </section>
 
@@ -229,6 +240,8 @@
         <div><kbd>Mouse</kbd></div><p>Look. <kbd>LMB</kbd> swings the brush. Paint sticks to walls, egos, outfits.</p>
         <div><kbd>E</kbd></div><p>Talk / use / pick up. Talking is duelling. Choose your tone.</p>
         <div><kbd>M</kbd></div><p>The map. Click a studio, appear there. Cheaper than a cab.</p>
+        <div><kbd>Q</kbd></div><p>Appraise. Everything has a price. Ask politely.</p>
+        <div><kbd>N</kbd></div><p>ARTI. The app. Do not check it. You will check it.</p>
 
         <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><p>In dialogue: Kind, Witty or Brutal comebacks. Everyone has a weakness.</p>
         <div><kbd>Tab</kbd></div><p>Meditate on the Eight Virtues — and what The Market made of them.</p>
@@ -273,7 +286,7 @@
   <section id="map" class="hidden" role="dialog" aria-modal="true" aria-label="The map">
     <div class="modal-card wide">
       <h2 class="modal-title">THE MAP</h2>
-      <p class="modal-note">Three rooms. One reputation. Click a destination.</p>
+      <p class="modal-note">Four rooms. One reputation. Click a destination.</p>
       <div class="map-grid" id="map-grid"></div>
       <div class="modal-actions"><button class="btn primary" id="map-close">Close <kbd>M</kbd></button></div>
     </div>

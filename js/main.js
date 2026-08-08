@@ -10,14 +10,14 @@
 
 import * as THREE from 'three';
 
-import { CAMERA, PLAYER, SWING, ZONES, MUSIC, RADIO_TRACKS } from './core/config.js';
+import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES } from './core/config.js';
 
 
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
-import { AudioEngine, DeckEngine } from './core/audio.js';
+import { AudioEngine } from './core/audio.js';
 
-import { pick } from './core/utils.js';
+import { pick, chance } from './core/utils.js';
 
 
 import { World } from './game/world.js';
@@ -25,7 +25,9 @@ import { PlayerController } from './game/player.js';
 import { HandRig } from './game/hand.js';
 import { PaintSystem } from './game/paint.js';
 import { NPCManager } from './game/npc.js';
-import { castForNight } from './game/characters.js';
+import { castForNight, MAINS } from './game/characters.js';
+import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
+import { ArtiEngine } from './game/arti.js';
 import { DialogueEngine } from './game/dialogue.js';
 import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
@@ -47,6 +49,9 @@ class Game {
   #swingCooldown; #stepAccum; #shrineCooldown; #t;
   #raycaster = new THREE.Raycaster();
   #fwd = new THREE.Vector3();
+  #nightSplats = 0;
+  #mintCooldown = 0;
+  #scandalTier = 0;
 
   /* ============================================================
      Boot
@@ -70,7 +75,7 @@ class Game {
     }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.15;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b0b0f);
@@ -81,7 +86,6 @@ class Game {
 
     // ---- modules ----
     this.audio = new AudioEngine();
-    this.deck = new DeckEngine(this.audio);
     this.input = new InputManager(canvas);
 
     this.world = new World(this.scene);
@@ -91,6 +95,7 @@ class Game {
     this.npcs = new NPCManager(this.world, this.audio);
     this.dialogue = new DialogueEngine(this.state);
     this.quests = new QuestDirector(this.state);
+    this.arti = new ArtiEngine();
 
     this.#applySettings();
     this.#wireUI();
@@ -101,6 +106,7 @@ class Game {
     this.ui.bindState(this.state);
     this.ui.renderEndingsStrip(loadEndings());
     this.world.setZone('garret');
+    this.ui.setHotkeys('playing');
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
     this.hand.setReduceMotion(this.settings.reduceMotion);
@@ -143,14 +149,26 @@ class Game {
     click('pause-resume', () => this.#resume());
     click('pause-settings', () => this.ui.show('settings'));
     click('pause-quit', () => this.#quitToTitle());
-    click('codex-close', () => { this.ui.closeCodex(); if (this.mode === 'codex') this.mode = this.#modeBeforeCodex; });
+    click('codex-close', () => {
+      this.ui.closeCodex();
+      if (this.mode === 'codex') {
+        this.mode = this.#modeBeforeCodex;
+        this.ui.setHotkeys(this.mode === 'dialogue' ? 'dialogue' : 'playing');
+      }
+    });
     click('map-close', () => this.#closeMap());
-    click('deck-close', () => this.#closeRadio());
+    click('arti-close', () => this.#closeArti());
     click('seance-leave', () => this.#closeSeance());
 
 
 
     click('ending-again', () => this.#startRun());
+
+    // now-playing chip — the kill switch for the room's record
+    this.ui.bindNowPlaying(() => {
+      this.audio.uiConfirm();
+      this.audio.setMusic(null);
+    });
 
     this.ui.bindSettings(this.settings, (key) => {
       if (key === 'quality') this.#resize();
@@ -161,9 +179,11 @@ class Game {
     // ---- global keys ----
     this.input.on('press:pause', () => this.#onEscape());
     this.input.on('press:map', () => this.#toggleMap());
+    this.input.on('press:arti', () => this.#toggleArti());
     this.input.on('press:codex', () => this.#toggleCodex());
 
     this.input.on('press:interact', () => this.#onInteract());
+    this.input.on('press:appraise', () => this.#onAppraise());
     this.input.on('press:swing', () => this.#onSwing());
     this.input.on('press:option1', () => this.#onOption(0));
     this.input.on('press:option2', () => this.#onOption(1));
@@ -213,11 +233,12 @@ class Game {
     // ---- dialogue engine → view ----
     this.dialogue.on('start', ({ npc, line, options, hint }) => {
       this.mode = 'dialogue';
+      ui.setHotkeys('dialogue');
       this.player.setFrozen(true);
       this.input.exitLock();
       this.#interactTarget = null;
       ui.interactPrompt(null);
-      ui.openDialogue({ name: npc.def.name, role: npc.def.role, hint });
+      ui.openDialogue({ name: npc.def.name, role: npc.def.role, hint, face: npc.def.face ?? null });
       ui.setEgo(npc.ego / npc.maxEgo);
       ui.setLine(line, { pitch: npc.def.pitch, audio: this.audio });
       ui.showOptions(options, (i) => this.#onOption(i));
@@ -258,6 +279,12 @@ class Game {
       if (this.pendingAppraisal) {
         const { line } = this.quests.resolveAppraisal(action, this.pendingAppraisal.p);
         ui.toast('THE APPRAISAL', line);
+        // The Pale Review files its copy before the wine is warm
+        const p = this.pendingAppraisal.p;
+        setTimeout(() => {
+          ui.subtitle('THE PALE REVIEW', makeReview(p.title, p.quality), 0.8, this.audio);
+          this.state.record(`The Pale Review on “${p.title}”`, null);
+        }, 3400);
         this.pendingAppraisal = null;
         this.#syncCarry();
       }
@@ -267,6 +294,7 @@ class Game {
       ui.closeDialogue();
       this.hand.gesture(null);
       this.mode = 'playing';
+      ui.setHotkeys('playing');
       this.player.setFrozen(false);
       this.input.requestLock();
 
@@ -278,10 +306,24 @@ class Game {
         this.state.record(`${npc.def.name} left in pieces`, null);
       }
       this.quests.notify('duelEnded', { id: npc.def.id, outcome });
+      this.arti.onDuelEnd(npc.def.id, outcome);
     });
 
     // ---- ambient barks → subtitles ----
     this.npcs.on('bark', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
+
+    // ---- ARTI — the app is watching, and now it buzzes ----
+    ui.setArtiRoster(Object.values(MAINS).map((m) => ({ id: m.id, name: m.name, face: m.face ?? null })));
+    this.arti.on('viral', ({ title, likes }) => {
+      this.state.addMeter('fame', 1, 'Viral, art-world scale');
+      ui.toast('ARTI', `“${title}” hit ${likes} likes. Viral, art-world scale.`, 'good');
+    });
+    this.arti.on('notify', ({ kicker, body, cls }) => ui.toast(kicker, body, cls));
+    this.arti.on('buzz', () => { this.audio.buzz(); ui.artiBuzz(); });
+    this.arti.on('change', () => {
+      ui.updateArtiChip(this.arti.followers);
+      if (this.mode === 'arti') this.ui.renderArti(this.arti);
+    });
 
     // ---- paint system ----
     this.paint.on('color', (hex) => this.hand.setBrushColor(hex));
@@ -289,6 +331,7 @@ class Game {
 
     this.paint.on('finished', ({ texture, quality }) => {
       this.mode = 'naming';
+      ui.setHotkeys('naming');
       const n = this.state.paintings.length + 1;
       ui.openNaming(`Untitled Nº ${n}`, (title) => {
         const p = { id: `p${Date.now()}`, title, texture, quality, sold: false };
@@ -299,9 +342,11 @@ class Game {
         const ec = this.world.zone('garret').easelCanvas;
         ec.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.85 });
         this.quests.notify('paintingFinished', { quality });
+        this.arti.postPainting(title, quality);
         ui.toast('SIGNED', `“${title}” — quality ${quality}. Under your arm it goes.`, 'good');
         this.audio.pickup();
         this.mode = 'playing';
+        ui.setHotkeys('playing');
         this.input.requestLock();
         if (this.quests.currentStep?.id === 'hang') {
           this.ui.hint('Press M — the map knows the way to the Bianca. Or walk: the door glows.');
@@ -311,11 +356,14 @@ class Game {
     });
 
 
-    // ---- heat → banishment ----
-    this.state.on('meter', ({ key, value }) => {
-      if (key === 'heat' && value >= SWING.banThreshold && this.world.current === 'galleria') {
+    // ---- heat → banishment (and the tabloids) ----
+    this.state.on('meter', ({ key, value, delta, reason }) => {
+      if (key !== 'heat') return;
+      if (value >= SWING.banThreshold && this.world.current === 'galleria') {
         this.#banish();
+        return;
       }
+      if (delta > 0) this.#maybeScandal(value, reason);
     });
   }
 
@@ -327,6 +375,9 @@ class Game {
     this.ui.hide('ending');
     this.ui.hide('title-screen');
     this.state.reset();
+    this.arti.reset();
+    this.ui.updateArtiChip(this.arti.followers);
+    this.ui.clearArtiUnread();
     this.npcs.clear();
     this.world.clearSplats();
     this.world.clearDisplay();
@@ -339,6 +390,9 @@ class Game {
   #startNight(n) {
     this.state.night = n;
     this.state.addMeter('heat', -100, '');   // a new night, a clean slate
+    this.#nightSplats = 0;
+    this.#mintCooldown = 0;
+    this.#scandalTier = 0;
     this.npcs.clear();
     const cast = castForNight(n);
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
@@ -350,7 +404,8 @@ class Game {
 
     this.mode = 'playing';
     this.ui.show('hud');
-    this.ui.hint('WASD move · E talk/use · LMB brush · M map · Tab virtues · Esc pause');
+    this.ui.setHotkeys('playing');
+    this.ui.hint('WASD · E use · LMB brush · Q appraise · N arti · M map · Tab virtues');
 
     setTimeout(() => this.ui.hint(null), 9000);
     this.quests.startNight(n);
@@ -363,6 +418,7 @@ class Game {
     this.ui.show('title-screen');
     this.ui.renderEndingsStrip(loadEndings());
     this.mode = 'title';
+    this.ui.hideHotkeys();
     this.audio.setMood('off');
     this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
@@ -380,6 +436,7 @@ class Game {
     this.ui.transition(() => {
 
       this.ui.hide('hud');
+      this.ui.hideHotkeys();
       this.ui.showEnding(key, this.state);
       this.mode = 'ending';
     });
@@ -410,8 +467,8 @@ class Game {
       case 'map':
         this.#closeMap();
         break;
-      case 'radio':
-        this.#closeRadio();
+      case 'arti':
+        this.#closeArti();
         break;
       case 'seance':
         this.#closeSeance();
@@ -421,6 +478,7 @@ class Game {
       case 'codex':
         this.ui.closeCodex();
         this.mode = this.#modeBeforeCodex;
+        this.ui.setHotkeys(this.mode === 'dialogue' ? 'dialogue' : 'playing');
         break;
 
       case 'dialogue': break;   // you finish what you started
@@ -431,6 +489,7 @@ class Game {
   #pause() {
     if (this.mode !== 'playing') return;
     this.mode = 'paused';
+    this.ui.setHotkeys('paused');
     this.input.exitLock();
     this.ui.show('pause');
   }
@@ -440,6 +499,7 @@ class Game {
     this.ui.hide('settings');
     saveSettings(this.settings);
     this.mode = 'playing';
+    this.ui.setHotkeys('playing');
     this.input.requestLock();
   }
 
@@ -449,9 +509,11 @@ class Game {
     if (this.mode === 'codex') {
       this.ui.closeCodex();
       this.mode = this.#modeBeforeCodex;
+      this.ui.setHotkeys(this.mode === 'dialogue' ? 'dialogue' : 'playing');
     } else {
       this.#modeBeforeCodex = this.mode;
       this.mode = 'codex';
+      this.ui.setHotkeys('codex');
       this.ui.openCodex(this.state);
     }
   }
@@ -461,6 +523,7 @@ class Game {
     this.paint.close();
     this.player.setFrozen(false);
     this.mode = 'playing';
+    this.ui.setHotkeys('playing');
     this.input.requestLock();
   }
 
@@ -487,6 +550,7 @@ class Game {
     this.ui.closeMap();
     this.player.setFrozen(false);
     this.mode = 'playing';
+    this.ui.setHotkeys('playing');
     this.input.requestLock();
   }
 
@@ -494,6 +558,7 @@ class Game {
     this.ui.closeMap();
     this.player.setFrozen(false);
     this.mode = 'playing';
+    this.ui.setHotkeys('playing');
     if (zone !== this.world.current) this.#travelTo(zone);
     this.input.requestLock();
   }
@@ -504,6 +569,7 @@ class Game {
 
   #openSeance() {
     this.mode = 'seance';                  // before exitLock: suppresses auto-pause
+    this.ui.setHotkeys('seance');
     this.player.setFrozen(true);
     this.ui.interactPrompt(null);
     this.input.exitLock();
@@ -533,21 +599,49 @@ class Game {
     this.#seance = null;
     this.player.setFrozen(false);
     this.mode = 'playing';
+    this.ui.setHotkeys('playing');
     this.input.requestLock();
   }
 
-  /* ---- the radio ---- */
+  /* ---- ARTI ---- */
 
-  #closeRadio() {
+  #toggleArti() {
+    if (this.mode === 'playing') this.#openArti();
+    else if (this.mode === 'arti') this.#closeArti();
+  }
 
-    this.ui.closeRadio();
+  #openArti() {
+    this.mode = 'arti';                    // before exitLock: suppresses auto-pause
+    this.ui.setHotkeys('arti');
+    this.player.setFrozen(true);
+    this.ui.interactPrompt(null);
+    this.input.exitLock();
+    this.ui.openArti(this.arti, {
+      onFollowBack: () => this.arti.followBack(),
+      onBoost: () => this.#boostPost(),
+      onToggleFollow: (id) => this.arti.toggleFollow(id),
+    });
+    this.audio.uiMove();
+  }
+
+  #closeArti() {
+    this.ui.closeArti();
     this.player.setFrozen(false);
     this.mode = 'playing';
-    // if the deck is silent, the garret's own music can resume
-    if (!this.deck.playing && this.world.current === 'garret') {
-      this.audio.setMusic('garret', MUSIC);
-    }
+    this.ui.setHotkeys('playing');
     this.input.requestLock();
+  }
+
+  #boostPost() {
+    if (this.state.meters.cash < 5) {
+      this.ui.toast('ARTI', 'Insufficient funds. The algorithm pities you.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    this.state.addMeter('cash', -5, 'Boosted a post');
+    this.state.addMeter('soul', -1, 'The algorithm noticed your money');
+    this.arti.boost();
+    this.audio.register();
   }
 
 
@@ -579,10 +673,16 @@ class Game {
         this.audio.gasp();
         this.ui.hitmarker(false);
         this.state.stats.splats++;
+        this.#nightSplats++;
+        this.#maybeSponsor();
+        if (this.state.night >= 2 && victim.def.id === 'kreyo') {
+          this.ui.toast('KREYO.ETH', pick(KREYO_SELF_MINTS), 'bad');
+        }
         this.state.addMeter('heat', SWING.heatOnNPC, `Painted on ${victim.def.name}`);
         this.state.shiftVirtue('compassion', -1, '');
         this.ui.toast('ASSAULT WITH PIGMENT', `${victim.def.name} is furious. The outfit was “irreplaceable”.`, 'bad');
         this.quests.notify('npcSplatted', { id: victim.def.id });
+        this.arti.onSplatted(victim.def.id);
         return;
       }
 
@@ -593,11 +693,66 @@ class Game {
       if (hit) {
         this.audio.splat();
         this.state.stats.splats++;
+        this.#nightSplats++;
+        this.#maybeSponsor();
         if (this.world.current !== 'garret') {
           this.state.addMeter('heat', 2, 'The walls were white. Were.');
         }
+        this.#maybeKreyoMint();
       }
     }, 190);
+  }
+
+  /* ---- Q: the market has opinions about everything ---- */
+
+  #onAppraise() {
+    if (this.mode !== 'playing' || !this.input.locked) return;
+    const fwd = this.player.forwardDir(this.#fwd);
+    const npc = this.npcs.nearest(this.player.position, fwd, 4.2);
+    if (npc) {
+      this.ui.toast('THE APPRAISAL', appraiseNPC(npc.def.id, npc.def.name));
+      this.audio.uiMove();
+      return;
+    }
+    this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
+    this.#raycaster.far = 5.5;
+    const hits = this.#raycaster.intersectObjects(this.world.zone().group.children, true);
+    const hit = hits.find((h) => h.object.visible);
+    this.ui.toast('THE APPRAISAL', appraiseObject(hit?.object?.name ?? ''));
+    this.audio.uiMove();
+  }
+
+  /* ---- the tabloids, the sponsors, the blockchain ---- */
+
+  #maybeScandal(value, reason) {
+    const TIERS = [30, 60, 85];
+    while (this.#scandalTier < TIERS.length && value >= TIERS[this.#scandalTier]) {
+      this.#scandalTier++;
+      this.ui.scandal(makeScandal(reason));
+      this.audio.scandal();
+      this.arti.onScandal();
+    }
+  }
+
+  #maybeSponsor() {
+    if (this.#nightSplats !== 3) return;   // exactly three: the brand threshold
+    this.audio.register();
+    this.ui.showSponsor();
+    this.ui.toast('SPONSORED CONTENT', 'This act of rebellion is brought to you by VERVE Energy. TASTE THE UPRISING™.', 'good');
+    this.state.addMeter('cash', 15, 'VERVE Energy sponsorship');
+    this.state.addMeter('soul', -4, 'Official energy of the avant-garde');
+  }
+
+  #maybeKreyoMint() {
+    if (this.state.night < 2 || this.world.current !== 'galleria') return;
+    if (this.#mintCooldown > 0) return;
+    const kreyo = this.npcs.byId('kreyo');
+    if (!kreyo || kreyo.dead) return;
+    if (!chance(0.55)) return;
+    this.#mintCooldown = 20;
+    this.ui.toast('KREYO.ETH', pick(KREYO_MINTS), 'bad');
+    this.state.addMeter('fame', 1, 'Minted without consent');
+    this.arti.onMinted();
   }
 
   #interactTarget = null;
@@ -624,6 +779,7 @@ class Game {
       }
       case 'easel':
         this.mode = 'easel';
+        this.ui.setHotkeys('easel');
         this.player.setFrozen(true);       // feet freeze; the world keeps breathing
         this.ui.interactPrompt(null);
         this.input.exitLock();
@@ -660,22 +816,34 @@ class Game {
       case 'map':
         this.#openMap();
         break;
-      case 'radio':
-        this.audio.ensure();
-        this.mode = 'radio';
-        this.player.setFrozen(true);
-        this.ui.interactPrompt(null);
-        this.input.exitLock();
-        this.audio.setMusic(null);          // the deck owns the room now
-        this.audio.setMood('off');
-        this.ui.openRadio(this.deck, RADIO_TRACKS);
-        break;
       case 'seance':
         this.#openSeance();
         break;
 
 
 
+      case 'giftshop': {
+        const latest = this.state.paintings[this.state.paintings.length - 1];
+        if (!latest) {
+          this.ui.toast('THE GIFT SHOP', 'The rack is all KREYO tote bags. Your turn will come. (It will not.)');
+          this.audio.countered();
+          break;
+        }
+        const PRICE = 40;
+        if (this.state.meters.cash < PRICE) {
+          this.ui.toast('THE GIFT SHOP', `“${latest.title}” posters: $39.99. You have $${Math.floor(this.state.meters.cash)}. The gift shop accepts cards, tears, and exposure.`, 'bad');
+          this.audio.countered();
+          break;
+        }
+        this.state.addMeter('cash', -PRICE, 'Bought your own poster');
+        this.state.addMeter('cash', 0.02, 'Royalty statement (enclosed)');
+        this.state.addMeter('soul', -2, 'You own yourself now, retail');
+        this.state.shiftVirtue('humility', -1, '');
+        this.world.hangPoster(latest.texture);
+        this.audio.register();
+        this.ui.toast('THE GIFT SHOP', `One “${latest.title}” poster — $39.99. Royalty: $0.02. It hangs in the garret now, slightly crooked, forever.`, 'good');
+        break;
+      }
       case 'display': {
         const carried = this.state.getPainting(this.state.carrying);
         if (!carried) {
@@ -705,10 +873,6 @@ class Game {
   }
 
   #travelTo(zoneKey) {
-    if (zoneKey !== 'garret' && this.deck.playing) {
-      this.deck.stop();
-      this.ui.toast('THE RADIO', 'It stays in the garret, playing to an empty room. You hear it fade behind you.');
-    }
     this.audio.uiConfirm();
     this.ui.transition(() => {
 
@@ -720,6 +884,7 @@ class Game {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
         vault: 'Cold air, gold light. The cages are listening.',
+        collectorHome: 'The door opens on a private party. Someone is wearing only underwear and a hat.',
       }[zoneKey]));
       this.quests.notify('zoneEntered', { zone: zoneKey });
     });
@@ -733,8 +898,7 @@ class Game {
     // the garret gets the record player; market spaces get the drone
     if (zoneKey === 'garret') {
       this.audio.setMood('off');
-      // the radio wins the room while a tape is playing
-      this.audio.setMusic(this.deck?.playing ? null : 'garret', MUSIC);
+      this.audio.setMusic('garret', MUSIC);
     } else {
       this.audio.setMusic(null);
       this.audio.setMood(ZONES[zoneKey].mood);
@@ -769,7 +933,7 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'radio', 'seance'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti'].includes(this.mode);
 
 
 
@@ -777,7 +941,7 @@ class Game {
     if (playing) {
       this.#swingCooldown = Math.max(0, this.#swingCooldown - dt);
       this.#shrineCooldown = Math.max(0, this.#shrineCooldown - dt);
-      this.world.radioOn = this.deck.playing;   // the little green LED
+      this.#mintCooldown = Math.max(0, this.#mintCooldown - dt);
 
       const moving = this.player.update(dt, this.world.colliders());
 
@@ -785,6 +949,7 @@ class Game {
       this.world.update(dt, now);
       this.paint.update(dt);
       this.hand.update(dt, { moving, sprinting: this.player.sprinting });
+      this.arti.update(dt);
 
       // footsteps
       if (moving) {
@@ -799,6 +964,9 @@ class Game {
 
       this.#updateInteractPrompt();
     }
+
+    // the chip: whatever the room's record is playing
+    this.ui.setNowPlaying(MUSIC_TITLES[this.audio.musicKey] ?? null);
 
     this.renderer.render(this.scene, this.camera);
   }
