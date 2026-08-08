@@ -327,7 +327,141 @@ export const MAINS = {
     },
   },
 
+  barnaby: {
+    id: 'barnaby', name: 'Barnaby Crisp', shortRole: 'collector (liquidity)', role: 'Collector — Liquidity Division',
+    ego: 100, weak: 'brutal', resist: 'kind',
+    hint: 'A bully in loafers. Reads kindness as a bid. Only savagery gets a callback.',
+    pace: 1.1, pitch: 1.05, accessory: 'phone',
+    palette: { skin: 0xd9a184, hair: 0x2a2018, top: 0x2b3a67, bottom: 0x1c1c22 },
+    openers: [
+      'I bought three of your classmates\' futures this morning. Yours is trading at a discount, champ.',
+      'Nothing personal — I don\'t look at them, I lever them. You\'re lever-able, right?',
+      'Your piece back there? Already sold it. Hypothetically. Emotionally, I mean. For double.',
+      'I give artists exposure. Exposure to me.',
+      'Love the work. Can you do forty more by Q3? My storage unit has a quota.',
+    ],
+    countered: [
+      'Aww. You poor sweet summer canvas.',
+      'Kindness! My favorite tell. I\'ll note it in the position I\'m taking on you.',
+      'You\'re cute when you\'re gentle. Like a yield curve.',
+    ],
+    reactions: {
+      kind: ['Gross. Do it less.', 'Careful — I almost felt the price of that sentence.'],
+      witty: ['Ha. Careful, I might put that in the prospectus.', 'Funny. I\'ll expense the laugh.'],
+      brutal: ['...Okay. Okay. That is EXACTLY what my father said at Thanksgiving.', 'Ouch. Right in the carried interest.'],
+    },
+    weakHit: ['The vault is temperature-controlled, you know. My feelings are NOT.', 'Stop. I pay people to prevent this sensation.'],
+    disarmed: ['...Do you need money? Is that a thing you need? Weird question. Forget it.'],
+    dismiss: ['I have a paddock of young artists to emotionally damage. Busy busy.', 'This stopped being accretive.'],
+    meltdown: 'MY WHOLE PORTFOLIO IS PEOPLE. PEOPLE WHO HATE ME. CALL MY HELICOPTER. CALL IT TWICE.',
+    barks: [
+      'I don\'t collect art. I collect exits.',
+      'Someday all of this will be mine twice.',
+      'Who\'s the red one by? Buy it.',
+      'Emotionally I\'m diversified. That\'s why the art cries for me.',
+    ],
+    playerJabs: {
+      kind: ['One day you\'ll own everything and feel nothing, and I\'ll still feel bad for you. That\'s my edge.'],
+      witty: ['Lever-able? Buddy, you\'re not a collector, you\'re a margin call with cufflinks.'],
+      brutal: [
+        'You don\'t flip art, Barnaby. You flip headstones. Same energy, less paperwork.',
+        'Your taste is a liquidation event wearing a watch.',
+        'You bought your first painting to impress a woman who was pretending to be impressed. Everyone knows.',
+      ],
+    },
+  },
+
+  petra: {
+    id: 'petra', name: 'Petra Voss', shortRole: 'advisor (exclusions)', role: 'Advisor — Gatekeeping Emerita',
+    ego: 120, weak: 'witty', resist: 'kind',
+    hint: 'Ice-cold gatekeeper. Kindness is a weakness she bills by the hour. Out-clever her.',
+    pace: 0.8, pitch: 0.9, accessory: null,
+    palette: { skin: 0xe0b89a, hair: 0x1c1a20, top: 0x3a3a44, bottom: 0x14161c },
+    openers: [
+      'I decide who exists. Currently, you\'re a rumor.',
+      'Your file is thin. Your file is, technically, a napkin.',
+      'I don\'t hate emerging artists. I simply don\'t perceive them until they matter.',
+      'Everyone in this room is someone I allowed. Even the wine mom. Especially the wine mom.',
+      'You have the aura of a grant application I\'d decline warmly.',
+    ],
+    countered: [
+      'Oh, you\'re soft. The machine loves soft. It digests it quickly.',
+      'Kindness. I invoice for that.',
+      'Sweet. Sweetness is the first thing we budget out.',
+    ],
+    reactions: {
+      kind: ['I\'ll pretend that landed somewhere.', 'Warmth. How regional.'],
+      witty: ['...Noted. That\'s going in the memo I don\'t write about people like you.', 'Hm. The napkin has jokes.'],
+      brutal: ['Teeth. Interesting. Most of you come pre-defanged.', 'Volume without leverage. Adorable.'],
+    },
+    weakHit: ['Stop that. Wit is not a currency I recognize. Stop it immediately.', 'You are making this room unpredictable and I HATE this room being unpredictable.'],
+    disarmed: null,
+    dismiss: ['This meeting was a favor. It has expired.', 'I\'ve already forgotten your medium. It\'s a mercy, trust me.'],
+    meltdown: 'I BUILT THIS SCENE. I AM THE WALL AND THE NAIL. YOU CAN\'T HANG ME. NOBODY HANGS ME.',
+    barks: [
+      'Provenance is power wearing gloves.',
+      'I can smell a grant application from three rooms away.',
+      'Everything is copy. Everything.',
+      'Exclusivity is just hospitality with the door mostly closed.',
+    ],
+    playerJabs: {
+      kind: ['It must be tiring, deciding who exists every day. Rest. We\'ll hold the wall.'],
+      witty: [
+        'Petra, being imperceptible to you sounds like a superpower. I can finally work in peace.',
+        'Your memo about people like me — cc it to my landlord. He also doesn\'t perceive me.',
+      ],
+      brutal: [
+        'You didn\'t build the scene, Petra. You charge rent on other people\'s courage.',
+        'Gatekeeping is just fear with better tailoring.',
+      ],
+    },
+  },
+
+  baron: {
+    id: 'baron', name: 'Baron von Carpark', shortRole: 'collector (hereditary)', role: 'Collector — Hereditary, Obviously',
+    ego: 90, weak: 'kind', resist: 'witty',
+    hint: 'Eight centuries of ancestors, one soft heart. Jokes bounce off the title. Warmth breaches the walls.',
+    pace: 0.5, pitch: 0.75, accessory: 'cane',
+    palette: { skin: 0xd9c2a8, hair: 0xe8e0cc, top: 0x4a2c2a, bottom: 0x2a2c36 },
+    openers: [
+      'My family has owned art since art had serfs in it.',
+      'I collect outsider art. I have never met an outsider. One has staff for that.',
+      'In my palazzo, your little painting would make a charming coaster room.',
+      'You paint? How rustic. My grandfather commissioned wars.',
+      'I once traded a village for a Vermeer. The village sends cards. The Vermeer appreciates.',
+    ],
+    countered: [
+      'Ha! Jokes. My staff laughs at jokes for me. They\'re wonderful at it.',
+      'Wit is a tradesman\'s tool. I have people who hold my tools.',
+      'Amusing. I\'ll have it written down and read to me at Christmas.',
+    ],
+    reactions: {
+      kind: ['...Oh. OH. Nobody has spoken warmly to me since the funeral of my third-favorite horse.', 'You would have been treasured at the palazzo. As a guest! Possibly as a fixture.'],
+      witty: ['I shall have that reviewed by someone I own.', 'Hm. The help will find that hilarious. I\'ll tell them tonight.'],
+      brutal: ['I shall have you reviewed by someone I own.', 'Barbaric. I own a dungeon with better manners.'],
+    },
+    weakHit: ['Stop. Warmth is my one weakness. Along with shellfish and democracy.', 'Kindness, in THIS economy? You reckless, generous peasant. Continue.'],
+    disarmed: ['Come to the palazzo. Bring the painting. Bring... a friend? Are you a friend?'],
+    dismiss: ['I smell a tradesman. Elsewhere. Go.', 'This conversation lacks a crest. It ends.'],
+    meltdown: 'THE SERFS WERE THE ART. THE ART WAS THE SERFS. I SEE IT NOW. FETCH THE SMELLING SALTS AND THE SMALL CAR.',
+    barks: [
+      'Everything was better when it was worse.',
+      'I had a Basquiat framed in a Rembrandt. The frame won.',
+      'Poor people make such textured art. Why is that.',
+      'The palazzo has a room no one may enter. It contains a beanbag. It is sacred.',
+    ],
+    playerJabs: {
+      kind: [
+        'Baron, the horse was lucky to know you. Genuinely.',
+        'Behind the palazzo there\'s a kid who liked colors. He\'d be fun at dinner. Invite him.',
+      ],
+      witty: [],
+      brutal: ['Your family didn\'t collect art, it collected the people who made it. That\'s not taste — it\'s a ransom note with a pedigree.'],
+    },
+  },
+
   lucia: {
+
     id: 'lucia', name: 'Lucia Fenn', shortRole: 'advisor', role: 'Art Advisor to the Vault',
     ego: 100, weak: 'witty', resist: 'brutal',
     hint: 'She diversifies people. Unimpressed by heat; allergic to being out-clevered.',
@@ -435,7 +569,20 @@ const CROWD_TYPES = [
     ],
   },
   {
+    type: 'oligarchNephew', names: ['An Oligarch\'s Nephew', 'Young Pavel', 'The Heir Apparent-ish'],
+    role: 'nepo-collector',
+    palette: () => ({ skin: pick([0xd9a184, 0xe0b89a]), hair: pick([0xc9a86a, 0x2a2018]), top: pick([0x8c3b2e, 0x2b3a67]), bottom: 0x1c1c22 }),
+    accessory: 'phone', pitch: 1.2,
+    barks: [
+      'My uncle owns a museum. And a country. Same paperwork.',
+      'I\'m not buying art, I\'m buying the artist\'s gratitude. It vests.',
+      'Everything here is a tax strategy if you squint legally.',
+      'I offered the artist exposure. He asked "to what". Naive. Beautiful.',
+    ],
+  },
+  {
     type: 'austrian', names: ['A Mysterious Austrian', 'Herr Doktor Nobody', 'The Viennese'],
+
     role: 'unimpressed, continental',
     palette: () => ({ skin: 0xd9c2a8, hair: 0x8a8378, top: 0x1c1c22, bottom: 0x1c1c22 }),
     accessory: 'cane', pitch: 0.75,
@@ -488,7 +635,7 @@ export function castForNight(night) {
       return {
         garret: [],
         galleria: [
-          m.victoria, m.kreyo, m.docent, m.chad, m.muffy,
+          m.victoria, m.kreyo, m.docent, m.chad, m.muffy, m.barnaby,
           ...buildCrowd('galleria', 1, 4),
         ],
         vault: [],
@@ -497,7 +644,7 @@ export function castForNight(night) {
       return {
         garret: [],
         galleria: [
-          m.victoria, m.kreyo, m.docent, m.chad, m.dolores,
+          m.victoria, m.kreyo, m.docent, m.chad, m.dolores, m.petra, m.baron,
           ...buildCrowd('galleria', 2, 5),
         ],
         vault: [],
@@ -506,7 +653,8 @@ export function castForNight(night) {
       return {
         garret: [],
         galleria: [m.docent, ...buildCrowd('galleria', 3, 2)],
-        vault: [m.index, m.lucia, m.chad, ...buildCrowd('vault', 3, 2)],
+        vault: [m.index, m.lucia, m.chad, m.barnaby, m.petra, ...buildCrowd('vault', 3, 2)],
       };
+
   }
 }

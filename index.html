@@ -175,7 +175,25 @@
     </div>
   </section>
 
+  <!-- ============ THE SÉANCE ============ -->
+  <section id="seance" class="hidden" role="dialog" aria-modal="true" aria-label="The séance">
+    <div class="seance-card">
+      <h2 class="modal-title">THE SÉANCE</h2>
+      <p class="seance-sub">The dead have opinions. Choose a ghost.</p>
+      <div class="seance-portraits" id="seance-portraits" role="group" aria-label="Dead artists"></div>
+      <div class="seance-orb">
+        <div class="seance-line" id="seance-line">The glass is cold. Waiting.</div>
+        <div class="seance-who" id="seance-who"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="seance-leave">Leave the circle <kbd>Esc</kbd></button>
+        <button class="btn primary" id="seance-ask" disabled>Ask the dead</button>
+      </div>
+    </div>
+  </section>
+
   <!-- Naming modal -->
+
 
   <section id="naming" class="hidden" role="dialog" aria-modal="true" aria-label="Title your work">
     <div class="modal-card">

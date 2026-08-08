@@ -28,7 +28,9 @@ import { NPCManager } from './game/npc.js';
 import { castForNight } from './game/characters.js';
 import { DialogueEngine } from './game/dialogue.js';
 import { QuestDirector } from './game/quests.js';
+import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
 import { UIManager } from './ui/ui.js';
+
 
 class Game {
   constructor() {
@@ -144,6 +146,8 @@ class Game {
     click('codex-close', () => { this.ui.closeCodex(); if (this.mode === 'codex') this.mode = this.#modeBeforeCodex; });
     click('map-close', () => this.#closeMap());
     click('deck-close', () => this.#closeRadio());
+    click('seance-leave', () => this.#closeSeance());
+
 
 
     click('ending-again', () => this.#startRun());
@@ -409,6 +413,10 @@ class Game {
       case 'radio':
         this.#closeRadio();
         break;
+      case 'seance':
+        this.#closeSeance();
+        break;
+
 
       case 'codex':
         this.ui.closeCodex();
@@ -490,9 +498,48 @@ class Game {
     this.input.requestLock();
   }
 
+  /* ---- the séance ---- */
+
+  #seance = null;
+
+  #openSeance() {
+    this.mode = 'seance';                  // before exitLock: suppresses auto-pause
+    this.player.setFrozen(true);
+    this.ui.interactPrompt(null);
+    this.input.exitLock();
+    this.#seance = null;
+    this.audio.spirit();
+    this.ui.openSeance(DEAD_ARTISTS, {
+      onPick: (artist) => {
+        this.#seance = new SeanceSession(artist);
+        this.audio.spirit();
+        this.ui.seanceLine(this.#seance.greet(), artist);
+      },
+      onAsk: () => {
+        if (!this.#seance) return;
+        this.audio.spirit();
+        this.ui.seanceLine(this.#seance.ask(), this.#seance.artist);
+        if (this.#seance.blessingDue) {
+          this.state.shiftVirtue('vision', 2, 'The dead approve');
+          this.state.addMeter('soul', 2, 'A blessing from the old masters');
+          this.ui.toast('THE DEAD APPROVE', 'Something old and kind settles on your shoulders.', 'good');
+        }
+      },
+    });
+  }
+
+  #closeSeance() {
+    this.ui.closeSeance();
+    this.#seance = null;
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    this.input.requestLock();
+  }
+
   /* ---- the radio ---- */
 
   #closeRadio() {
+
     this.ui.closeRadio();
     this.player.setFrozen(false);
     this.mode = 'playing';
@@ -623,6 +670,10 @@ class Game {
         this.audio.setMood('off');
         this.ui.openRadio(this.deck, RADIO_TRACKS);
         break;
+      case 'seance':
+        this.#openSeance();
+        break;
+
 
 
       case 'display': {
@@ -718,7 +769,8 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'radio'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'radio', 'seance'].includes(this.mode);
+
 
 
 

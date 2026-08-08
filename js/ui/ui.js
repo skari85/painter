@@ -247,8 +247,51 @@ export class UIManager {
   hideOptions() { this.el.dlgOptions.innerHTML = ''; }
 
   /* ============================================================
+     The Séance — the dead artists hotline
+     ============================================================ */
+
+  openSeance(artists, { onPick, onAsk }) {
+    const wrap = $('seance-portraits');
+    wrap.innerHTML = '';
+    for (const a of artists) {
+      const b = document.createElement('button');
+      b.className = 'ghost-chip';
+      b.style.setProperty('--ghost-color', a.color);
+      b.textContent = a.name[0];
+      b.title = a.full;
+      b.setAttribute('aria-label', `Consult ${a.full}`);
+      b.addEventListener('click', () => {
+        for (const x of wrap.children) x.classList.toggle('active', x === b);
+        $('seance-ask').disabled = false;
+        onPick(a);
+      });
+      wrap.appendChild(b);
+    }
+    $('seance-line').textContent = 'The glass is cold. Waiting.';
+    $('seance-who').textContent = '';
+    $('seance-ask').disabled = true;
+    const ask = $('seance-ask');
+    ask.onclick = () => onAsk();
+    this.show('seance');
+  }
+
+  seanceLine(text, artist) {
+    const line = $('seance-line');
+    line.textContent = text;
+    line.style.animation = 'none';
+    void line.offsetWidth;
+    line.style.animation = '';
+    const who = $('seance-who');
+    who.textContent = artist ? artist.full.toUpperCase() : '';
+    who.style.setProperty('--ghost-color', artist?.color ?? 'var(--ink-faint)');
+  }
+
+  closeSeance() { this.hide('seance'); }
+
+  /* ============================================================
      The Radio — remix deck (tapes, transport, faders, knobs)
      ============================================================ */
+
 
   #deckBound = false;
   #deckTimer = null;

@@ -311,6 +311,29 @@ export class World {
       pos: new THREE.Vector3(4.7, 1.0, -3.5), radius: 1.7,
     });
 
+    // the crystal ball — a small table, a violet sphere, the dead on hold
+    {
+      cylinder(z, { rT: 0.3, rB: 0.36, h: 0.72, x: -4.7, z: 1.4, material: mat(0x2a2033, { roughness: 0.6 }) });
+      const ball = new THREE.Mesh(
+        new THREE.SphereGeometry(0.16, 24, 18),
+        new THREE.MeshStandardMaterial({
+          color: 0x2a1a4a, emissive: 0x8a5cf6, emissiveIntensity: 0.9,
+          roughness: 0.15, transparent: true, opacity: 0.92,
+        })
+      );
+      ball.position.set(-4.7, 0.95, 1.4);
+      ball.userData.noSplat = true;
+      const aura = new THREE.PointLight(0x8a5cf6, 0.7, 3.4);
+      aura.position.set(-4.7, 1.1, 1.4);
+      z.group.add(ball, aura);
+      z.animated.seance = { ball, aura, baseY: 0.95 };
+      z.interactables.push({
+        id: 'seance', type: 'seance', label: 'Consult the dead',
+        pos: new THREE.Vector3(-4.7, 1.0, 1.4), radius: 1.8,
+      });
+    }
+
+
     // window + moonlight
     const win = plane(z, {
       w: 1.5, h: 1.7, x: -3, y: 2.2, z: -4.48,
@@ -689,7 +712,16 @@ export class World {
     for (const g of z.animated.glows) {
       g.rotation.y += dt * 0.12;
     }
+    if (z.animated.seance) {
+      const { ball, aura, baseY } = z.animated.seance;
+      ball.rotation.y += dt * 0.7;
+      ball.position.y = baseY + Math.sin(t * 1.4) * 0.02;
+      const pulse = 0.7 + Math.sin(t * 2.3) * 0.25;
+      ball.material.emissiveIntensity = pulse;
+      aura.intensity = pulse;
+    }
     if (z.animated.radioLed) {
+
       // green pulse while a tape plays, dim gold standby otherwise
       z.animated.radioLed.material.color.set(
         this.radioOn

@@ -216,7 +216,8 @@ kbd {
 /* ============================================================
    MODALS
    ============================================================ */
-#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #radio {
+#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #radio, #seance {
+
 
 
   position: fixed; inset: 0; z-index: 50;
@@ -661,8 +662,56 @@ kbd {
 }
 
 /* ============================================================
+   THE SÉANCE
+   ============================================================ */
+.seance-card {
+  width: min(560px, calc(100vw - 48px));
+  padding: var(--s4);
+  background: linear-gradient(165deg, #1c1530, #0e0a18 70%);
+  border: 1px solid rgba(138, 92, 246, 0.3);
+  border-radius: 24px;
+  box-shadow: var(--shadow-card), 0 0 60px rgba(138, 92, 246, 0.12);
+  animation: pop var(--dur-med) var(--ease-out) both;
+}
+.seance-sub { color: var(--ink-dim); font-size: 13.5px; margin: -12px 0 var(--s3); font-style: italic; }
+.seance-portraits { display: flex; gap: 10px; justify-content: center; margin-bottom: var(--s3); flex-wrap: wrap; }
+.ghost-chip {
+  width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 18px;
+  border: 2px solid var(--ghost-color, var(--line));
+  color: var(--ghost-color, var(--ink));
+  background: rgba(255,255,255,0.04);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.ghost-chip:hover { transform: translateY(-3px) scale(1.06); box-shadow: 0 0 18px var(--ghost-color); }
+.ghost-chip.active { background: var(--ghost-color); color: #0b0b0f; box-shadow: 0 0 24px var(--ghost-color); }
+.seance-orb {
+  min-height: 120px;
+  border-radius: 16px;
+  border: 1px solid rgba(138, 92, 246, 0.25);
+  background:
+    radial-gradient(240px 120px at 50% 130%, rgba(138, 92, 246, 0.18), transparent 70%),
+    rgba(8, 6, 14, 0.8);
+  padding: var(--s3);
+  display: flex; flex-direction: column; justify-content: center; gap: 10px;
+}
+.seance-line {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 18px; line-height: 1.55; text-align: center; color: var(--ink);
+  animation: fade var(--dur-med) ease both;
+}
+.seance-who {
+  text-align: center;
+  font-size: 10.5px; font-weight: 800; letter-spacing: 0.24em;
+  color: var(--ghost-color, var(--ink-faint));
+}
+
+/* ============================================================
    MAP
    ============================================================ */
+
 
 .map-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
 .map-card {

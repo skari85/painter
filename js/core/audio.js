@@ -203,7 +203,16 @@ export class AudioEngine {
     this.#noise({ peak: 0.14, decay: 0.6, filterFreq: 300 });
   }
 
+  /** Ghostly shimmer for the séance. */
+  spirit() {
+    if (!this.#ctx) return;
+    [660, 990, 1320].forEach((f, i) =>
+      setTimeout(() => this.#tone({ freq: f * rand(0.98, 1.02), type: 'sine', peak: 0.06, attack: 0.25, decay: 1.4 }), i * 120));
+    this.#noise({ peak: 0.04, attack: 0.4, decay: 1.6, filterFreq: 4000, filterEnd: 800, type: 'highpass' });
+  }
+
   nightChime() {
+
     [523, 659, 784].forEach((f, i) =>
       setTimeout(() => this.#tone({ freq: f, type: 'sine', peak: 0.1, decay: 0.7 }), i * 160));
   }
