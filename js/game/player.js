@@ -19,6 +19,8 @@ export class PlayerController {
   #invertY = false;
   #reduceMotion = false;
   #frozen = false;                   // dialogues & overlays freeze the body
+  #beatPhase = -1;                   // fed from the frame loop: the room's pulse
+  #beatAmp = 0;                      // smoothed kick envelope for the head-nod
 
   constructor(camera, input) {
     this.camera = camera;
@@ -35,6 +37,9 @@ export class PlayerController {
   }
 
   setFrozen(v) { this.#frozen = v; }
+
+  /** The frame loop feeds the room's beat phase in; the body answers. */
+  setBeat(phase) { this.#beatPhase = phase; }
 
   teleport(x, z, yaw) {
     this.position.set(x, PLAYER.eyeHeight, z);
@@ -111,7 +116,13 @@ export class PlayerController {
       this.#bobT += dt * PLAYER.headBob.freq * (this.sprinting ? 1.3 : 1);
     }
     const bobY = this.#reduceMotion ? 0 : Math.sin(this.#bobT) * PLAYER.headBob.amp;
-    this.position.y = PLAYER.eyeHeight + bobY;
+
+    // the room's pulse: a tiny nod you feel in your teeth on each kick
+    const kickTarget = (this.#beatPhase >= 0 && !this.#reduceMotion)
+      ? Math.pow(1 - this.#beatPhase, 2.6) : 0;
+    this.#beatAmp = damp(this.#beatAmp, kickTarget, 22, dt);
+
+    this.position.y = PLAYER.eyeHeight + bobY + this.#beatAmp * 0.016;
 
     this.#apply();
     return this.moving;
@@ -122,5 +133,6 @@ export class PlayerController {
     this.camera.rotation.set(0, 0, 0);
     this.camera.rotateY(this.#yaw);
     this.camera.rotateX(this.#pitch);
+    this.camera.rotateZ(this.#beatAmp * 0.0035);   // the sub tips the floor, slightly
   }
 }

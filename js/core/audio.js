@@ -15,12 +15,27 @@ const VOWELS = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870]];
 
 
 const MOODS = {
-  garret:   { freqs: [110, 164.8, 220], cutoff: 640,  gain: 0.05 },
+  garret:      { freqs: [110, 164.8, 220], cutoff: 640,  gain: 0.05 },
   collectorHome: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
-  galleria: { freqs: [146.8, 220, 293.7], cutoff: 900, gain: 0.035 },
-  vault:    { freqs: [55, 82.4, 110], cutoff: 380,   gain: 0.07 },
-  off:      { freqs: [], cutoff: 400, gain: 0 },
+  latexRunway: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
+  galleria:    { freqs: [146.8, 220, 293.7], cutoff: 900, gain: 0.035 },
+  vault:       { freqs: [55, 82.4, 110], cutoff: 380,   gain: 0.07 },
+  off:         { freqs: [], cutoff: 400, gain: 0 },
 };
+
+/* The leather room's rig: 4-on-the-floor at 126 BPM, murk in A minor. */
+const TECHNO = {
+  bpm: 126,
+  root: 55,                                   // A1 — the rumble lives here
+  pad: [110, 130.8, 164.8, 196],              // Am add7-ish smear
+  bassPattern: [0, 0, 12, 0, 7, 0, 3, 0],     // semitone offsets per 8th
+  level: 0.5,
+  // through-the-wall voicing: the same loop, heard from the hallway
+  muffleCutoff: 210,
+  muffleLevel: 0.22,
+};
+
+export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
 
 export class AudioEngine {
   #ctx = null;
@@ -33,6 +48,8 @@ export class AudioEngine {
   #musicKey = null;
   #musicTarget = 0;
   #fadeTimer = null;
+  #techno = null;      // { gain, timer } while the leather room is playing
+  #technoStep = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -274,6 +291,209 @@ export class AudioEngine {
 
     [523, 659, 784].forEach((f, i) =>
       setTimeout(() => this.#tone({ freq: f, type: 'sine', peak: 0.1, decay: 0.7 }), i * 160));
+  }
+
+  /* ---------------- the leather room ---------------- */
+
+  /**
+   * Start the murky 4-on-the-floor loop (126 BPM). Idempotent, fail-soft.
+   * A lookahead scheduler books one 16th-note per tick into the WebAudio
+   * clock so the groove stays tight even if the tab stutters.
+   */
+  startTechno() {
+    if (!this.#ctx || this.#techno) return;
+    const t = this.#ctx.currentTime;
+
+    // door filter: the whole rig sits behind this. Wide open inside the
+    // leather room; from the hallway it clamps to a low sub thud.
+    const doorFilter = this.#ctx.createBiquadFilter();
+    doorFilter.type = 'lowpass';
+    doorFilter.frequency.value = 19000;
+    doorFilter.Q.value = 0.4;
+    doorFilter.connect(this.#master);
+
+    // bus with a slow throb — the room breathes
+    const bus = this.#ctx.createGain();
+    bus.gain.value = 0.0001;
+    bus.gain.setTargetAtTime(TECHNO.level * this.#volume, t, 1.4);
+    bus.connect(doorFilter);
+
+    const lfo = this.#ctx.createOscillator();
+    lfo.frequency.value = TECHNO.bpm / 60 / 4;       // one swell per bar
+    const lfoAmt = this.#ctx.createGain();
+    lfoAmt.gain.value = 0.12;
+    lfo.connect(lfoAmt).connect(bus.gain);
+    lfo.start(t);
+
+    // murk: a detuned, low-passed pad that never resolves
+    const padFilter = this.#ctx.createBiquadFilter();
+    padFilter.type = 'lowpass';
+    padFilter.frequency.value = 520;
+    padFilter.Q.value = 3.2;
+    const padGain = this.#ctx.createGain();
+    padGain.gain.value = 0.05;
+    const padOscs = TECHNO.pad.map((f) => {
+      const o = this.#ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.detune.value = rand(-14, 14);
+      o.connect(padFilter);
+      o.start(t);
+      return o;
+    });
+    // slow filter wobble — something is moving under the floor
+    const wob = this.#ctx.createOscillator();
+    wob.frequency.value = 0.09;
+    const wobAmt = this.#ctx.createGain();
+    wobAmt.gain.value = 260;
+    wob.connect(wobAmt).connect(padFilter.frequency);
+    wob.start(t);
+    padFilter.connect(padGain).connect(bus);
+
+    const stepDur = 60 / TECHNO.bpm / 4;             // 16th note
+    const state = {
+      bus, doorFilter, lfo, wob, padOscs,
+      nextTime: t + 0.06,
+      startTime: t,
+      timer: setInterval(() => this.#technoTick(), 40),
+      stepDur,
+    };
+    this.#techno = state;
+    this.#technoStep = 0;
+  }
+
+  /**
+   * The door to the leather room. muffled=true pulls a low-pass over the
+   * whole rig and drops the level — the party becomes a sub thud through
+   * plaster. Smooth ramp, so walking the hallway feels like a door swinging.
+   */
+  setTechnoMuffle(muffled) {
+    const s = this.#techno;
+    if (!s || !this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    s.doorFilter.frequency.cancelScheduledValues(t);
+    s.doorFilter.frequency.setTargetAtTime(muffled ? TECHNO.muffleCutoff : 19000, t, 0.35);
+    s.bus.gain.cancelScheduledValues(t);
+    s.bus.gain.setTargetAtTime((muffled ? TECHNO.muffleLevel : TECHNO.level) * this.#volume, t, 0.35);
+  }
+
+  /**
+   * 0..1 phase of the current beat — the world syncs its pulse to this.
+   * Returns -1 when the rig is silent, so callers can fall back gracefully.
+   */
+  get technoBeatPhase() {
+    const s = this.#techno;
+    if (!s || !this.#ctx) return -1;
+    const beatDur = s.stepDur * 4;
+    return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
+  }
+
+  stopTechno() {
+    const s = this.#techno;
+    if (!s) return;
+    this.#techno = null;
+    clearInterval(s.timer);
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    s.bus.gain.cancelScheduledValues(t);
+    s.bus.gain.setTargetAtTime(0.0001, t, 0.5);
+    const kill = t + 2.5;
+    s.padOscs.forEach((o) => o.stop(kill));
+    try { s.lfo.stop(kill); s.wob.stop(kill); } catch { /* already gone */ }
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 3000);
+  }
+
+  get technoPlaying() { return !!this.#techno; }
+
+  /** Lookahead scheduler: book every 16th that falls due inside the window. */
+  #technoTick() {
+    const s = this.#techno;
+    if (!s || !this.#ctx) return;
+    const horizon = this.#ctx.currentTime + 0.12;
+    while (s.nextTime < horizon) {
+      this.#technoStep16(this.#technoStep, s.nextTime, s);
+      this.#technoStep = (this.#technoStep + 1) % 64;   // 4-bar cycle
+      s.nextTime += s.stepDur;
+    }
+  }
+
+  /** One 16th-note of the groove. step 0..63, absolute WebAudio time `t`. */
+  #technoStep16(step, t, s) {
+    const beat = step % 16;                  // position inside the bar
+    const bar = Math.floor(step / 16);
+
+    // kick: four on the floor, pitched sine thump + click
+    if (beat % 4 === 0) {
+      const osc = this.#ctx.createOscillator();
+      const g = this.#ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.exponentialRampToValueAtTime(38, t + 0.11);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.85, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+      osc.connect(g).connect(s.bus);
+      osc.start(t); osc.stop(t + 0.3);
+      // the click on top — a boot on concrete
+      const src = this.#ctx.createBufferSource();
+      src.buffer = this.#noiseBuffer;
+      const hp = this.#ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 1800;
+      const cg = this.#ctx.createGain();
+      cg.gain.setValueAtTime(0.0001, t);
+      cg.gain.exponentialRampToValueAtTime(0.1, t + 0.002);
+      cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      src.connect(hp).connect(cg).connect(s.bus);
+      src.start(t, rand(0, 0.5)); src.stop(t + 0.05);
+    }
+
+    // rumble bass: offbeat 8ths following the pattern, an octave of filth
+    if (beat % 2 === 0) {
+      const semis = TECHNO.bassPattern[(beat / 2) | 0];
+      const f = TECHNO.root * Math.pow(2, semis / 12);
+      const osc = this.#ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = f;
+      const lp = this.#ctx.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 240; lp.Q.value = 6;
+      const g = this.#ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.16, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + s.stepDur * 1.8);
+      osc.connect(lp).connect(g).connect(s.bus);
+      osc.start(t); osc.stop(t + s.stepDur * 2);
+    }
+
+    // hats: off the beat, thin and nervous — keys jingling in the dark
+    if (beat % 4 === 2) {
+      const src = this.#ctx.createBufferSource();
+      src.buffer = this.#noiseBuffer;
+      const hp = this.#ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 8200;
+      const g = this.#ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.055, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      src.connect(hp).connect(g).connect(s.bus);
+      src.start(t, rand(0, 0.5)); src.stop(t + 0.08);
+    }
+
+    // murk stab: once a bar, a detuned minor blip far away
+    if (beat === 14 && bar % 2 === 1) {
+      [220, 261.6, 329.6].forEach((f) => {
+        const o = this.#ctx.createOscillator();
+        o.type = 'square';
+        o.frequency.value = f * rand(0.99, 1.01);
+        const lp = this.#ctx.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.value = 900;
+        const g = this.#ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.03, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        o.connect(lp).connect(g).connect(s.bus);
+        o.start(t); o.stop(t + 0.45);
+      });
+    }
   }
 
   /* ---------------- ambient drone ---------------- */

@@ -670,7 +670,7 @@ export const MAINS = {
     face: 'puplic/people/gimp.png', cutout: true,
     ego: 40, weak: 'kind', resist: 'brutal',
     hint: 'Nobody knows who invited him. Everybody assumes somebody else did. He is having a wonderful time.',
-    pace: 0.4, pitch: 0.6, accessory: null, anchor: null,
+    pace: 0.4, pitch: 0.6, accessory: null, anchor: 'gimp',
     palette: { skin: 0x8a8a92, hair: 0x14161c, top: 0x17171c, bottom: 0x17171c },
     openers: [
       '...',
@@ -737,6 +737,77 @@ export const MAINS = {
     },
   },
 };
+
+/* ============================================================
+   THE LATEX RUNWAY — latex-fashion house guests
+   ============================================================ */
+
+const LEATHER_ROOM_CAST = [
+  {
+    id: 'latexRook', name: 'Rook', shortRole: 'latex performer', role: 'Latex Performer — the room\'s alibi',
+    face: 'puplic/people/leather/01-black-red-runway.png', cutout: true,
+    ego: 62, weak: 'witty', resist: 'brutal', hint: 'A runway professional with a wicked grin and a better sense of timing than the collector.',
+    pace: 0.65, pitch: 0.92, accessory: null, anchor: 'rook',
+    palette: { skin: 0xd8a783, hair: 0x17141b, top: 0x0b0b10, bottom: 0x0b0b10 },
+    openers: ['You look lost. Good. Lost people notice the room.', 'The dress code is simple: wear the bit you usually hide.'],
+    countered: ['Cute line. Put it on a sticker.', 'Wit looks good on you. Don\'t let it become a brand.'],
+    reactions: { kind: ['That was unexpectedly sweet. Don\'t tell the room.'], witty: ['There it is. A little sparkle in the knife.'], brutal: ['That was almost a look. Try again with better tailoring.'] },
+    weakHit: ['Careful. You\'re making sincerity look dangerous.'],
+    disarmed: ['You can stay. The room likes people who still have a pulse.'],
+    dismiss: ['I\'m going back under the red light. It understands me.'],
+    meltdown: 'THE ROOM IS A COSTUME AND I AM THE ZIPPER. I NEED A MINUTE.',
+    barks: ['The zipper is a punctuation mark.', 'Every buckle is a tiny committee meeting.', 'The sofa knows more than the host.'],
+    playerJabs: { kind: ['You make the room feel like a choice, not a trap.'], witty: ['Rook, you are a mood board with legal representation.'], brutal: ['You call it a look because “emergency architecture” was taken.'] },
+  },
+  {
+    id: 'latexViolet', name: 'Violet', shortRole: 'latex performer', role: 'Latex Performer — violet division',
+    face: 'puplic/people/leather/02-violet-corset-performer.png', cutout: true,
+    ego: 58, weak: 'kind', resist: 'witty', hint: 'The pose is theatrical; the person underneath it is paying very close attention.',
+    pace: 0.55, pitch: 1.08, accessory: null, anchor: 'violet',
+    palette: { skin: 0xb97855, hair: 0x2e1e35, top: 0x5b2c91, bottom: 0x5b2c91 },
+    openers: ['A room this dark needs a color with opinions.', 'The collector calls it a theme. I call it a boundary.'],
+    countered: ['You\'re funny. That\'s a dangerous accessory.', 'Fine. I\'ll allow the joke to remain unpriced.'],
+    reactions: { kind: ['Oh. You looked past the costume. That is rude and lovely.'], witty: ['Good. The room needed a laugh with teeth.'], brutal: ['You confuse cruelty with edge. The room can tell.'] },
+    weakHit: ['Don\'t be gentle like you\'re apologizing for seeing me.'],
+    disarmed: ['Stay near the light. It is less honest there, but more flattering.'],
+    dismiss: ['I have a date with the mirror and the mirror has notes.'],
+    meltdown: 'I AM NOT A METAPHOR. I AM A PERSON IN A VERY SHINY OUTFIT.',
+    barks: ['Purple is just red after a complicated divorce.', 'I refuse to be the room\'s most tasteful mistake.', 'Someone has priced the air again.'],
+    playerJabs: { kind: ['You make a spectacle feel like a place people can still choose to be.'], witty: ['Violet, your corset has a stronger thesis than the curator.'], brutal: ['You are not subversive; you are a limited edition with excellent posture.'] },
+  },
+  {
+    id: 'latexChrome', name: 'Chrome', shortRole: 'latex rider', role: 'Latex Rider — redline guest',
+    face: 'puplic/people/leather/03-red-helmet-rider.png', cutout: true,
+    ego: 64, weak: 'brutal', resist: 'kind', hint: 'A confident motorhead who respects a clean hit and distrusts a soft landing.',
+    pace: 0.7, pitch: 0.82, accessory: null, anchor: 'chrome',
+    palette: { skin: 0x9b6346, hair: 0x16151a, top: 0x9f243c, bottom: 0x9f243c },
+    openers: ['The helmet comes off when the conversation earns it.', 'I parked outside. The bike has better taste than most of the guests.'],
+    countered: ['That line has horsepower. Annoying, but real.'],
+    reactions: { kind: ['Don\'t make kindness sound like a dare.'], witty: ['Good joke. I\'ll pretend it did not improve you.'], brutal: ['There. A clean hit. Now we can talk.'] },
+    weakHit: ['Do not polish the insult. Let it scuff.'],
+    disarmed: ['You can ride with us. No one asks where you came from.'],
+    dismiss: ['I\'m taking the long way around the room.'],
+    meltdown: 'THE BIKE IS FINE. THE BIKE HAS ALWAYS BEEN FINE. I AM THE PROBLEM.',
+    barks: ['The red light makes everyone look like a warning label.', 'I trust a buckle more than a mission statement.', 'The collector bought the room. Nobody bought the mood.'],
+    playerJabs: { kind: ['You are allowed to be more than the armor you brought in.'], witty: ['Chrome, your helmet has more emotional range than the sculpture.'], brutal: ['You are not dangerous; you are expensive cosplay with a parking problem.'] },
+  },
+  {
+    id: 'latexBlue', name: 'Blue', shortRole: 'latex performer', role: 'Latex Performer — midnight house',
+    face: 'puplic/people/leather/04-blue-opera-figure.png', cutout: true,
+    ego: 66, weak: 'witty', resist: 'kind', hint: 'Elegant, mischievous, and completely unimpressed by the room\'s attempts at mystery.',
+    pace: 0.5, pitch: 1.2, accessory: null, anchor: 'blue',
+    palette: { skin: 0xd39b84, hair: 0x8f8a82, top: 0x182b6e, bottom: 0x182b6e },
+    openers: ['The room is trying very hard to be scandalous. I admire the effort.', 'If you want to shock the art world, be specific.'],
+    countered: ['That was almost elegant. Keep going.'],
+    reactions: { kind: ['You remembered there was a person in here. Thank you.'], witty: ['Finally, an interruption with tailoring.'], brutal: ['You brought a knife to a runway. Adorable.'] },
+    weakHit: ['Do not confuse composure with permission.'],
+    disarmed: ['Take the chair by the wall. It has survived worse artists than you.'],
+    dismiss: ['I\'m leaving before the room calls this intimacy.'],
+    meltdown: 'THE CAPE IS NOT A PERSONALITY. IT IS A CAPE. PLEASE WRITE THAT DOWN.',
+    barks: ['Blue is what black says when it wants to be remembered.', 'The room is all surface. I am taking notes underneath.', 'Someone brought a portfolio. I brought a boundary.'],
+    playerJabs: { kind: ['You are the only person here making the costume feel like agency.'], witty: ['Blue, your cape is the only thing in here with a coherent argument.'], brutal: ['You are a curtain with cheekbones and the room is still not ready for the reveal.'] },
+  },
+];
 
 /* ============================================================
    AMBIENT CROWD — procedurally-assembled artworld fauna
@@ -886,7 +957,8 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 1, 4),
         ],
         vault: [],
-        collectorHome: [m.bob, m.bobgirl, m.gimp, m.fashion],
+        collectorHome: [m.milo, m.sol, m.bea],
+        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1]],
       };
     case 2:
       return {
@@ -896,14 +968,16 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 2, 5),
         ],
         vault: [],
-        collectorHome: [m.bob, m.bobgirl, m.gimp, m.fashion],
+        collectorHome: [m.milo, m.sol, m.bea],
+        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1], LEATHER_ROOM_CAST[2]],
       };
     default:
       return {
         garret: [],
         galleria: [m.docent, ...buildCrowd('galleria', 3, 2)],
         vault: [m.index, m.lucia, m.chad, m.barnaby, m.petra, ...buildCrowd('vault', 3, 2)],
-        collectorHome: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion],
+        collectorHome: [m.milo, m.sol, m.bea],
+        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, ...LEATHER_ROOM_CAST],
       };
 
   }

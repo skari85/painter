@@ -74,10 +74,11 @@ export const METERS = {
 };
 
 export const ZONES = {
-  garret:   { name: 'THE GARRET',      mood: 'garret' },
-  galleria: { name: 'GALLERIA BIANCA', mood: 'galleria' },
-  vault:    { name: 'THE VAULT',       mood: 'vault' },
-  collectorHome: { name: 'THE COLLECTOR’S HOME', mood: 'collectorHome' },
+  garret:      { name: 'THE GARRET',       mood: 'garret' },
+  galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
+  vault:       { name: 'THE VAULT',         mood: 'vault' },
+  collectorHome: { name: 'THE LEATHER ROOM', mood: 'collectorHome' },
+  latexRunway: { name: 'THE LATEX RUNWAY',  mood: 'latexRunway' },
 };
 
 export const STORAGE = {
@@ -108,5 +109,4 @@ export const MUSIC_TITLES = {
   garret: 'SA SLITEN',
   ending: 'JEG LIKER DEG (DEMO)',
 };
-
 

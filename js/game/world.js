@@ -155,6 +155,21 @@ function mat(color, opts = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.92, ...opts });
 }
 
+/** The leather room has two material languages: soft hide and hard shine. */
+function leatherMat(color = 0x1a0e17) {
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.48, metalness: 0.04 });
+}
+
+function latexMat(color = 0x08080c) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness: 0.13,
+    metalness: 0.12,
+    clearcoat: 0.92,
+    clearcoatRoughness: 0.06,
+  });
+}
+
 /** Box mesh + optional collider registration. */
 function box(zone, { w, h, d, x = 0, y = 0, z = 0, material, ry = 0, solid = true, noSplat = false, name = '' }) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -389,6 +404,7 @@ export class World {
     this.#buildGalleria();
     this.#buildVault();
     this.#buildCollectorHome();
+    this.#buildLatexRunway();
     for (const [key, z] of this.zones) z.group.visible = false;
   }
 
@@ -796,9 +812,279 @@ export class World {
   }
 
   /* ---------------------------------------------------------- */
-  /*  ZONE 4 — THE COLLECTOR’S HOME                             */
+  /*  ZONE 4 — THE LEATHER ROOM                                */
   /* ---------------------------------------------------------- */
   #buildCollectorHome() {
+    const z = this.#newZone('collectorHome');
+    this.#buildLeatherRoom(z);
+  }
+
+  /**
+   * The collector's private living space — warm, domestic, leather-bound,
+   * and connected to the Galleria. More private gallery extension than club.
+   */
+  #buildLeatherRoom(z) {
+    shell(z, { w: 16, d: 12, floorColor: 0x1c1510, wallColor: 0x2a1f18, ceilColor: 0x1a1410 });
+    z.spawn.set(0, 0, 4.6);
+    z.spawnYaw = Math.PI;
+    z.fog = { color: 0x120e0a, density: 0.025 };
+
+    const floorLeather = leatherMat(0x2b1a12);
+    plane(z, { w: 15.94, h: 11.94, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2, material: floorLeather, noSplat: true, name: 'leather floor' });
+
+    const wallLeather = leatherMat(0x2a1c15);
+    const seam = mat(0x6b3a2a, { roughness: 0.34, metalness: 0.18 });
+    for (const zz of [-5.94, 5.94]) {
+      for (let i = 0; i < 6; i++) {
+        const x = -6.65 + i * 2.66;
+        box(z, { w: 2.48, h: 2.95, d: 0.05, x, y: 0.18, z: zz, material: wallLeather, solid: false, noSplat: true, name: 'padded leather panel' });
+        box(z, { w: 0.025, h: 2.95, d: 0.07, x: x + 1.25, y: 0.18, z: zz, material: seam, solid: false, noSplat: true });
+      }
+      box(z, { w: 15.8, h: 0.045, d: 0.08, x: 0, y: 1.0, z: zz, material: seam, solid: false, noSplat: true });
+      box(z, { w: 15.8, h: 0.045, d: 0.08, x: 0, y: 2.92, z: zz, material: seam, solid: false, noSplat: true });
+    }
+    for (const xx of [-7.94, 7.94]) {
+      for (let i = 0; i < 4; i++) {
+        const zz = -4.45 + i * 2.95;
+        box(z, { w: 0.05, h: 2.55, d: 2.72, x: xx, y: 0.18, z: zz, material: wallLeather, solid: false, noSplat: true, name: 'side leather panel' });
+        box(z, { w: 0.07, h: 2.55, d: 0.025, x: xx, y: 0.18, z: zz + 1.34, material: seam, solid: false, noSplat: true });
+      }
+    }
+
+    const sofa = (x, zz, color, w = 2.7, d = 1.05, ry = 0) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz); g.rotation.y = ry;
+      const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.38, d), leatherMat(color));
+      base.position.y = 0.38;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, 0.26), leatherMat(color));
+      back.position.set(0, 0.92, -d / 2 + 0.13);
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.66, d), leatherMat(color));
+      armL.position.set(-w / 2 + 0.14, 0.66, 0);
+      const armR = armL.clone(); armR.position.x *= -1;
+      for (const cx of [-0.86, 0, 0.86]) {
+        const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.12, 0.72), mat(0x3a2a22, { roughness: 0.85 }));
+        cushion.position.set(cx, 0.62, 0.08);
+        cushion.rotation.z = (cx / 0.86) * 0.012;
+        g.add(cushion);
+      }
+      g.add(base, back, armL, armR);
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      z.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: zz - d / 2, maxZ: zz + d / 2 });
+      return g;
+    };
+    sofa(-4.45, -1.25, 0x2b101e, 2.85, 1.1);
+    sofa(4.55, 1.75, 0x101017, 2.5, 1.0, Math.PI);
+
+    const lowTable = (x, zz, w = 1.6, d = 0.7) => {
+      const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), mat(0x1c1410, { roughness: 0.55 }));
+      top.position.set(x, 0.58, zz); top.userData.noSplat = true; z.group.add(top);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.58, 8), mat(0x3a2a20, { metalness: 0.5, roughness: 0.35 }));
+      leg.position.set(x, 0.29, zz); z.group.add(leg);
+      z.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: zz - d / 2, maxZ: zz + d / 2 });
+    };
+    lowTable(0, 0.35, 1.4, 0.6);
+
+    const sideboard = (x, zz, ry = 0) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz); g.rotation.y = ry;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.1, 0.65), mat(0x1f1814, { roughness: 0.7 }));
+      body.position.y = 0.55;
+      const top = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.06, 0.7), mat(0x3a2a20, { metalness: 0.45, roughness: 0.3 }));
+      top.position.y = 1.12;
+      for (const hx of [-1.1, 0, 1.1]) {
+        const handle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 8, 12, Math.PI), mat(0x5c3a28, { metalness: 0.7, roughness: 0.25 }));
+        handle.position.set(hx, 0.55, 0.34); handle.rotation.y = Math.PI / 2; z.group.add(handle);
+      }
+      g.add(body, top);
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      z.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: zz - 0.35, maxZ: zz + 0.35 });
+      return g;
+    };
+    sideboard(-6.2, -4.5, Math.PI / 2);
+    sideboard(6.2, 4.5, -Math.PI / 2);
+
+    const artFrame = (x, zz, ry = 0, color = 0x8c3b2e) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz); g.rotation.y = ry;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.4, 0.04), mat(0x3a2a20, { metalness: 0.35, roughness: 0.45 }));
+      frame.position.y = 1.5;
+      const canvas = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.95, 1.25),
+        mat(color, { roughness: 0.85 }),
+      );
+      canvas.position.z = 0.025; canvas.position.y = 1.5;
+      g.add(frame, canvas);
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      return g;
+    };
+    artFrame(-7.6, -1.5, Math.PI / 2, 0x8c3b2e);
+    artFrame(7.6, -3.0, -Math.PI / 2, 0x2e5f4a);
+    artFrame(-7.6, 3.5, Math.PI / 2, 0x4a2c2a);
+    artFrame(0, 5.8, 0, 0x2b3a67);
+
+    const rug = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.5, 3.0),
+      mat(0x4a3028, { roughness: 0.95 }),
+    );
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(0, 0.012, -0.5);
+    rug.userData.noSplat = true;
+    z.group.add(rug);
+    z.colliders.push({ minX: -2.25, maxX: 2.25, minZ: -2.0, maxZ: 1.0 });
+
+    const warm = new THREE.PointLight(0xffa866, 4.2, 10, 1.8);
+    warm.position.set(0, 2.4, -3.0); warm.userData.base = 4.2; z.group.add(warm);
+    const amber = new THREE.PointLight(0xff8c42, 2.8, 9, 1.9);
+    amber.position.set(-5.5, 2.0, 1.5); amber.userData.base = 2.8; z.group.add(amber);
+    const cream = new THREE.PointLight(0xffd9a0, 2.2, 8, 1.7);
+    cream.position.set(5.5, 2.0, 1.5); cream.userData.base = 2.2; z.group.add(cream);
+    z.animated.candles = [warm, amber, cream];
+    z.group.add(new THREE.HemisphereLight(0x5a3a28, 0x1a1410, 0.5));
+
+    box(z, { w: 2.3, h: 0.12, d: 0.28, x: 0, y: 2.8, z: -5.78, material: mat(0x3a2a20, { metalness: 0.3 }), solid: false, noSplat: true });
+    door(z, { x: 0, z: -5.62, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    box(z, { w: 2.3, h: 0.12, d: 0.28, x: 8.8, y: 2.8, z: 0, material: mat(0x3a2a20, { metalness: 0.3 }), solid: false, noSplat: true });
+    door(z, { x: 8.8, z: 0, ry: -Math.PI / 2, label: 'BACK ROOM →', to: 'latexRunway' });
+
+    z.anchors.milo = new THREE.Vector3(-4.45, 0, -1.25);
+    z.anchors.sol = new THREE.Vector3(4.55, 0, 1.75);
+    z.anchors.bea = new THREE.Vector3(0, 0, 0.35);
+
+    z.interactables.push({
+      id: 'leather-wall', type: 'flavor', label: 'Press your palm to the leather wall',
+      pos: new THREE.Vector3(-6.6, 1.3, -5.65), radius: 1.7,
+      lines: [
+        'The wall is padded, stitched, and priced like a small apartment.',
+        'It absorbs the bass, the heat, and one entire school of criticism.',
+        'Someone embossed the word “AUTHENTIC” into the leather. The leather disagrees.',
+      ],
+    });
+    z.interactables.push({
+      id: 'leather-sofa', type: 'flavor', label: 'Sink into the leather sofa',
+      pos: new THREE.Vector3(-4.45, 0.7, -1.25), radius: 1.5,
+      lines: [
+        'The sofa has the posture of someone who knows the dress code.',
+        'No one is collecting this room. The room is collecting everyone.',
+        'A seam gives a tiny, expensive creak. It approves of you.',
+      ],
+    });
+    z.interactables.push({
+      id: 'sideboard', type: 'flavor', label: 'Inspect the sideboard',
+      pos: new THREE.Vector3(-6.2, 0.9, -4.5), radius: 1.5,
+      lines: [
+        'A row of unframed canvases leans behind glass. The collector\'s eye is restless.',
+        'There is a catalogue raisonné open to a page that has been pressed flat by something heavy.',
+        'Someone left a glass of red wine here. It is still breathing.',
+      ],
+    });
+
+    z.waypoints = [
+      new THREE.Vector3(-5.5, 0, -3.2), new THREE.Vector3(-2.7, 0, -3.4),
+      new THREE.Vector3(0.8, 0, -3.4), new THREE.Vector3(2.7, 0, -2.5),
+      new THREE.Vector3(4.4, 0, -1.1), new THREE.Vector3(5.4, 0, 2.8),
+      new THREE.Vector3(-4.8, 0, 2.3), new THREE.Vector3(1.5, 0, 2.4),
+    ];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  ZONE 5 — THE LATEX RUNWAY                                 */
+  /* ---------------------------------------------------------- */
+  #buildLatexRunway() {
+    const z = this.#newZone('latexRunway');
+    shell(z, { w: 14, d: 10, floorColor: 0x040406, wallColor: 0x060608, ceilColor: 0x020203 });
+    z.spawn.set(0, 0, 3.6);
+    z.spawnYaw = Math.PI;
+    z.fog = { color: 0x020204, density: 0.045 };
+
+    const floorLatex = latexMat(0x040406);
+    plane(z, { w: 13.94, h: 9.94, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2, material: floorLatex, noSplat: true, name: 'latex floor' });
+
+    const wallLatex = latexMat(0x060608);
+    for (const zz of [-4.94, 4.94]) {
+      box(z, { w: 13.8, h: 2.8, d: 0.05, x: 0, y: 1.4, z: zz, material: wallLatex, solid: false, noSplat: true, name: 'latex wall panel' });
+      box(z, { w: 13.8, h: 0.04, d: 0.08, x: 0, y: 2.82, z: zz, material: mat(0x1a0a18, { metalness: 0.6, roughness: 0.2 }), solid: false, noSplat: true });
+    }
+    for (const xx of [-6.94, 6.94]) {
+      box(z, { w: 0.05, h: 2.8, d: 9.8, x: xx, y: 1.4, z: 0, material: wallLatex, solid: false, noSplat: true, name: 'latex wall panel' });
+    }
+
+    box(z, { w: 2.4, h: 0.18, d: 0.9, x: 2.7, z: -2.55, material: latexMat(0x0b0b10), name: 'latex runway plinth' });
+    const runwayEdge = mat(0xb72d50, { metalness: 0.45, roughness: 0.28 });
+    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 2.7, y: 0.18, z: -3.0, material: runwayEdge, solid: false, noSplat: true });
+    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 2.7, y: 0.18, z: -2.1, material: runwayEdge, solid: false, noSplat: true });
+
+    const chair = (x, zz, color, ry = 0) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz); g.rotation.y = ry;
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 0.78), latexMat(color));
+      seat.position.y = 0.72;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.78, 1.0, 0.12), latexMat(color));
+      back.position.set(0, 1.18, -0.32);
+      for (const sx of [-0.28, 0.28]) {
+        for (const sz of [-0.27, 0.27]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.72, 8), mat(0x5c1a2c, { metalness: 0.65, roughness: 0.24 }));
+          leg.position.set(sx, 0.36, sz); g.add(leg);
+        }
+      }
+      g.add(seat, back); g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      z.colliders.push({ minX: x - 0.45, maxX: x + 0.45, minZ: zz - 0.45, maxZ: zz + 0.45 });
+    };
+    chair(-1.7, 2.45, 0x7f1d3b, 0.2);
+    chair(1.65, 2.45, 0x15151d, -0.2);
+    chair(-5.8, 2.55, 0x241225, Math.PI / 2);
+
+    for (const [x, zz] of [[-5.4, -4.75], [-3.9, -4.75], [4.1, -4.75], [5.6, -4.75]]) {
+      cylinder(z, { rT: 0.025, rB: 0.03, h: 1.45, x, z: zz, material: mat(0x5a1727, { metalness: 0.7, roughness: 0.22 }), solid: false, noSplat: true });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 8, 20), mat(0xb14b63, { metalness: 0.75, roughness: 0.18 }));
+      ring.position.set(x, 1.32, zz); ring.rotation.x = Math.PI / 2; ring.userData.noSplat = true; z.group.add(ring);
+    }
+
+    const red = new THREE.PointLight(0xa1163d, 4.5, 7, 1.6);
+    red.position.set(2.5, 1.8, -3.4); red.userData.base = 4.5; z.group.add(red);
+    const violet = new THREE.PointLight(0x6b36a8, 3.0, 8, 1.7);
+    violet.position.set(-4.8, 2.1, 1.8); violet.userData.base = 3.0; z.group.add(violet);
+    const blue = new THREE.PointLight(0x263b8f, 2.2, 7, 1.8);
+    blue.position.set(5.8, 2.2, 3.8); blue.userData.base = 2.2; z.group.add(blue);
+    z.animated.strobes = [red, violet, blue];
+    z.group.add(new THREE.HemisphereLight(0x1a0a18, 0x040406, 0.35));
+
+    box(z, { w: 2.3, h: 0.12, d: 0.28, x: -8.8, y: 2.8, z: 0, material: latexMat(0x09090d), solid: false, noSplat: true });
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← THE LEATHER ROOM', to: 'collectorHome' });
+
+    z.anchors.gimp = new THREE.Vector3(2.7, 0, -3.55);
+    z.anchors.fashion = new THREE.Vector3(0, 0, 0.35);
+    z.anchors.bob = new THREE.Vector3(-4.45, 0, -1.25);
+    z.anchors.bobgirl = new THREE.Vector3(4.55, 0, 1.75);
+    z.anchors.rook = new THREE.Vector3(-2.7, 0, -3.2);
+    z.anchors.violet = new THREE.Vector3(0.8, 0, -3.3);
+    z.anchors.chrome = new THREE.Vector3(-5.1, 0, 2.2);
+    z.anchors.blue = new THREE.Vector3(4.1, 0, -1.2);
+
+    z.interactables.push({
+      id: 'latex-runway', type: 'flavor', label: 'Step onto the latex runway',
+      pos: new THREE.Vector3(2.7, 0.45, -2.55), radius: 1.6,
+      lines: [
+        'A runway for people who refuse to be background decoration.',
+        'The lights make every buckle look like a thesis statement.',
+        'The room is naughty in the way a gallery is naughty: it wants a review.',
+      ],
+    });
+
+    z.waypoints = [
+      new THREE.Vector3(-5.5, 0, -3.2), new THREE.Vector3(-2.7, 0, -3.4),
+      new THREE.Vector3(0.8, 0, -3.4), new THREE.Vector3(2.7, 0, -2.5),
+      new THREE.Vector3(4.4, 0, -1.1), new THREE.Vector3(5.4, 0, 2.8),
+      new THREE.Vector3(-4.8, 0, 2.3), new THREE.Vector3(1.5, 0, 2.4),
+    ];
+  }
+
+  /* Legacy collector-home build kept as a fallback while the Leather Room is
+     being tuned. It is intentionally not called by the active constructor. */
+  #buildCollectorHomeLegacy() {
     const z = this.#newZone('collectorHome');
     shell(z, { w: 16, d: 12, floorColor: 0x3a2a42, wallColor: 0x35253e, ceilColor: 0x1c1325 });
     z.spawn.set(0, 0, 4.5);
@@ -976,6 +1262,38 @@ export class World {
       ball.userData.noSplat = true;
       z.group.add(cord, ball);
       z.animated.glows.push(ball);
+    }
+
+    // Party strobes — two cheap clamps the host bought for "ambience".
+    // They idle low; when the leather room is playing they snap on the beat.
+    {
+      const mkStrobe = (x, zz, color) => {
+        const lamp = new THREE.PointLight(color, 0.6, 9, 1.6);
+        lamp.position.set(x, 2.6, zz);
+        lamp.userData.base = 0.6;
+        z.group.add(lamp);
+        return lamp;
+      };
+      z.animated.strobes = [
+        mkStrobe(-3.2, 3.2, 0xd98cff),   // over the disco ball, violet
+        mkStrobe(2.5, -3.5, 0x3b6ea5),   // the dark corner, cold blue
+      ];
+    }
+
+    // The leather corner — where The Gimp holds court. A dark red pool of
+    // light on the parquet, a heavier air. You feel it before you see him.
+    {
+      const wash = new THREE.PointLight(0x8c1f2e, 2.2, 5.5, 1.7);
+      wash.position.set(2.5, 1.4, -3.5);
+      wash.userData.base = 2.2;
+      z.group.add(wash);
+      z.animated.candles.push(wash);   // it breathes with the fire's rhythm
+      // a worn dark rug: the floor here has seen things
+      plane(z, {
+        w: 3.4, h: 2.8, x: 2.5, y: 0.013, z: -3.5, rx: -Math.PI / 2,
+        material: mat(0x1a0e12, { roughness: 1 }), noSplat: true,
+      });
+      z.anchors.gimp = new THREE.Vector3(2.5, 0, -3.5);
     }
 
     // Centerpiece sculpture: “Whither, Capital?” on a motorized pedestal.
@@ -1352,18 +1670,37 @@ export class World {
 
   /* ---- ambient life ---- */
 
-  update(dt, t) {
+  /**
+   * @param beatPhase 0..1 within the current beat, or -1 when the room is
+   * silent. When the leather room plays, the party lights snap on the kick.
+   */
+  update(dt, t, beatPhase = -1) {
     const z = this.zone();
     if (!z) return;
+    const beat = beatPhase >= 0;
+    // a sharp percussive envelope: full on the kick, decays through the beat
+    const kick = beat ? Math.pow(1 - beatPhase, 2.6) : 0;
+
     for (const c of z.animated.candles) {
       const b = c.userData.base ?? 0.45;
-      c.intensity = b + Math.sin(t * 9 + c.position.x * 7) * 0.15 * b + Math.sin(t * 23) * 0.08 * b;
+      c.intensity = b + Math.sin(t * 9 + c.position.x * 7) * 0.15 * b + Math.sin(t * 23) * 0.08 * b
+        + kick * b * 0.35;                 // the flames lean with the sub
     }
     for (const s of z.animated.signs) {
       s.opacity = 0.85 + Math.sin(t * 1.8) * 0.15;
     }
     for (const g of z.animated.glows) {
-      g.rotation.y += dt * 0.12;
+      g.rotation.y += dt * (beat ? 0.12 + kick * 1.6 : 0.12);   // the ball spins up on the kick
+    }
+    // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays
+    if (z.animated.strobes) {
+      for (let i = 0; i < z.animated.strobes.length; i++) {
+        const lamp = z.animated.strobes[i];
+        const b = lamp.userData.base ?? 0.6;
+        lamp.intensity = beat
+          ? b * 0.4 + kick * (i % 2 === 0 ? 26 : 16)          // violet leads, blue answers
+          : b + Math.sin(t * 2.1 + i * 2.4) * b * 0.4;
+      }
     }
     if (z.animated.seance) {
       const { ball, aura, baseY } = z.animated.seance;
@@ -1375,5 +1712,3 @@ export class World {
     }
   }
 }
-
-

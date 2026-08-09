@@ -633,8 +633,9 @@ export class UIManager {
 const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
-  { key: 'vault', name: 'THE VAULT', desc: 'Mister Index’s collection. Invitation only. Bring nerve.' },
-  { key: 'collectorHome', name: 'THE COLLECTOR’S HOME', desc: 'A private party. Underwear, hats, bright artists, one terrible mood.' },
+  { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
+  { key: 'collectorHome', name: 'THE LEATHER ROOM', desc: 'The collector\'s private domestic salon. Leather, warm light, and the quiet authority of things priced.' },
+  { key: 'latexRunway', name: 'THE LATEX RUNWAY', desc: 'A back room stripped to latex and bass. Gloss, buckles, and the smell of wet vinyl.' },
 ];
 
 /* Ending prose lives with the UI that renders it. */

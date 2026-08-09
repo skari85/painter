@@ -428,6 +428,7 @@ class Game {
     this.mode = 'title';
     this.ui.hideHotkeys();
     this.audio.setMood('off');
+    this.audio.stopTechno();
     this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
   }
@@ -439,6 +440,7 @@ class Game {
     this.mode = 'transition';              // suppress auto-pause on unlock
     this.input.exitLock();
     this.audio.setMood('off');
+    this.audio.stopTechno();
     this.audio.setMusic('ending', MUSIC);
 
     this.ui.transition(() => {
@@ -567,7 +569,9 @@ class Game {
     this.player.setFrozen(false);
     this.mode = 'playing';
     this.ui.setHotkeys('playing');
-    if (zone !== this.world.current) this.#travelTo(zone);
+    if (zone !== this.world.current) {
+      this.#travelTo(zone);
+    }
     this.input.requestLock();
   }
 
@@ -892,7 +896,8 @@ class Game {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
         vault: 'Cold air, gold light. The cages are listening.',
-        collectorHome: 'The door opens on a private party. Someone is wearing only underwear and a hat.',
+        collectorHome: 'The door opens on a padded leather salon. The dress code is gloss, buckles, and nerve.',
+        latexRunway: 'The back room is all latex and bass. Someone has already priced the air.',
       }[zoneKey]));
       this.quests.notify('zoneEntered', { zone: zoneKey });
     });
@@ -910,6 +915,14 @@ class Game {
     } else {
       this.audio.setMusic(null);
       this.audio.setMood(ZONES[zoneKey].mood);
+    }
+    // The leather room and latex runway rigs never truly turn off — from the hallway you
+    // hear it through the walls; inside, it blooms open.
+    if (zoneKey === 'collectorHome' || zoneKey === 'latexRunway') {
+      this.audio.startTechno();
+      this.audio.setTechnoMuffle(false);
+    } else if (this.audio.technoPlaying) {
+      this.audio.setTechnoMuffle(true);   // the party leaks through the door
     }
   }
 
@@ -953,13 +966,26 @@ class Game {
 
       const moving = this.player.update(dt, this.world.colliders());
 
+      // the room's pulse: everything in the frame answers the kick
+      const beatPhase = this.audio.technoBeatPhase;
+      this.player.setBeat((this.world.current === 'collectorHome' || this.world.current === 'latexRunway') ? beatPhase : -1);
+      this.world.update(dt, now, beatPhase);
+
+      // The Gimp is the murk's epicenter — near him, the house drone is gone
+      if (this.audio.technoPlaying && (this.world.current === 'collectorHome' || this.world.current === 'latexRunway')) {
+        const gimp = this.npcs.byId('gimp');
+        if (gimp) {
+          const d = this.player.position.distanceTo(gimp.group.position);
+          this.audio.setTechnoMuffle(d > 7.5);   // step back and it ducks behind the door again
+        }
+      }
+
       this.npcs.update(dt, now, this.player.position);
       this.chatter.update(dt, this.npcs.inCurrentZone, {
         zoneName: ZONES[this.world.current]?.name ?? 'the scene',
         night: this.state.night,
         busy: () => this.mode !== 'playing',
       });
-      this.world.update(dt, now);
       this.paint.update(dt);
       this.hand.update(dt, { moving, sprinting: this.player.sprinting });
       this.arti.update(dt);
