@@ -1,10 +1,11 @@
 /**
  * world.js — the four rooms of the scene.
  *
- *   THE GARRET          warm, wrecked, yours. Easel, mattress, shrine.
- *   GALLERIA BIANCA     cold white cube. Pedestals, wine, judgment.
- *   THE VAULT           dark freeport. Caged masterpieces, one throne.
- *   THE COLLECTOR’S HOME  private party in a plum-walnut flat. Every color at once.
+ *   THE GARRET            warm, wrecked, yours. Easel, mattress, shrine.
+ *   GALLERIA BIANCA       cold white cube. Pedestals, wine, judgment.
+ *   THE VAULT             dark freeport. Caged masterpieces, one throne.
+ *   THE LEATHER & LATEX   the collector's house. Hide up front, shine
+ *   ROOMS                 in the back — one house, two material moods.
  *
  * Everything is procedural geometry + generated canvas textures.
  * Collision is XZ axis-aligned boxes (single-floor zones by design).
@@ -102,51 +103,6 @@ function splatTexture() {
   });
 }
 
-/** Herringbone-ish parquet — diagonal running bond in moody plum-walnut. */
-function parquetTexture() {
-  return canvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#382637';
-    ctx.fillRect(0, 0, w, h);
-    ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate(Math.PI / 4);
-    const L = 52, P = 13;
-    const shades = ['#5d4459', '#523b50', '#67495f', '#4b3649', '#583f54'];
-    let i = 0, row = 0;
-    for (let y = -h; y < h; y += P, row++) {
-      for (let x = -w - L; x < w + L; x += L, i++) {
-        const xx = x + (row % 2) * (L / 2);
-        ctx.fillStyle = shades[(i * 7 + row * 3) % shades.length];
-        ctx.fillRect(xx, y, L - 1.5, P - 1.5);
-      }
-    }
-    ctx.restore();
-  });
-}
-
-/** Upright piano keyboard texture. */
-function pianoKeysTexture() {
-  return canvasTexture(256, 48, (ctx, w, h) => {
-    ctx.fillStyle = '#efe9dc';
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = '#17171c';
-    const whiteW = w / 15;
-    for (let i = 0; i < 15; i++) {
-      const mod = i % 7;
-      if (mod === 0 || mod === 1 || mod === 3 || mod === 4 || mod === 5) {
-        ctx.fillRect((i + 1) * whiteW - 3.5, 0, 7, h * 0.62);
-      }
-    }
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-    for (let i = 1; i < 15; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * whiteW, 0);
-      ctx.lineTo(i * whiteW, h);
-      ctx.stroke();
-    }
-  });
-}
-
 /* ============================================================
    Small builders
    ============================================================ */
@@ -155,7 +111,7 @@ function mat(color, opts = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.92, ...opts });
 }
 
-/** The leather room has two material languages: soft hide and hard shine. */
+/** The house speaks two materials: soft hide in the lounge, hard shine on the runway. */
 function leatherMat(color = 0x1a0e17) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.48, metalness: 0.04 });
 }
@@ -317,48 +273,6 @@ function hangingArt(zone, { x, y, z, ry, w = 1.1, h = 1.4, seed }) {
   return art;
 }
 
-/** A proper easel for the artists competing with the wallpaper. */
-function partyEasel(zone, { x, z: zz, ry = 0, seed }) {
-  const g = new THREE.Group();
-  g.position.set(x, 0, zz);
-  g.rotation.y = ry;
-  const wood = mat(0x3a2c22, { roughness: 0.6 });
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.9, 0.05), wood);
-  legL.position.set(-0.35, 0.95, 0); legL.rotation.z = 0.09;
-  const legR = legL.clone(); legR.position.x = 0.35; legR.rotation.z = -0.09;
-  const legB = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.9, 0.05), wood);
-  legB.position.set(0, 0.95, -0.3); legB.rotation.x = -0.24;
-  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.1), wood);
-  tray.position.set(0, 0.72, 0.05);
-  const canvas = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.95, 0.04),
-    new THREE.MeshStandardMaterial({ map: artworkTexture(seed), roughness: 0.85 })
-  );
-  canvas.position.set(0, 1.25, 0.02);
-  canvas.rotation.x = -0.06;
-  canvas.userData.noSplat = true;
-  g.add(legL, legR, legB, tray, canvas);
-  g.userData.noSplat = true;
-  zone.group.add(g);
-  zone.colliders.push({ minX: x - 0.45, maxX: x + 0.45, minZ: zz - 0.45, maxZ: zz + 0.45 });
-}
-
-/** A potted plant — every rich flat needs at least three. */
-function pottedPlant(zone, x, zz) {
-  cylinder(zone, { rT: 0.2, rB: 0.15, h: 0.32, x, z: zz, material: mat(0x7a4030), solid: false });
-  const leafM = mat(0x2e5f3a, { roughness: 0.8 });
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.65, 6), leafM);
-    leaf.position.set(x + Math.cos(a) * 0.09, 0.6, zz + Math.sin(a) * 0.09);
-    leaf.rotation.z = Math.cos(a) * 0.35;
-    leaf.rotation.x = Math.sin(a) * 0.35;
-    leaf.userData.noSplat = true;
-    zone.group.add(leaf);
-  }
-  zone.colliders.push({ minX: x - 0.26, maxX: x + 0.26, minZ: zz - 0.26, maxZ: zz + 0.26 });
-}
-
 /** A framed real painting from puplic/paintings — frame sized to the photo's true aspect. */
 function hangingPhoto(zone, { x, y, z, ry, url, h = 1.15 }) {
   const g = new THREE.Group();
@@ -403,8 +317,7 @@ export class World {
     this.#buildGarret();
     this.#buildGalleria();
     this.#buildVault();
-    this.#buildCollectorHome();
-    this.#buildLatexRunway();
+    this.#buildLeatherLatex();
     for (const [key, z] of this.zones) z.group.visible = false;
   }
 
@@ -724,7 +637,7 @@ export class World {
       lockedUnlessFlag: 'vaultOpen',
       lockedLabel: 'PRIVATE VIEWING — by invitation. Come back on Night Three.',
     });
-    door(z, { x: 0, z: -6.62, ry: 0, label: 'COLLECTOR’S HOME →', to: 'collectorHome' });
+    door(z, { x: 0, z: -6.62, ry: 0, label: 'LEATHER & LATEX →', to: 'leatherLatex' });
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
     z.anchors.kreyo = new THREE.Vector3(5.5, 0, 2.8);
@@ -812,45 +725,65 @@ export class World {
   }
 
   /* ---------------------------------------------------------- */
-  /*  ZONE 4 — THE LEATHER ROOM                                */
+  /*  ZONE 4 — THE LEATHER & LATEX ROOMS                        */
+  /*                                                            */
+  /*  One house, one bassline, two material moods.              */
+  /*  WEST (x<0)  — the leather lounge: padded hides, seams,    */
+  /*    amber light, the host's underwear-adjacent hospitality. */
+  /*  EAST (x>0)  — the latex runway: black gloss, strobes,     */
+  /*    buckle posts, a plinth that prices everyone on it.      */
+  /*  A low threshold strip marks where the warm room admits    */
+  /*  the dark one. No door. The bass is the door.              */
   /* ---------------------------------------------------------- */
-  #buildCollectorHome() {
-    const z = this.#newZone('collectorHome');
-    this.#buildLeatherRoom(z);
-  }
+  #buildLeatherLatex() {
+    const z = this.#newZone('leatherLatex');
+    shell(z, { w: 22, d: 12, floorColor: 0x120c08, wallColor: 0x20140e, ceilColor: 0x14100c });
+    z.spawn.set(-9.6, 0, 0);
+    z.spawnYaw = -Math.PI / 2;         // face east, straight down the house
+    z.fog = { color: 0x0e0a07, density: 0.026 };
 
-  /**
-   * The collector's private living space — warm, domestic, leather-bound,
-   * and connected to the Galleria. More private gallery extension than club.
-   */
-  #buildLeatherRoom(z) {
-    shell(z, { w: 16, d: 12, floorColor: 0x1c1510, wallColor: 0x2a1f18, ceilColor: 0x1a1410 });
-    z.spawn.set(0, 0, 4.6);
-    z.spawnYaw = Math.PI;
-    z.fog = { color: 0x120e0a, density: 0.025 };
+    /* ---- floors: soft hide west, hard shine east ---- */
+    plane(z, { w: 10.96, h: 11.94, x: -5.5, y: 0.011, z: 0, rx: -Math.PI / 2, material: leatherMat(0x2b1a12), noSplat: true, name: 'leather floor' });
+    plane(z, { w: 10.96, h: 11.94, x: 5.5, y: 0.011, z: 0, rx: -Math.PI / 2, material: latexMat(0x040406), noSplat: true, name: 'latex floor' });
 
-    const floorLeather = leatherMat(0x2b1a12);
-    plane(z, { w: 15.94, h: 11.94, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2, material: floorLeather, noSplat: true, name: 'leather floor' });
+    /* ---- the threshold: where the warm room admits the dark one ---- */
+    box(z, { w: 0.3, h: 0.026, d: 11.9, x: 0, y: 0.012, z: 0, material: mat(0xb72d50, { metalness: 0.55, roughness: 0.25 }), solid: false, noSplat: true, name: 'threshold strip' });
+    const throb = new THREE.PointLight(0xb72d50, 1.6, 5.5, 1.8);
+    throb.position.set(0, 0.9, 0); throb.userData.base = 1.6;
+    z.group.add(throb);
+    z.interactables.push({
+      id: 'threshold', type: 'flavor', label: 'Cross the threshold',
+      pos: new THREE.Vector3(0, 0.8, 0), radius: 1.7,
+      lines: [
+        'One step: warm hide and amber. Next step: cold shine and strobes. The house calls this “range”.',
+        'The red strip is a border. Nobody stamps your passport; the bass does that.',
+        'The collector priced the threshold. It came back “transitional”. He framed the invoice.',
+      ],
+    });
 
+    /* ---- walls: padded leather west + north/south-west, gloss panels east ---- */
     const wallLeather = leatherMat(0x2a1c15);
     const seam = mat(0x6b3a2a, { roughness: 0.34, metalness: 0.18 });
-    for (const zz of [-5.94, 5.94]) {
-      for (let i = 0; i < 6; i++) {
-        const x = -6.65 + i * 2.66;
+    for (let i = 0; i < 4; i++) {   // west wall, padded
+      const zz = -4.45 + i * 2.95;
+      box(z, { w: 0.05, h: 2.55, d: 2.72, x: -10.94, y: 0.18, z: zz, material: wallLeather, solid: false, noSplat: true, name: 'side leather panel' });
+      box(z, { w: 0.07, h: 2.55, d: 0.025, x: -10.94, y: 0.18, z: zz + 1.34, material: seam, solid: false, noSplat: true });
+    }
+    for (const zz of [-5.94, 5.94]) {   // long walls: leather panels on the west half
+      for (let i = 0; i < 4; i++) {
+        const x = -9.53 + i * 2.66;
         box(z, { w: 2.48, h: 2.95, d: 0.05, x, y: 0.18, z: zz, material: wallLeather, solid: false, noSplat: true, name: 'padded leather panel' });
         box(z, { w: 0.025, h: 2.95, d: 0.07, x: x + 1.25, y: 0.18, z: zz, material: seam, solid: false, noSplat: true });
       }
-      box(z, { w: 15.8, h: 0.045, d: 0.08, x: 0, y: 1.0, z: zz, material: seam, solid: false, noSplat: true });
-      box(z, { w: 15.8, h: 0.045, d: 0.08, x: 0, y: 2.92, z: zz, material: seam, solid: false, noSplat: true });
+      box(z, { w: 10.9, h: 0.045, d: 0.08, x: -5.5, y: 1.0, z: zz, material: seam, solid: false, noSplat: true });
+      box(z, { w: 10.9, h: 0.045, d: 0.08, x: -5.5, y: 2.92, z: zz, material: seam, solid: false, noSplat: true });
+      // east half: black latex sheets with a plum metal rail
+      box(z, { w: 10.9, h: 2.8, d: 0.05, x: 5.5, y: 1.4, z: zz, material: latexMat(0x060608), solid: false, noSplat: true, name: 'latex wall panel' });
+      box(z, { w: 10.9, h: 0.04, d: 0.08, x: 5.5, y: 2.82, z: zz, material: mat(0x1a0a18, { metalness: 0.6, roughness: 0.2 }), solid: false, noSplat: true });
     }
-    for (const xx of [-7.94, 7.94]) {
-      for (let i = 0; i < 4; i++) {
-        const zz = -4.45 + i * 2.95;
-        box(z, { w: 0.05, h: 2.55, d: 2.72, x: xx, y: 0.18, z: zz, material: wallLeather, solid: false, noSplat: true, name: 'side leather panel' });
-        box(z, { w: 0.07, h: 2.55, d: 0.025, x: xx, y: 0.18, z: zz + 1.34, material: seam, solid: false, noSplat: true });
-      }
-    }
+    box(z, { w: 0.05, h: 2.8, d: 11.9, x: 10.94, y: 1.4, z: 0, material: latexMat(0x060608), solid: false, noSplat: true, name: 'latex wall panel' });   // east wall
 
+    /* ================= WEST — the leather lounge ================= */
     const sofa = (x, zz, color, w = 2.7, d = 1.05, ry = 0) => {
       const g = new THREE.Group();
       g.position.set(x, 0, zz); g.rotation.y = ry;
@@ -874,7 +807,7 @@ export class World {
       return g;
     };
     sofa(-4.45, -1.25, 0x2b101e, 2.85, 1.1);
-    sofa(4.55, 1.75, 0x101017, 2.5, 1.0, Math.PI);
+    sofa(-2.2, 4.75, 0x101017, 2.5, 1.0, Math.PI);
 
     const lowTable = (x, zz, w = 1.6, d = 0.7) => {
       const top = new THREE.Mesh(new THREE.BoxGeometry(w, 0.08, d), mat(0x1c1410, { roughness: 0.55 }));
@@ -883,7 +816,7 @@ export class World {
       leg.position.set(x, 0.29, zz); z.group.add(leg);
       z.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: zz - d / 2, maxZ: zz + d / 2 });
     };
-    lowTable(0, 0.35, 1.4, 0.6);
+    lowTable(-3.2, 0.35, 1.4, 0.6);
 
     const sideboard = (x, zz, ry = 0) => {
       const g = new THREE.Group();
@@ -902,8 +835,8 @@ export class World {
       z.colliders.push({ minX: x - 1.7, maxX: x + 1.7, minZ: zz - 0.35, maxZ: zz + 0.35 });
       return g;
     };
-    sideboard(-6.2, -4.5, Math.PI / 2);
-    sideboard(6.2, 4.5, -Math.PI / 2);
+    sideboard(-9.4, -4.5, Math.PI / 2);
+    sideboard(-9.4, 4.5, Math.PI / 2);
 
     const artFrame = (x, zz, ry = 0, color = 0x8c3b2e) => {
       const g = new THREE.Group();
@@ -920,101 +853,25 @@ export class World {
       z.group.add(g);
       return g;
     };
-    artFrame(-7.6, -1.5, Math.PI / 2, 0x8c3b2e);
-    artFrame(7.6, -3.0, -Math.PI / 2, 0x2e5f4a);
-    artFrame(-7.6, 3.5, Math.PI / 2, 0x4a2c2a);
-    artFrame(0, 5.8, 0, 0x2b3a67);
+    artFrame(-10.6, -1.5, Math.PI / 2, 0x8c3b2e);
+    artFrame(-10.6, 2.5, Math.PI / 2, 0x4a2c2a);
+    artFrame(-5.0, 5.8, 0, 0x2b3a67);
 
     const rug = new THREE.Mesh(
       new THREE.PlaneGeometry(4.5, 3.0),
       mat(0x4a3028, { roughness: 0.95 }),
     );
     rug.rotation.x = -Math.PI / 2;
-    rug.position.set(0, 0.012, -0.5);
+    rug.position.set(-3.5, 0.012, -0.5);
     rug.userData.noSplat = true;
     z.group.add(rug);
-    z.colliders.push({ minX: -2.25, maxX: 2.25, minZ: -2.0, maxZ: 1.0 });
+    z.colliders.push({ minX: -5.75, maxX: -1.25, minZ: -2.0, maxZ: 1.0 });
 
-    const warm = new THREE.PointLight(0xffa866, 4.2, 10, 1.8);
-    warm.position.set(0, 2.4, -3.0); warm.userData.base = 4.2; z.group.add(warm);
-    const amber = new THREE.PointLight(0xff8c42, 2.8, 9, 1.9);
-    amber.position.set(-5.5, 2.0, 1.5); amber.userData.base = 2.8; z.group.add(amber);
-    const cream = new THREE.PointLight(0xffd9a0, 2.2, 8, 1.7);
-    cream.position.set(5.5, 2.0, 1.5); cream.userData.base = 2.2; z.group.add(cream);
-    z.animated.candles = [warm, amber, cream];
-    z.group.add(new THREE.HemisphereLight(0x5a3a28, 0x1a1410, 0.5));
-
-    box(z, { w: 2.3, h: 0.12, d: 0.28, x: 0, y: 2.8, z: -5.78, material: mat(0x3a2a20, { metalness: 0.3 }), solid: false, noSplat: true });
-    door(z, { x: 0, z: -5.62, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
-    box(z, { w: 2.3, h: 0.12, d: 0.28, x: 8.8, y: 2.8, z: 0, material: mat(0x3a2a20, { metalness: 0.3 }), solid: false, noSplat: true });
-    door(z, { x: 8.8, z: 0, ry: -Math.PI / 2, label: 'BACK ROOM →', to: 'latexRunway' });
-
-    z.anchors.milo = new THREE.Vector3(-4.45, 0, -1.25);
-    z.anchors.sol = new THREE.Vector3(4.55, 0, 1.75);
-    z.anchors.bea = new THREE.Vector3(0, 0, 0.35);
-
-    z.interactables.push({
-      id: 'leather-wall', type: 'flavor', label: 'Press your palm to the leather wall',
-      pos: new THREE.Vector3(-6.6, 1.3, -5.65), radius: 1.7,
-      lines: [
-        'The wall is padded, stitched, and priced like a small apartment.',
-        'It absorbs the bass, the heat, and one entire school of criticism.',
-        'Someone embossed the word “AUTHENTIC” into the leather. The leather disagrees.',
-      ],
-    });
-    z.interactables.push({
-      id: 'leather-sofa', type: 'flavor', label: 'Sink into the leather sofa',
-      pos: new THREE.Vector3(-4.45, 0.7, -1.25), radius: 1.5,
-      lines: [
-        'The sofa has the posture of someone who knows the dress code.',
-        'No one is collecting this room. The room is collecting everyone.',
-        'A seam gives a tiny, expensive creak. It approves of you.',
-      ],
-    });
-    z.interactables.push({
-      id: 'sideboard', type: 'flavor', label: 'Inspect the sideboard',
-      pos: new THREE.Vector3(-6.2, 0.9, -4.5), radius: 1.5,
-      lines: [
-        'A row of unframed canvases leans behind glass. The collector\'s eye is restless.',
-        'There is a catalogue raisonné open to a page that has been pressed flat by something heavy.',
-        'Someone left a glass of red wine here. It is still breathing.',
-      ],
-    });
-
-    z.waypoints = [
-      new THREE.Vector3(-5.5, 0, -3.2), new THREE.Vector3(-2.7, 0, -3.4),
-      new THREE.Vector3(0.8, 0, -3.4), new THREE.Vector3(2.7, 0, -2.5),
-      new THREE.Vector3(4.4, 0, -1.1), new THREE.Vector3(5.4, 0, 2.8),
-      new THREE.Vector3(-4.8, 0, 2.3), new THREE.Vector3(1.5, 0, 2.4),
-    ];
-  }
-
-  /* ---------------------------------------------------------- */
-  /*  ZONE 5 — THE LATEX RUNWAY                                 */
-  /* ---------------------------------------------------------- */
-  #buildLatexRunway() {
-    const z = this.#newZone('latexRunway');
-    shell(z, { w: 14, d: 10, floorColor: 0x040406, wallColor: 0x060608, ceilColor: 0x020203 });
-    z.spawn.set(0, 0, 3.6);
-    z.spawnYaw = Math.PI;
-    z.fog = { color: 0x020204, density: 0.045 };
-
-    const floorLatex = latexMat(0x040406);
-    plane(z, { w: 13.94, h: 9.94, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2, material: floorLatex, noSplat: true, name: 'latex floor' });
-
-    const wallLatex = latexMat(0x060608);
-    for (const zz of [-4.94, 4.94]) {
-      box(z, { w: 13.8, h: 2.8, d: 0.05, x: 0, y: 1.4, z: zz, material: wallLatex, solid: false, noSplat: true, name: 'latex wall panel' });
-      box(z, { w: 13.8, h: 0.04, d: 0.08, x: 0, y: 2.82, z: zz, material: mat(0x1a0a18, { metalness: 0.6, roughness: 0.2 }), solid: false, noSplat: true });
-    }
-    for (const xx of [-6.94, 6.94]) {
-      box(z, { w: 0.05, h: 2.8, d: 9.8, x: xx, y: 1.4, z: 0, material: wallLatex, solid: false, noSplat: true, name: 'latex wall panel' });
-    }
-
-    box(z, { w: 2.4, h: 0.18, d: 0.9, x: 2.7, z: -2.55, material: latexMat(0x0b0b10), name: 'latex runway plinth' });
+    /* ================= EAST — the latex runway ================= */
+    box(z, { w: 2.4, h: 0.18, d: 0.9, x: 6.7, z: -2.55, material: latexMat(0x0b0b10), name: 'latex runway plinth' });
     const runwayEdge = mat(0xb72d50, { metalness: 0.45, roughness: 0.28 });
-    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 2.7, y: 0.18, z: -3.0, material: runwayEdge, solid: false, noSplat: true });
-    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 2.7, y: 0.18, z: -2.1, material: runwayEdge, solid: false, noSplat: true });
+    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 6.7, y: 0.18, z: -3.0, material: runwayEdge, solid: false, noSplat: true });
+    box(z, { w: 2.4, h: 0.025, d: 0.035, x: 6.7, y: 0.18, z: -2.1, material: runwayEdge, solid: false, noSplat: true });
 
     const chair = (x, zz, color, ry = 0) => {
       const g = new THREE.Group();
@@ -1033,40 +890,79 @@ export class World {
       z.group.add(g);
       z.colliders.push({ minX: x - 0.45, maxX: x + 0.45, minZ: zz - 0.45, maxZ: zz + 0.45 });
     };
-    chair(-1.7, 2.45, 0x7f1d3b, 0.2);
-    chair(1.65, 2.45, 0x15151d, -0.2);
-    chair(-5.8, 2.55, 0x241225, Math.PI / 2);
+    chair(2.3, 2.45, 0x7f1d3b, 0.2);
+    chair(5.65, 2.45, 0x15151d, -0.2);
+    chair(9.4, 2.55, 0x241225, -Math.PI / 2);
 
-    for (const [x, zz] of [[-5.4, -4.75], [-3.9, -4.75], [4.1, -4.75], [5.6, -4.75]]) {
+    for (const [x, zz] of [[2.2, -4.75], [3.8, -4.75], [8.1, -4.75], [9.6, -4.75]]) {
       cylinder(z, { rT: 0.025, rB: 0.03, h: 1.45, x, z: zz, material: mat(0x5a1727, { metalness: 0.7, roughness: 0.22 }), solid: false, noSplat: true });
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.018, 8, 20), mat(0xb14b63, { metalness: 0.75, roughness: 0.18 }));
       ring.position.set(x, 1.32, zz); ring.rotation.x = Math.PI / 2; ring.userData.noSplat = true; z.group.add(ring);
     }
 
+    /* ---- light: amber pools west, strobe rig east, one fog to bind them ---- */
+    const warm = new THREE.PointLight(0xffa866, 4.2, 10, 1.8);
+    warm.position.set(-5.5, 2.4, -3.0); warm.userData.base = 4.2; z.group.add(warm);
+    const amber = new THREE.PointLight(0xff8c42, 2.8, 9, 1.9);
+    amber.position.set(-8.0, 2.0, 1.5); amber.userData.base = 2.8; z.group.add(amber);
+    const cream = new THREE.PointLight(0xffd9a0, 2.2, 8, 1.7);
+    cream.position.set(-2.5, 2.0, 2.5); cream.userData.base = 2.2; z.group.add(cream);
+    z.animated.candles = [warm, amber, cream];
     const red = new THREE.PointLight(0xa1163d, 4.5, 7, 1.6);
-    red.position.set(2.5, 1.8, -3.4); red.userData.base = 4.5; z.group.add(red);
+    red.position.set(6.5, 1.8, -3.4); red.userData.base = 4.5; z.group.add(red);
     const violet = new THREE.PointLight(0x6b36a8, 3.0, 8, 1.7);
-    violet.position.set(-4.8, 2.1, 1.8); violet.userData.base = 3.0; z.group.add(violet);
+    violet.position.set(3.2, 2.1, 1.8); violet.userData.base = 3.0; z.group.add(violet);
     const blue = new THREE.PointLight(0x263b8f, 2.2, 7, 1.8);
-    blue.position.set(5.8, 2.2, 3.8); blue.userData.base = 2.2; z.group.add(blue);
-    z.animated.strobes = [red, violet, blue];
-    z.group.add(new THREE.HemisphereLight(0x1a0a18, 0x040406, 0.35));
+    blue.position.set(9.8, 2.2, 3.8); blue.userData.base = 2.2; z.group.add(blue);
+    z.animated.strobes = [red, violet, blue, throb];
+    z.group.add(new THREE.HemisphereLight(0x3a2418, 0x060608, 0.45));
 
-    box(z, { w: 2.3, h: 0.12, d: 0.28, x: -8.8, y: 2.8, z: 0, material: latexMat(0x09090d), solid: false, noSplat: true });
-    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← THE LEATHER ROOM', to: 'collectorHome' });
+    box(z, { w: 2.3, h: 0.12, d: 0.28, x: -10.8, y: 2.8, z: 0, material: mat(0x3a2a20, { metalness: 0.3 }), solid: false, noSplat: true });
+    door(z, { x: -10.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
 
-    z.anchors.gimp = new THREE.Vector3(2.7, 0, -3.55);
-    z.anchors.fashion = new THREE.Vector3(0, 0, 0.35);
-    z.anchors.bob = new THREE.Vector3(-4.45, 0, -1.25);
-    z.anchors.bobgirl = new THREE.Vector3(4.55, 0, 1.75);
-    z.anchors.rook = new THREE.Vector3(-2.7, 0, -3.2);
-    z.anchors.violet = new THREE.Vector3(0.8, 0, -3.3);
-    z.anchors.chrome = new THREE.Vector3(-5.1, 0, 2.2);
-    z.anchors.blue = new THREE.Vector3(4.1, 0, -1.2);
+    /* ---- the whole house, under one bassline ---- */
+    z.anchors.milo = new THREE.Vector3(-4.45, 0, -1.25);
+    z.anchors.sol = new THREE.Vector3(-2.2, 0, 4.75);
+    z.anchors.bea = new THREE.Vector3(-3.2, 0, 0.35);
+    z.anchors.gimp = new THREE.Vector3(6.7, 0, -3.55);
+    z.anchors.fashion = new THREE.Vector3(0.2, 0, 0.35);
+    z.anchors.bob = new THREE.Vector3(-4.45, 0, 1.4);
+    z.anchors.bobgirl = new THREE.Vector3(-2.2, 0, 3.4);
+    z.anchors.rook = new THREE.Vector3(5.3, 0, -3.2);
+    z.anchors.violet = new THREE.Vector3(4.8, 0, -3.3);
+    z.anchors.chrome = new THREE.Vector3(2.6, 0, 2.2);
+    z.anchors.blue = new THREE.Vector3(8.1, 0, -1.2);
 
     z.interactables.push({
+      id: 'leather-wall', type: 'flavor', label: 'Press your palm to the leather wall',
+      pos: new THREE.Vector3(-9.4, 1.3, -5.65), radius: 1.7,
+      lines: [
+        'The wall is padded, stitched, and priced like a small apartment.',
+        'It absorbs the bass, the heat, and one entire school of criticism.',
+        'Someone embossed the word “AUTHENTIC” into the leather. The leather disagrees.',
+      ],
+    });
+    z.interactables.push({
+      id: 'leather-sofa', type: 'flavor', label: 'Sink into the leather sofa',
+      pos: new THREE.Vector3(-4.45, 0.7, -1.25), radius: 1.5,
+      lines: [
+        'The sofa has the posture of someone who knows the dress code.',
+        'No one is collecting this room. The room is collecting everyone.',
+        'A seam gives a tiny, expensive creak. It approves of you.',
+      ],
+    });
+    z.interactables.push({
+      id: 'sideboard', type: 'flavor', label: 'Inspect the sideboard',
+      pos: new THREE.Vector3(-9.4, 0.9, -4.5), radius: 1.5,
+      lines: [
+        'A row of unframed canvases leans behind glass. The collector\'s eye is restless.',
+        'There is a catalogue raisonné open to a page that has been pressed flat by something heavy.',
+        'Someone left a glass of red wine here. It is still breathing.',
+      ],
+    });
+    z.interactables.push({
       id: 'latex-runway', type: 'flavor', label: 'Step onto the latex runway',
-      pos: new THREE.Vector3(2.7, 0.45, -2.55), radius: 1.6,
+      pos: new THREE.Vector3(6.7, 0.45, -2.55), radius: 1.6,
       lines: [
         'A runway for people who refuse to be background decoration.',
         'The lights make every buckle look like a thesis statement.',
@@ -1075,498 +971,13 @@ export class World {
     });
 
     z.waypoints = [
-      new THREE.Vector3(-5.5, 0, -3.2), new THREE.Vector3(-2.7, 0, -3.4),
-      new THREE.Vector3(0.8, 0, -3.4), new THREE.Vector3(2.7, 0, -2.5),
-      new THREE.Vector3(4.4, 0, -1.1), new THREE.Vector3(5.4, 0, 2.8),
-      new THREE.Vector3(-4.8, 0, 2.3), new THREE.Vector3(1.5, 0, 2.4),
+      new THREE.Vector3(-8.5, 0, -3.2), new THREE.Vector3(-5.5, 0, -3.4),
+      new THREE.Vector3(-2.7, 0, -3.4), new THREE.Vector3(-0.5, 0, 2.5),
+      new THREE.Vector3(2.7, 0, -2.5), new THREE.Vector3(4.4, 0, -1.1),
+      new THREE.Vector3(5.4, 0, 2.8), new THREE.Vector3(8.6, 0, 2.6),
+      new THREE.Vector3(9.4, 0, -3.8), new THREE.Vector3(-4.8, 0, 2.3),
     ];
   }
-
-  /* Legacy collector-home build kept as a fallback while the Leather Room is
-     being tuned. It is intentionally not called by the active constructor. */
-  #buildCollectorHomeLegacy() {
-    const z = this.#newZone('collectorHome');
-    shell(z, { w: 16, d: 12, floorColor: 0x3a2a42, wallColor: 0x35253e, ceilColor: 0x1c1325 });
-    z.spawn.set(0, 0, 4.5);
-    z.spawnYaw = Math.PI;
-    z.fog = { color: 0x160f20, density: 0.026 };
-
-    // herringbone parquet — the host's one good decision, inherited with the flat
-    const parquet = parquetTexture();
-    parquet.wrapS = parquet.wrapT = THREE.RepeatWrapping;
-    parquet.repeat.set(6, 4.5);
-    plane(z, {
-      w: 15.94, h: 11.94, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2,
-      material: new THREE.MeshStandardMaterial({ map: parquet, roughness: 0.65 }),
-      noSplat: false, name: 'parquet',
-    });
-
-    // wainscot, chair rail, crown molding — old money wears wainscot
-    const wainsM = mat(0x2a1e33, { roughness: 0.85 });
-    const trimM = mat(0x8a7350, { metalness: 0.55, roughness: 0.38 });
-    for (const zz of [-5.95, 5.95]) {
-      box(z, { w: 15.9, h: 1.05, d: 0.06, z: zz, material: wainsM, solid: false, noSplat: true });
-      box(z, { w: 15.9, h: 0.07, d: 0.08, y: 1.05, z: zz, material: trimM, solid: false, noSplat: true });
-      box(z, { w: 15.9, h: 0.09, d: 0.08, y: 3.3, z: zz, material: trimM, solid: false, noSplat: true });
-    }
-    for (const xx of [-7.95, 7.95]) {
-      box(z, { w: 0.06, h: 1.05, d: 11.9, x: xx, material: wainsM, solid: false, noSplat: true });
-      box(z, { w: 0.08, h: 0.07, d: 11.9, y: 1.05, x: xx, material: trimM, solid: false, noSplat: true });
-      box(z, { w: 0.08, h: 0.09, d: 11.9, y: 3.3, x: xx, material: trimM, solid: false, noSplat: true });
-    }
-
-    // The host has decorated by purchasing every color at once.
-    plane(z, {
-      w: 9.7, h: 6.1, x: 0, y: 0.014, z: 0.3, rx: -Math.PI / 2,
-      material: mat(0x6e2540, { roughness: 1 }), noSplat: true,
-    });
-    plane(z, {
-      w: 8.8, h: 5.2, x: 0, y: 0.017, z: 0.3, rx: -Math.PI / 2,
-      material: mat(0xc9466f, { roughness: 0.95 }), noSplat: true,
-    });
-    const partyColors = [0xe8c15a, 0xd98cff, 0x7fb285, 0x3b6ea5, 0xc9463d];
-    for (let i = 0; i < 10; i++) {
-      const x = -6.4 + (i % 5) * 3.2;
-      const zz = i < 5 ? -5.65 : 5.65;
-      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.85, 5), mat(0x17131e));
-      cord.position.set(x, 2.95, zz); cord.userData.noSplat = true;
-      const balloon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.28, 12, 8),
-        mat(partyColors[i % partyColors.length], { roughness: 0.42, metalness: 0.05 })
-      );
-      balloon.position.set(x, 2.48, zz);
-      balloon.userData.noSplat = true;
-      z.group.add(cord, balloon);
-    }
-    // one escapee, slowly deflating by the stage
-    const fallen = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), mat(0xd98cff, { roughness: 0.6 }));
-    fallen.scale.set(1, 0.72, 1); fallen.position.set(3.9, 0.18, 3.1); fallen.userData.noSplat = true;
-    z.group.add(fallen);
-
-    // A gas fireplace: warmth with excellent PR.
-    const stone = mat(0x2c2430, { roughness: 0.8 });
-    box(z, { w: 0.5, h: 1.25, d: 0.35, x: -7.75, z: -0.85, material: stone, name: 'fireplace' });
-    box(z, { w: 0.5, h: 1.25, d: 0.35, x: -7.75, z: 0.85, material: stone });
-    box(z, { w: 0.5, h: 0.3, d: 2.05, x: -7.75, y: 1.25, z: 0, material: stone });
-    box(z, { w: 0.62, h: 0.07, d: 2.2, x: -7.72, y: 1.55, z: 0, material: mat(0x3a2f3e, { roughness: 0.6 }), solid: false, noSplat: true });
-    plane(z, {
-      w: 1.35, h: 0.95, x: -7.48, y: 0.62, z: 0, ry: Math.PI / 2,
-      material: new THREE.MeshBasicMaterial({ color: 0x0a0508 }), noSplat: true,
-    });
-    for (let i = 0; i < 3; i++) {
-      const log = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 8), mat(0x2a1c12));
-      log.rotation.x = Math.PI / 2;
-      log.rotation.y = rand(-0.3, 0.3);
-      log.position.set(-7.68, 0.12 + i * 0.07, -0.15 + i * 0.15);
-      log.userData.noSplat = true;
-      z.group.add(log);
-    }
-    const fire = new THREE.PointLight(0xff7a3c, 5, 6.5, 1.9);
-    fire.position.set(-7.3, 0.7, 0); fire.userData.base = 5;
-    z.group.add(fire);
-    z.animated.candles.push(fire);
-    hangingArt(z, { x: -7.96, y: 2.25, z: 0, ry: Math.PI / 2, w: 0.9, h: 1.1, seed: 415 });
-    z.interactables.push({
-      id: 'fireplace', type: 'flavor', label: 'Warm your hands at the gas fire',
-      pos: new THREE.Vector3(-7.3, 1.0, 0), radius: 1.7,
-      lines: [
-        'It burns gas. The host says oak. Everyone nods.',
-        'The mantel is crowded with awards for things money did.',
-        'A small bronze of a hand pointing at itself. “Gesture,” says the card.',
-      ],
-    });
-
-    // Two tall windows: Oslo glitters, indifferent and expensive.
-    for (const wz of [-1.2, 2.2]) {
-      const winMat = new THREE.MeshBasicMaterial({ color: 0x8fa8c9 });
-      plane(z, { w: 1.5, h: 2.0, x: 7.93, y: 2.05, z: wz, ry: -Math.PI / 2, material: winMat, noSplat: true });
-      new THREE.TextureLoader().load(encodeURI('puplic/visual assets/oslo-dirty-game-assets.png'), (tex) => {
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.repeat.set(0.42, 1);
-        tex.offset.x = wz < 0 ? 0.03 : 0.55;
-        winMat.map = tex;
-        winMat.color.set(0xb9c4d4);
-        winMat.needsUpdate = true;
-      });
-      // frame + mullions
-      const frameM = mat(0x241a2c);
-      box(z, { w: 0.1, h: 2.05, d: 0.08, x: 7.91, y: 1.025, z: wz - 0.78, material: frameM, solid: false, noSplat: true });
-      box(z, { w: 0.1, h: 2.05, d: 0.08, x: 7.91, y: 1.025, z: wz + 0.78, material: frameM, solid: false, noSplat: true });
-      box(z, { w: 0.1, h: 0.08, d: 1.64, x: 7.91, y: 1.05, z: wz, material: frameM, solid: false, noSplat: true });
-      box(z, { w: 0.1, h: 0.08, d: 1.64, x: 7.91, y: 2.05, z: wz, material: frameM, solid: false, noSplat: true });
-      box(z, { w: 0.18, h: 0.06, d: 1.7, x: 7.88, y: 1.0, z: wz, material: frameM, solid: false, noSplat: true });
-      // heavy drapes
-      const drapeM = mat(0x5e2438, { roughness: 0.95 });
-      box(z, { w: 0.28, h: 2.6, d: 0.55, x: 7.85, y: 0.6, z: wz - 1.05, material: drapeM, solid: false, noSplat: true });
-      box(z, { w: 0.28, h: 2.6, d: 0.55, x: 7.85, y: 0.6, z: wz + 1.05, material: drapeM, solid: false, noSplat: true });
-    }
-    const windowLight = new THREE.PointLight(0x9db8d9, 3.8, 9, 1.9);
-    windowLight.position.set(7.3, 2.2, 0.5);
-    z.group.add(windowLight);
-    z.interactables.push({
-      id: 'collector-window', type: 'flavor', label: 'Look out at Oslo',
-      pos: new THREE.Vector3(7.0, 1.6, 0.5), radius: 1.8,
-      lines: [
-        'Oslo glitters, indifferent and expensive.',
-        'From this height your garret is not even a dot. That is the point of up here.',
-        'Across the street someone is painting a wall for free. You salute them, secretly.',
-      ],
-    });
-
-    // Chandelier — inherited, heavy, slightly too sincere for this party.
-    {
-      const g = new THREE.Group();
-      g.position.set(0, 0, -0.6);
-      const brass = mat(0x9a7b4f, { metalness: 0.65, roughness: 0.35 });
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.65, 8), brass);
-      stem.position.y = 3.28; stem.userData.noSplat = true;
-      const medallion = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 0.05, 20), trimM);
-      medallion.position.y = 3.58; medallion.userData.noSplat = true;
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.035, 10, 32), brass);
-      ring.rotation.x = Math.PI / 2; ring.position.y = 2.92; ring.userData.noSplat = true;
-      g.add(stem, medallion, ring);
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        const cx = Math.cos(a) * 0.55, cz = Math.sin(a) * 0.55;
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.14, 6), mat(0xe8e0cc));
-        candle.position.set(cx, 2.99, cz); candle.userData.noSplat = true;
-        const flame = new THREE.Mesh(
-          new THREE.SphereGeometry(0.035, 8, 6),
-          new THREE.MeshStandardMaterial({ color: 0xfff2d8, emissive: 0xffc873, emissiveIntensity: 2, roughness: 0.3 })
-        );
-        flame.position.set(cx, 3.08, cz); flame.userData.noSplat = true;
-        g.add(candle, flame);
-        const crystal = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.032),
-          new THREE.MeshStandardMaterial({ color: 0xdfe8ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x8ab4ff, emissiveIntensity: 0.25 })
-        );
-        crystal.position.set(Math.cos(a) * 0.38, 2.62 - (i % 2) * 0.08, Math.sin(a) * 0.38);
-        crystal.userData.noSplat = true;
-        g.add(crystal);
-      }
-      const glow = new THREE.PointLight(0xffd9a0, 13, 11, 1.8);
-      glow.position.y = 2.75;
-      g.add(glow);
-      z.group.add(g);
-    }
-
-    // Disco ball — the other half of the party’s personality.
-    {
-      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 5), mat(0x17131e));
-      cord.position.set(-3.2, 3.32, 3.2); cord.userData.noSplat = true;
-      const ball = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 12, 8),
-        new THREE.MeshStandardMaterial({ color: 0xcfd6e4, metalness: 0.95, roughness: 0.12, flatShading: true })
-      );
-      ball.position.set(-3.2, 2.98, 3.2);
-      ball.userData.noSplat = true;
-      z.group.add(cord, ball);
-      z.animated.glows.push(ball);
-    }
-
-    // Party strobes — two cheap clamps the host bought for "ambience".
-    // They idle low; when the leather room is playing they snap on the beat.
-    {
-      const mkStrobe = (x, zz, color) => {
-        const lamp = new THREE.PointLight(color, 0.6, 9, 1.6);
-        lamp.position.set(x, 2.6, zz);
-        lamp.userData.base = 0.6;
-        z.group.add(lamp);
-        return lamp;
-      };
-      z.animated.strobes = [
-        mkStrobe(-3.2, 3.2, 0xd98cff),   // over the disco ball, violet
-        mkStrobe(2.5, -3.5, 0x3b6ea5),   // the dark corner, cold blue
-      ];
-    }
-
-    // The leather corner — where The Gimp holds court. A dark red pool of
-    // light on the parquet, a heavier air. You feel it before you see him.
-    {
-      const wash = new THREE.PointLight(0x8c1f2e, 2.2, 5.5, 1.7);
-      wash.position.set(2.5, 1.4, -3.5);
-      wash.userData.base = 2.2;
-      z.group.add(wash);
-      z.animated.candles.push(wash);   // it breathes with the fire's rhythm
-      // a worn dark rug: the floor here has seen things
-      plane(z, {
-        w: 3.4, h: 2.8, x: 2.5, y: 0.013, z: -3.5, rx: -Math.PI / 2,
-        material: mat(0x1a0e12, { roughness: 1 }), noSplat: true,
-      });
-      z.anchors.gimp = new THREE.Vector3(2.5, 0, -3.5);
-    }
-
-    // Centerpiece sculpture: “Whither, Capital?” on a motorized pedestal.
-    box(z, { w: 0.6, h: 1.1, d: 0.6, x: 0, z: -0.6, material: mat(0x1c1620, { roughness: 0.35 }), name: 'sculpture pedestal' });
-    const knot = new THREE.Mesh(
-      new THREE.TorusKnotGeometry(0.22, 0.07, 64, 10),
-      mat(0xb08d4f, { metalness: 0.85, roughness: 0.25 })
-    );
-    knot.position.set(0, 1.45, -0.6); knot.userData.noSplat = true;
-    z.group.add(knot);
-    z.animated.glows.push(knot);
-    // velvet rope barrier
-    const postM = mat(0x8a7350, { metalness: 0.6, roughness: 0.35 });
-    const ropeM = mat(0x8c1f2e, { roughness: 0.9 });
-    for (const dx of [-1.0, 1.0]) {
-      for (const dz of [-1.0, 1.0]) {
-        cylinder(z, { rT: 0.02, rB: 0.03, h: 0.95, x: dx, y: 0, z: -0.6 + dz, material: postM, solid: false, noSplat: true });
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), postM);
-        ball.position.set(dx, 0.97, -0.6 + dz); ball.userData.noSplat = true;
-        z.group.add(ball);
-      }
-    }
-    const ropeN = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 6), ropeM);
-    ropeN.rotation.z = Math.PI / 2; ropeN.position.set(0, 0.82, -1.6); ropeN.userData.noSplat = true;
-    const ropeS = ropeN.clone(); ropeS.position.set(0, 0.82, 0.4);
-    const ropeE = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 2.0, 6), ropeM);
-    ropeE.rotation.x = Math.PI / 2; ropeE.position.set(1.0, 0.82, -0.6); ropeE.userData.noSplat = true;
-    const ropeW = ropeE.clone(); ropeW.position.set(-1.0, 0.82, -0.6);
-    z.group.add(ropeN, ropeS, ropeE, ropeW);
-    z.colliders.push({ minX: -1.15, maxX: 1.15, minZ: -1.75, maxZ: 0.55 });
-    z.interactables.push({
-      id: 'centerpiece', type: 'flavor', label: 'Admire the centerpiece',
-      pos: new THREE.Vector3(0, 1.0, -0.6), radius: 1.7,
-      lines: [
-        '“Whither, Capital?” — bronze knot, $240,000.',
-        'The rope barrier is included in the price. The rope is load-bearing.',
-        'It rotates slowly, like a conscience.',
-      ],
-    });
-
-    // Salon wall — six small works hung like a tax schedule.
-    const salonSpots = [
-      [-4.7, 2.25, 0.55, 0.7, 421], [-3.9, 1.7, 0.45, 0.58, 423], [-3.15, 2.35, 0.6, 0.52, 425],
-      [-2.45, 1.8, 0.52, 0.65, 427], [-1.65, 2.3, 0.55, 0.72, 429],
-    ];
-    const tagMat = new THREE.MeshBasicMaterial({ color: 0xe8e2d4 });
-    for (const [sx, sy, sw, sh, seed] of salonSpots) {
-      hangingArt(z, { x: sx, y: sy, z: 5.96, ry: Math.PI, w: sw, h: sh, seed });
-      const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.09), tagMat);
-      tag.position.set(sx, sy - sh / 2 - 0.12, 5.95); tag.rotation.y = Math.PI; tag.userData.noSplat = true;
-      z.group.add(tag);
-    }
-    // one big statement piece, already sold
-    hangingArt(z, { x: 3.6, y: 2.05, z: 5.96, ry: Math.PI, w: 1.7, h: 1.9, seed: 431 });
-    const priceTag = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.12), tagMat);
-    priceTag.position.set(3.6, 0.92, 5.95); priceTag.rotation.y = Math.PI; priceTag.userData.noSplat = true;
-    const soldDot = new THREE.Mesh(new THREE.CircleGeometry(0.04, 12), new THREE.MeshBasicMaterial({ color: 0xc9262c }));
-    soldDot.position.set(3.48, 1.0, 5.94); soldDot.rotation.y = Math.PI; soldDot.userData.noSplat = true;
-    z.group.add(priceTag, soldDot);
-    const salonSpot = new THREE.SpotLight(0xfff0d8, 22, 9, 0.5, 0.6);
-    salonSpot.position.set(3.6, 3.4, 4.4); salonSpot.target.position.set(3.6, 1.9, 5.96);
-    z.group.add(salonSpot, salonSpot.target);
-    z.interactables.push({
-      id: 'salon-wall', type: 'flavor', label: 'Study the salon hang',
-      pos: new THREE.Vector3(-2.8, 1.6, 5.6), radius: 2.3,
-      lines: [
-        'Sixteen tax decisions, hung with love. One is by someone you know.',
-        'The host does not know which one. That is what makes it collecting.',
-        'A red dot: SOLD. The painting looks embarrassed.',
-      ],
-    });
-
-    // Three display easels: the artists are competing with one another and the wallpaper.
-    partyEasel(z, { x: -2.2, z: -3.8, seed: 401 });
-    partyEasel(z, { x: 1.2, z: -3.8, seed: 403 });
-    partyEasel(z, { x: 5.2, z: -3.6, ry: -0.45, seed: 405 });
-    hangingArt(z, { x: -5.2, y: 2.05, z: -5.78, ry: 0, w: 1.35, h: 1.6, seed: 411 });
-    hangingArt(z, { x: 5.25, y: 2.05, z: -5.78, ry: 0, w: 1.35, h: 1.6, seed: 413 });
-
-    // A low stage makes Milo look like a host even when the hat is doing most of it.
-    box(z, { w: 2.5, h: 0.22, d: 1.55, x: 2.4, z: 1.8, material: mat(0xe8c15a, { roughness: 0.48, metalness: 0.2 }), name: 'host stage' });
-    z.interactables.push({
-      id: 'host-stage', type: 'flavor', label: 'Judge the host’s stage',
-      pos: new THREE.Vector3(2.4, 0.4, 1.8), radius: 1.5,
-      lines: ['The stage is upholstered in confidence and one suspicious stain.'],
-    });
-
-    // A velvet sofa and a low table — where guests pretend to talk.
-    const sofaM = mat(0x2e5f5a, { roughness: 0.95 });
-    box(z, { w: 0.95, h: 0.42, d: 2.1, x: -5.35, z: 0, material: sofaM, name: 'sofa' });
-    box(z, { w: 0.3, h: 0.95, d: 2.1, x: -4.95, z: 0, material: sofaM });
-    box(z, { w: 0.95, h: 0.62, d: 0.28, x: -5.35, y: 0, z: -1.05, material: sofaM });
-    box(z, { w: 0.95, h: 0.62, d: 0.28, x: -5.35, y: 0, z: 1.05, material: sofaM });
-    for (const sz of [-0.55, 0.15, 0.75]) {
-      const c = box(z, { w: 0.62, h: 0.1, d: 0.6, x: -5.42, y: 0.42, z: sz, material: mat(0x34706a), solid: false });
-      c.userData.noSplat = true;
-    }
-    z.interactables.push({
-      id: 'collector-sofa', type: 'flavor', label: 'Sit in the velvet sofa',
-      pos: new THREE.Vector3(-5.35, 0.7, 0), radius: 1.4,
-      lines: [
-        'The velvet is the exact color of an apology.',
-        'A guest left a napkin with a phone number and the word “syndicate.”',
-        'You sink in. The party rises to meet you.',
-      ],
-    });
-    // coffee table
-    box(z, { w: 0.65, h: 0.34, d: 1.1, x: -6.5, z: 0, material: mat(0x3a2c22, { roughness: 0.6 }), name: 'coffee table' });
-    box(z, { w: 0.45, h: 0.04, d: 0.32, x: -6.42, y: 0.34, z: -0.18, material: mat(0x8c3b2e, { roughness: 0.6 }), solid: false }).userData.noSplat = true;
-    box(z, { w: 0.36, h: 0.04, d: 0.28, x: -6.46, y: 0.36, z: 0.22, material: mat(0x2b3a67, { roughness: 0.6 }), solid: false }).userData.noSplat = true;
-
-    // A buffet island: tiny glasses, bright fruit, and a cake nobody trusts.
-    box(z, { w: 3.6, h: 0.92, d: 1.05, x: -3.9, z: 1.9, material: mat(0x241b2b), name: 'party buffet' });
-    cylinder(z, { rT: 0.55, rB: 0.55, h: 0.16, x: -3.9, y: 0.92, z: 1.9, material: mat(0xf0b6d2), solid: false });
-    for (let i = 0; i < 6; i++) {
-      cylinder(z, {
-        rT: 0.025, rB: 0.018, h: 0.18, x: -5.1 + (i % 3) * 0.5, y: 1.05, z: 1.65 + Math.floor(i / 3) * 0.35,
-        material: mat([0xd98cff, 0x7fb285, 0xe8c15a][i % 3], { roughness: 0.2, metalness: 0.25 }), solid: false,
-      });
-    }
-    for (let i = 0; i < 3; i++) {
-      cylinder(z, {
-        rT: 0.03, rB: 0.045, h: rand(0.25, 0.34), x: -2.8 + i * 0.24, y: 0.92, z: 2.15,
-        material: mat(pick([0x2e5f4a, 0x6e1f2e, 0x1f2430]), { roughness: 0.12 }), solid: false, noSplat: true,
-      });
-    }
-    const fruitM = [0xe8a13c, 0xc9463d, 0x7fb285];
-    for (let i = 0; i < 5; i++) {
-      const f = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), mat(fruitM[i % 3], { roughness: 0.5 }));
-      f.position.set(-4.7 + (i % 3) * 0.12, 0.97 + Math.floor(i / 3) * 0.1, 1.55 + (i % 2) * 0.1);
-      f.userData.noSplat = true;
-      z.group.add(f);
-    }
-    // fallen cups
-    for (const [cx, cz] of [[-2.6, 3.0], [1.4, 2.9], [4.6, 0.6]]) {
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.02, 0.16, 8), mat(0xd8d2c2, { roughness: 0.3 }));
-      cup.rotation.set(Math.PI / 2, 0, rand(0, Math.PI * 2));
-      cup.position.set(cx, 0.05, cz); cup.userData.noSplat = true;
-      z.group.add(cup);
-    }
-    // confetti
-    for (let i = 0; i < 14; i++) {
-      const conf = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.04, 0.04),
-        new THREE.MeshBasicMaterial({ color: partyColors[i % partyColors.length], side: THREE.DoubleSide })
-      );
-      conf.position.set(rand(-4.0, 4.0), 0.017, rand(-2.0, 2.7));
-      conf.rotation.set(-Math.PI / 2, 0, rand(0, Math.PI * 2));
-      conf.userData.noSplat = true;
-      z.group.add(conf);
-    }
-    z.interactables.push({
-      id: 'party-table', type: 'flavor', label: 'Inspect the collector’s buffet',
-      pos: new THREE.Vector3(-3.9, 1.0, 1.9), radius: 1.8,
-      lines: [
-        'The cake is shaped like a rising market. It has collapsed in the middle.',
-        'A label says “artisanal water.” The water has a label too.',
-        'The canapés are arranged by color, not flavor. Nobody has complained aloud.',
-      ],
-    });
-
-    // Bar cart — capitalism on wheels.
-    const cartM = mat(0x8a7350, { metalness: 0.7, roughness: 0.3 });
-    box(z, { w: 0.85, h: 0.04, d: 0.5, x: -6.55, y: 0.55, z: 2.7, material: cartM, solid: false, noSplat: true });
-    box(z, { w: 0.85, h: 0.04, d: 0.5, x: -6.55, y: 0.2, z: 2.7, material: cartM, solid: false, noSplat: true });
-    for (const [dx, dz] of [[-0.38, -0.2], [0.38, -0.2], [-0.38, 0.2], [0.38, 0.2]]) {
-      cylinder(z, { rT: 0.015, rB: 0.015, h: 0.6, x: -6.55 + dx, z: 2.7 + dz, material: cartM, solid: false, noSplat: true });
-    }
-    for (let i = 0; i < 4; i++) {
-      cylinder(z, {
-        rT: 0.03, rB: 0.045, h: rand(0.22, 0.32), x: -6.8 + i * 0.17, y: 0.59, z: 2.7 + (i % 2) * 0.14 - 0.07,
-        material: mat(pick([0x2e5f4a, 0x6e1f2e, 0x1f2430, 0x8a5cf6]), { roughness: 0.12 }), solid: false, noSplat: true,
-      });
-    }
-    z.colliders.push({ minX: -7.0, maxX: -6.1, minZ: 2.45, maxZ: 2.95 });
-    z.interactables.push({
-      id: 'bar-cart', type: 'flavor', label: 'Raid the bar cart',
-      pos: new THREE.Vector3(-6.55, 0.9, 2.7), radius: 1.5,
-      lines: [
-        'The good bottles are decorative. The honest bottles are empty.',
-        'This is how you know the party is real.',
-        'A single olive swims in a glass like a bad decision.',
-      ],
-    });
-
-    // Upright piano — tuned annually, played never.
-    {
-      const piano = new THREE.Group();
-      piano.position.set(7.45, 0, -4.2);
-      piano.rotation.y = -Math.PI / 2;
-      const lacquer = mat(0x14100e, { roughness: 0.25 });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.35, 0.6), lacquer);
-      body.position.y = 0.675;
-      const ledge = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.07, 0.3), lacquer);
-      ledge.position.set(0, 0.78, 0.42);
-      const keys = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.22, 0.24),
-        new THREE.MeshStandardMaterial({ map: pianoKeysTexture(), roughness: 0.4 })
-      );
-      keys.rotation.x = -Math.PI / 2;
-      keys.position.set(0, 0.82, 0.42);
-      keys.userData.noSplat = true;
-      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.09, 0.3), lacquer);
-      bench.position.set(0, 0.42, 0.95);
-      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.24), lacquer);
-      legL.position.set(-0.32, 0.21, 0.95);
-      const legR = legL.clone(); legR.position.x = 0.32;
-      const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.22, 8), mat(0x2a1c22, { roughness: 0.3 }));
-      vase.position.set(0.35, 1.46, 0.15); vase.userData.noSplat = true;
-      piano.add(body, ledge, keys, bench, legL, legR, vase);
-      piano.userData.noSplat = true;
-      z.group.add(piano);
-      z.colliders.push({ minX: 6.25, maxX: 7.95, minZ: -4.95, maxZ: -3.45 });
-      z.interactables.push({
-        id: 'piano', type: 'flavor', label: 'Approach the piano',
-        pos: new THREE.Vector3(6.5, 0.9, -4.2), radius: 1.6,
-        lines: [
-          'Tuned annually. Played never. The happiest instrument in Oslo.',
-          'At midnight the host\'s niece plays “Imagine.” Everyone imagines leaving.',
-          'The sheet music is blank. It is titled “Untitled (Reception).”',
-        ],
-      });
-    }
-
-    // Potted plants — the host's concession to oxygen.
-    pottedPlant(z, -7.35, 5.3);
-    pottedPlant(z, 7.35, 5.3);
-    pottedPlant(z, -7.35, -5.3);
-
-    // Coat rack by the door — one guest remains, in hat form.
-    cylinder(z, { rT: 0.02, rB: 0.03, h: 1.85, x: 2.35, z: -5.3, material: mat(0x2b2118), solid: false, noSplat: true });
-    for (let i = 0; i < 4; i++) {
-      const hook = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), mat(0x8a7350, { metalness: 0.6, roughness: 0.35 }));
-      const a = (i / 4) * Math.PI * 2;
-      hook.position.set(2.35 + Math.cos(a) * 0.05, 1.2 + i * 0.22, -5.3 + Math.sin(a) * 0.05);
-      hook.userData.noSplat = true;
-      z.group.add(hook);
-    }
-    const hatG = new THREE.Group();
-    hatG.position.set(2.35, 1.58, -5.3);
-    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 16), mat(0x8c3b2e, { roughness: 0.8 }));
-    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.12, 16), mat(0x8c3b2e, { roughness: 0.8 }));
-    crown.position.y = 0.07;
-    hatG.add(brim, crown); hatG.userData.noSplat = true;
-    z.group.add(hatG);
-    z.colliders.push({ minX: 2.18, maxX: 2.52, minZ: -5.45, maxZ: -5.15 });
-    z.interactables.push({
-      id: 'coat-rack', type: 'flavor', label: 'Inspect the coat rack',
-      pos: new THREE.Vector3(2.35, 1.0, -5.3), radius: 1.4,
-      lines: [
-        'One guest remains: a hat. The rest of him is somewhere being a story now.',
-        'The underwear is missing. The legend grows.',
-      ],
-    });
-
-    // Party lighting: pink, blue, and gold pools that make every decision look expensive.
-    bulb(z, { x: -4.8, z: -3.4, y: 2.6, intensity: 11, color: 0xff6fbd });
-    bulb(z, { x: -2.6, z: 3.9, y: 2.7, intensity: 10, color: 0x8ab4ff });
-    bulb(z, { x: 4.8, z: -1.2, y: 2.5, intensity: 12, color: 0xffd36e });
-    z.group.add(new THREE.HemisphereLight(0x8b5f9b, 0x211329, 0.75));
-
-    door(z, { x: 0, z: -5.62, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
-    z.anchors.milo = new THREE.Vector3(2.4, 0, 1.8);
-    z.anchors.sol = new THREE.Vector3(-2.2, 0, -2.5);
-    z.anchors.bea = new THREE.Vector3(4.3, 0, -2.7);
-    z.waypoints = [
-      new THREE.Vector3(-5, 0, 3.7), new THREE.Vector3(-1, 0, 3.4),
-      new THREE.Vector3(1.9, 0, 0.4), new THREE.Vector3(5.1, 0, 3.4),
-      new THREE.Vector3(-4.8, 0, -2.0), new THREE.Vector3(3.8, 0, -3.8),
-      new THREE.Vector3(6.3, 0, 0.8), new THREE.Vector3(-6.6, 0, -3.6),
-    ];
-  }
-
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -1672,7 +1083,7 @@ export class World {
 
   /**
    * @param beatPhase 0..1 within the current beat, or -1 when the room is
-   * silent. When the leather room plays, the party lights snap on the kick.
+   * silent. When the house rig plays, every lamp in here snaps on the kick.
    */
   update(dt, t, beatPhase = -1) {
     const z = this.zone();

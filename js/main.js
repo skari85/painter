@@ -896,8 +896,7 @@ class Game {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
         vault: 'Cold air, gold light. The cages are listening.',
-        collectorHome: 'The door opens on a padded leather salon. The dress code is gloss, buckles, and nerve.',
-        latexRunway: 'The back room is all latex and bass. Someone has already priced the air.',
+        leatherLatex: 'The collector’s house: warm hide up front, black gloss in the back. One bassline, two moods.',
       }[zoneKey]));
       this.quests.notify('zoneEntered', { zone: zoneKey });
     });
@@ -916,9 +915,9 @@ class Game {
       this.audio.setMusic(null);
       this.audio.setMood(ZONES[zoneKey].mood);
     }
-    // The leather room and latex runway rigs never truly turn off — from the hallway you
+    // The leather & latex rig never truly turns off — from the hallway you
     // hear it through the walls; inside, it blooms open.
-    if (zoneKey === 'collectorHome' || zoneKey === 'latexRunway') {
+    if (zoneKey === 'leatherLatex') {
       this.audio.startTechno();
       this.audio.setTechnoMuffle(false);
     } else if (this.audio.technoPlaying) {
@@ -968,11 +967,11 @@ class Game {
 
       // the room's pulse: everything in the frame answers the kick
       const beatPhase = this.audio.technoBeatPhase;
-      this.player.setBeat((this.world.current === 'collectorHome' || this.world.current === 'latexRunway') ? beatPhase : -1);
+      this.player.setBeat(this.world.current === 'leatherLatex' ? beatPhase : -1);
       this.world.update(dt, now, beatPhase);
 
       // The Gimp is the murk's epicenter — near him, the house drone is gone
-      if (this.audio.technoPlaying && (this.world.current === 'collectorHome' || this.world.current === 'latexRunway')) {
+      if (this.audio.technoPlaying && this.world.current === 'leatherLatex') {
         const gimp = this.npcs.byId('gimp');
         if (gimp) {
           const d = this.player.position.distanceTo(gimp.group.position);

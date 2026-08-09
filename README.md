@@ -2,8 +2,10 @@
 
 A first-person artworld satire in three nights, inspired by the structure of
 **Ultima IX: Ascension** — a fallen world, eight corrupted virtues, and one
-person's soul at stake — transplanted into three studios: your garret, a
-white-cube gallery, and a collector's vault.
+person's soul at stake — transplanted into four rooms: your garret, a
+white-cube gallery, a collector's vault, and the collector's private house —
+the Leather & Latex Rooms, where warm hide up front gives way to black gloss
+and a 126 BPM rig in the back.
 
 You are **The Artist**. The Market has corrupted the Eight Virtues of Art
 (Vision → Branding, Craft → Content, Sacrifice → Exposure, …). Paint honest
@@ -71,7 +73,7 @@ js/core/
   input.js            keyboard/mouse/pointer-lock abstraction
   audio.js            100% procedural WebAudio (no assets): SFX + ambient drones
 js/game/
-  world.js            the 3 zones: procedural geometry, colliders, doors, splat decals
+  world.js            the 4 zones: procedural geometry, colliders, doors, splat decals
   player.js           FPS controller: per-axis AABB collision, head bob
   hand.js             procedural visible hands: swing, gestures, carried painting
   paint.js            GPU particle pool (one draw call, custom shader) + easel overlay

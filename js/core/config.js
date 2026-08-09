@@ -77,8 +77,7 @@ export const ZONES = {
   garret:      { name: 'THE GARRET',       mood: 'garret' },
   galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
   vault:       { name: 'THE VAULT',         mood: 'vault' },
-  collectorHome: { name: 'THE LEATHER ROOM', mood: 'collectorHome' },
-  latexRunway: { name: 'THE LATEX RUNWAY',  mood: 'latexRunway' },
+  leatherLatex: { name: 'THE LEATHER & LATEX ROOMS', mood: 'leatherLatex' },
 };
 
 export const STORAGE = {

@@ -739,7 +739,7 @@ export const MAINS = {
 };
 
 /* ============================================================
-   THE LATEX RUNWAY — latex-fashion house guests
+   THE LEATHER & LATEX ROOMS — the house's latex-fashion guests
    ============================================================ */
 
 const LEATHER_ROOM_CAST = [
@@ -957,8 +957,7 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 1, 4),
         ],
         vault: [],
-        collectorHome: [m.milo, m.sol, m.bea],
-        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1]],
+        leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1]],
       };
     case 2:
       return {
@@ -968,16 +967,14 @@ export function castForNight(night) {
           ...buildCrowd('galleria', 2, 5),
         ],
         vault: [],
-        collectorHome: [m.milo, m.sol, m.bea],
-        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1], LEATHER_ROOM_CAST[2]],
+        leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1], LEATHER_ROOM_CAST[2]],
       };
     default:
       return {
         garret: [],
         galleria: [m.docent, ...buildCrowd('galleria', 3, 2)],
         vault: [m.index, m.lucia, m.chad, m.barnaby, m.petra, ...buildCrowd('vault', 3, 2)],
-        collectorHome: [m.milo, m.sol, m.bea],
-        latexRunway: [m.bob, m.bobgirl, m.gimp, m.fashion, ...LEATHER_ROOM_CAST],
+        leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, ...LEATHER_ROOM_CAST],
       };
 
   }

@@ -16,8 +16,7 @@ const VOWELS = [[730, 1090], [530, 1840], [270, 2290], [570, 840], [300, 870]];
 
 const MOODS = {
   garret:      { freqs: [110, 164.8, 220], cutoff: 640,  gain: 0.05 },
-  collectorHome: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
-  latexRunway: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
+  leatherLatex: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
   galleria:    { freqs: [146.8, 220, 293.7], cutoff: 900, gain: 0.035 },
   vault:       { freqs: [55, 82.4, 110], cutoff: 380,   gain: 0.07 },
   off:         { freqs: [], cutoff: 400, gain: 0 },
