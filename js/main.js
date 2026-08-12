@@ -422,6 +422,10 @@ class Game {
         this.arti.postPainting(title, quality);
         ui.toast('SIGNED', `“${title}” — quality ${quality}. Under your arm it goes.`, 'good');
         this.audio.pickup();
+        // Finishing the easel bypasses #exitEasel, so explicitly give the
+        // player's feet back as soon as the title is confirmed.
+        this.player.setFrozen(false);
+        this.input.releaseAll();
         this.mode = 'playing';
         ui.setHotkeys('playing');
         this.input.requestLock();

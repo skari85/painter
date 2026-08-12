@@ -276,6 +276,8 @@ export class PaintSystem extends Emitter {
 
   close() {
     this.isOpen = false;
+    this.#painting = false;
+    this.#last = null;
     this.#ui.root.classList.add('hidden');
     if (this.#brushCursor) this.#brushCursor.style.display = 'none';
     if (this.#raf) cancelAnimationFrame(this.#raf);

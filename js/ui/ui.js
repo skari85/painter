@@ -728,6 +728,7 @@ export class UIManager {
       const title = input.value.trim() || defaultTitle;
       $('naming-confirm').removeEventListener('click', confirm);
       input.removeEventListener('keydown', onKey);
+      input.blur();
       this.hide('naming');
       onConfirm(title.slice(0, 42));
     };
