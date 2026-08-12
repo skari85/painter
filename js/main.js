@@ -2,7 +2,7 @@
  * main.js — boot, orchestration, and the game loop.
 
  *
- * Modes: title → playing ⇄ dialogue / easel / naming / codex / paused
+ * Modes: title → onboarding → playing ⇄ dialogue / easel / naming / codex / paused
  *        → nightSummary → … → ending
  *
  * Everything below the fold is wiring: game events in, intentions out.
@@ -10,15 +10,15 @@
 
 import * as THREE from 'three';
 
-import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES } from './core/config.js';
+import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, DAILY_PHENOMENA } from './core/config.js';
 
 
-import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding } from './core/state.js';
+import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
 import { Ghostwriter } from './core/ai.js';
 
-import { pick, chance } from './core/utils.js';
+import { pick, chance, rand } from './core/utils.js';
 
 
 import { World } from './game/world.js';
@@ -28,9 +28,11 @@ import { PaintSystem } from './game/paint.js';
 import { NPCManager } from './game/npc.js';
 import { castForNight, MAINS } from './game/characters.js';
 import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
-import { ArtiEngine } from './game/arti.js';
+import { ArtiEngine, COLLECTOR_CALL } from './game/arti.js';
 import { DialogueEngine } from './game/dialogue.js';
 import { ChatterEngine } from './game/chatter.js';
+import { DebateEngine } from './game/debate.js';
+
 import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
 import { UIManager } from './ui/ui.js';
@@ -41,6 +43,11 @@ class Game {
     this.mode = 'title';
     this.settings = loadSettings();
     this.state = new GameState();
+    this.#dailyStamp = dayStamp();
+    this.#meta = registerVisit() ?? { lastVisit: '', streak: 1, visits: 1, cowVisits: 0, completedDays: [] };
+    let dailyHash = 0;
+    for (const char of this.#dailyStamp) dailyHash = ((dailyHash << 5) - dailyHash + char.charCodeAt(0)) | 0;
+    this.#daily = DAILY_PHENOMENA[Math.abs(dailyHash) % DAILY_PHENOMENA.length] ?? DAILY_PHENOMENA[0];
     this.pendingAppraisal = null;   // painting waiting for Victoria's verdict
     this.#swingCooldown = 0;
     this.#stepAccum = 0;
@@ -54,6 +61,16 @@ class Game {
   #nightSplats = 0;
   #mintCooldown = 0;
   #scandalTier = 0;
+  #cowBubbleTimer = 0;
+  #cowBubbleUrls = [];
+  #daily = DAILY_PHENOMENA[0];
+  #dailyProgress = 0;
+  #dailyStamp = '';
+  #meta = null;
+  #cowVisitedThisRun = false;
+  #callRound = 0;
+  #callUnhappy = 0;
+  #recordKey = null;
 
   /* ============================================================
      Boot
@@ -77,7 +94,9 @@ class Game {
     }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15;
+    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0b0b0f);
@@ -112,6 +131,28 @@ class Game {
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
     this.hand.setReduceMotion(this.settings.reduceMotion);
+    this.ui.setDailyCard({
+      title: this.#daily.title,
+      description: this.#daily.desc,
+      progress: dailyComplete(this.#dailyStamp)
+        ? `COMPLETED · ${this.#meta.streak} DAY STREAK`
+        : `0 / ${this.#daily.goal} — ${this.#meta.streak} DAY STREAK`,
+      complete: dailyComplete(this.#dailyStamp),
+    });
+
+    this.#cowBubbleTimer = rand(3, 6);
+    this.#cowBubbleUrls = [
+      'puplic/visual assets/artworld nonsense bubbles/01-curator-soup.png',
+      'puplic/visual assets/artworld nonsense bubbles/02-tuesdays.png',
+      'puplic/visual assets/artworld nonsense bubbles/03-rumor-concrete.png',
+      'puplic/visual assets/artworld nonsense bubbles/04-grant.png',
+      'puplic/visual assets/artworld nonsense bubbles/05-midnight.png',
+      'puplic/visual assets/artworld nonsense bubbles/06-unionized-brush.png',
+      'puplic/visual assets/artworld nonsense bubbles/07-wall-text.png',
+      'puplic/visual assets/artworld nonsense bubbles/08-smaller-problem.png',
+      'puplic/visual assets/artworld nonsense bubbles/09-invoice.png',
+      'puplic/visual assets/artworld nonsense bubbles/10-feelings.png',
+    ];
 
     window.__painterBooted = true;
     this.audio.setMusic('title', MUSIC);   // fades in on the first user gesture
@@ -143,7 +184,7 @@ class Game {
     const $ = (id) => document.getElementById(id);
     const click = (id, fn) => $(id).addEventListener('click', () => { this.audio.ensure(); this.audio.uiConfirm(); fn(); });
 
-    click('btn-begin', () => this.#startRun());
+    click('btn-begin', () => this.#startOnboarding());
     click('btn-howto', () => this.ui.show('howto'));
     click('howto-close', () => this.ui.hide('howto'));
     click('btn-settings', () => this.ui.show('settings'));
@@ -160,6 +201,7 @@ class Game {
     });
     click('map-close', () => this.#closeMap());
     click('arti-close', () => this.#closeArti());
+    click('call-end', () => this.#closeCollectorCall());
     click('seance-leave', () => this.#closeSeance());
 
 
@@ -168,8 +210,15 @@ class Game {
 
     // now-playing chip — the kill switch for the room's record
     this.ui.bindNowPlaying(() => {
+      this.audio.ensure();
       this.audio.uiConfirm();
+      this.#playNextRecord();
+    }, () => {
+      this.audio.uiConfirm();
+      this.#recordKey = null;
       this.audio.setMusic(null);
+      this.world.setRecordPlayerState(null);
+      if (this.world.current) this.#applyZoneAtmosphere(this.world.current);
     });
 
     this.ui.bindSettings(this.settings, (key) => {
@@ -277,7 +326,20 @@ class Game {
     this.dialogue.on('dismiss', (r) => finalLine(r, 'dismiss'));
     this.dialogue.on('disarm', (r) => { this.audio.gasp(); finalLine(r, 'disarm'); });
 
-    this.dialogue.on('custom', ({ action }) => {
+    this.dialogue.on('custom', ({ npc, action }) => {
+      // MAX PRO — the player has taken a position. It will be forgotten by no one.
+      if (action === 'maxpro:a' || action === 'maxpro:b') {
+        const side = action === 'maxpro:a' ? 'a' : 'b';
+        const r = this.debate.registerChoice(npc, side, this.#maxProReactions);
+        this.#maxProReactions = null;
+        ui.toast('ARTISTIC POSITION', r.capped
+          ? 'You are the wall now. The wall needs more space.'
+          : `Your position is now: ${r.title}. It changes nothing. It is noted everywhere.`);
+        this.state.record(`Declared a position: ${r.title}`, null);
+        // the debater's dry reply lands a beat after the panel closes
+        setTimeout(() => ui.subtitle(npc.def.name, r.reaction, npc.def.pitch, this.audio), 700);
+        return;
+      }
       if (this.pendingAppraisal) {
         const { line } = this.quests.resolveAppraisal(action, this.pendingAppraisal.p);
         ui.toast('THE APPRAISAL', line);
@@ -291,6 +353,7 @@ class Game {
         this.#syncCarry();
       }
     });
+
 
     this.dialogue.on('end', ({ npc, outcome }) => {
       ui.closeDialogue();
@@ -319,6 +382,11 @@ class Game {
     this.chatter = new ChatterEngine(this.ai, this.state);
     this.chatter.on('line', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
     void this.ai.init();
+
+    // ---- MAX PRO: the argument that never ends, scripted and proud of it ----
+    this.debate = new DebateEngine(this.npcs, this.state);
+    this.debate.on('line', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
+
 
     // ---- ARTI — the app is watching, and now it buzzes ----
     ui.setArtiRoster(Object.values(MAINS).map((m) => ({ id: m.id, name: m.name, face: m.face ?? null })));
@@ -350,6 +418,7 @@ class Game {
         const ec = this.world.zone('garret').easelCanvas;
         ec.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.85 });
         this.quests.notify('paintingFinished', { quality });
+        this.#advanceDaily('paint');
         this.arti.postPainting(title, quality);
         ui.toast('SIGNED', `“${title}” — quality ${quality}. Under your arm it goes.`, 'good');
         this.audio.pickup();
@@ -379,6 +448,17 @@ class Game {
      Run / night lifecycle
      ============================================================ */
 
+  #startOnboarding() {
+    if (this.mode !== 'title' && this.mode !== 'ending') return;
+    this.mode = 'onboarding';
+    this.audio.ensure();
+    this.audio.uiConfirm();
+    this.ui.hide('ending');
+    this.ui.hide('title-screen');
+    this.ui.hideHotkeys();
+    this.ui.openOnboarding(() => this.#startRun());
+  }
+
   #startRun() {
     this.ui.hide('ending');
     this.ui.hide('title-screen');
@@ -390,6 +470,9 @@ class Game {
     this.world.clearSplats();
     this.world.clearDisplay();
     this.pendingAppraisal = null;
+    this.#dailyProgress = 0;
+    this.#cowVisitedThisRun = false;
+    this.ui.toast(this.#daily.title, this.#daily.desc);
     const ec = this.world.zone('garret').easelCanvas;
     ec.material = new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.85 });
     this.#startNight(1);
@@ -428,7 +511,9 @@ class Game {
     this.mode = 'title';
     this.ui.hideHotkeys();
     this.audio.setMood('off');
+    this.audio.stopRoomScore();
     this.audio.stopTechno();
+    this.audio.stopJazz();
     this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
   }
@@ -440,7 +525,9 @@ class Game {
     this.mode = 'transition';              // suppress auto-pause on unlock
     this.input.exitLock();
     this.audio.setMood('off');
+    this.audio.stopRoomScore();
     this.audio.stopTechno();
+    this.audio.stopJazz();
     this.audio.setMusic('ending', MUSIC);
 
     this.ui.transition(() => {
@@ -479,6 +566,9 @@ class Game {
         break;
       case 'arti':
         this.#closeArti();
+        break;
+      case 'arti-call':
+        this.#closeCollectorCall();
         break;
       case 'seance':
         this.#closeSeance();
@@ -632,12 +722,70 @@ class Game {
       onFollowBack: () => this.arti.followBack(),
       onBoost: () => this.#boostPost(),
       onToggleFollow: (id) => this.arti.toggleFollow(id),
+      onCall: (id) => this.#callArtworld(id),
     });
+    this.#advanceDaily('arti');
     this.audio.uiMove();
   }
 
   #closeArti() {
     this.ui.closeArti();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    this.ui.setHotkeys('playing');
+    this.input.requestLock();
+  }
+
+  #callArtworld(id) {
+    if (id !== COLLECTOR_CALL.id) return;
+    this.mode = 'arti-call';
+    this.ui.hide('arti');
+    this.ui.setHotkeys('arti-call');
+    this.player.setFrozen(true);
+    this.input.exitLock();
+    this.#callRound = 0;
+    this.#callUnhappy = 0;
+    this.ui.openCollectorCall(COLLECTOR_CALL, (choice) => this.#answerCollectorCall(choice));
+    this.audio.uiMove();
+  }
+
+  #answerCollectorCall(choiceIndex) {
+    if (this.mode !== 'arti-call') return;
+    const round = COLLECTOR_CALL.rounds[this.#callRound];
+    const choice = round?.options[choiceIndex];
+    if (!choice) return;
+    this.#callUnhappy += choice.unhappy;
+    this.ui.callLine(choice.text);
+    this.audio.talkBlip(0.9);
+    setTimeout(() => {
+      if (this.mode !== 'arti-call') return;
+      this.ui.callLine(choice.reply, COLLECTOR_CALL.name);
+      this.audio.talkBlip(0.72);
+      this.#callRound++;
+      const next = COLLECTOR_CALL.rounds[this.#callRound];
+      if (next) {
+        setTimeout(() => {
+          if (this.mode !== 'arti-call') return;
+          this.ui.callLine(next.line, COLLECTOR_CALL.name);
+          this.audio.talkBlip(0.72);
+          this.ui.showCallOptions(next.options, (i) => this.#answerCollectorCall(i));
+        }, 650);
+      } else {
+        this.ui.showCallOptions([], () => {});
+        setTimeout(() => {
+          if (this.mode !== 'arti-call') return;
+          const ending = COLLECTOR_CALL.endings[Math.min(2, Math.floor(this.#callUnhappy / 2))];
+          this.ui.callLine(ending, COLLECTOR_CALL.name);
+          this.ui.toast('CALL ENDED', ending, this.#callUnhappy > 2 ? 'bad' : '');
+          setTimeout(() => this.#closeCollectorCall(), 2400);
+        }, 650);
+      }
+    }, 700);
+  }
+
+  #closeCollectorCall() {
+    if (this.mode !== 'arti-call') return;
+    this.ui.closeCollectorCall();
     this.player.setFrozen(false);
     this.mode = 'playing';
     this.ui.setHotkeys('playing');
@@ -659,7 +807,10 @@ class Game {
 
 
   #onOption(i) {
-
+    if (this.mode === 'arti-call') {
+      this.#answerCollectorCall(i);
+      return;
+    }
     if (this.mode !== 'dialogue') return;
     if (this.ui.isTyping) { this.ui.completeLine(); return; }
     this.audio.uiMove();
@@ -686,6 +837,7 @@ class Game {
         this.ui.hitmarker(false);
         this.state.stats.splats++;
         this.#nightSplats++;
+        this.#advanceDaily('splat');
         this.#maybeSponsor();
         if (this.state.night >= 2 && victim.def.id === 'kreyo') {
           this.ui.toast('KREYO.ETH', pick(KREYO_SELF_MINTS), 'bad');
@@ -695,7 +847,9 @@ class Game {
         this.ui.toast('ASSAULT WITH PIGMENT', `${victim.def.name} is furious. The outfit was “irreplaceable”.`, 'bad');
         this.quests.notify('npcSplatted', { id: victim.def.id });
         this.arti.onSplatted(victim.def.id);
+        this.debate.notifySplat(victim.def.id);   // MAX PRO absorbs the gesture into the discourse
         return;
+
       }
 
       // walls & floors drink the paint
@@ -706,6 +860,7 @@ class Game {
         this.audio.splat();
         this.state.stats.splats++;
         this.#nightSplats++;
+        this.#advanceDaily('splat');
         this.#maybeSponsor();
         if (this.world.current !== 'garret') {
           this.state.addMeter('heat', 2, 'The walls were white. Were.');
@@ -723,6 +878,7 @@ class Game {
     const npc = this.npcs.nearest(this.player.position, fwd, 4.2);
     if (npc) {
       this.ui.toast('THE APPRAISAL', appraiseNPC(npc.def.id, npc.def.name));
+      this.#advanceDaily('appraise');
       this.audio.uiMove();
       return;
     }
@@ -731,6 +887,7 @@ class Game {
     const hits = this.#raycaster.intersectObjects(this.world.zone().group.children, true);
     const hit = hits.find((h) => h.object.visible);
     this.ui.toast('THE APPRAISAL', appraiseObject(hit?.object?.name ?? ''));
+    this.#advanceDaily('appraise');
     this.audio.uiMove();
   }
 
@@ -822,14 +979,39 @@ class Game {
         }
         break;
       case 'flavor':
+        if (it.id === 'dildoball-cow') { this.#addressTheCow(it); break; }
         this.ui.toast('THE DESK', pick(it.lines));
         this.audio.uiMove();
         break;
+      case 'crownQuest': {
+        if (!this.state.getFlag('crownFound')) {
+          this.state.setFlag('crownFound');
+          this.audio.gasp();
+          this.ui.toast('THE KING\'S OTHER CROWN', 'Behind the ice bucket: a second crown, dented, sticky, and humming. The court gasps. The duck squeaks. The cow does not comment. The crown is yours now. It is sticky forever.', 'good');
+          this.state.addMeter('fame', 5, 'You found the crown behind the bar');
+          this.state.addMeter('soul', 3, 'The court trusts you with the sticky crown');
+          this.state.shiftVirtue('valor', 3, 'You reached behind the royal bar');
+          this.state.record('Found the King\'s other crown. It is sticky. It is yours.', null);
+          this.ui.hint('The court murmurs. The King pretends not to care. The pretense is load-bearing.');
+          setTimeout(() => this.ui.hint(null), 8000);
+        } else {
+          this.ui.toast('THE ROYAL BAR', 'The ice bucket sweats. The bottles watch. The crown-shaped absence behind the bar is where you left it.');
+          this.audio.uiMove();
+        }
+        break;
+      }
+
       case 'map':
         this.#openMap();
         break;
       case 'seance':
         this.#openSeance();
+        break;
+
+      case 'recordPlayer':
+        this.audio.ensure();
+        this.audio.uiConfirm();
+        this.#playNextRecord();
         break;
 
 
@@ -874,15 +1056,27 @@ class Game {
     }
   }
 
+  #maxProReactions = null;   // the debater's reply, parked until their dialogue closes
+
   #talkTo(npc) {
+    this.#advanceDaily('talk');
     // Victoria runs the appraisal script when a fresh piece hangs
     if (npc.def.id === 'victoria' && this.pendingAppraisal) {
       const script = this.quests.appraisalScript(this.pendingAppraisal.p, this.state.meters.fame);
       this.dialogue.start(npc, script);
       return;
     }
+    // MAX PRO debaters don't duel — they offer you two absurd positions
+    if (npc.def.debate) {
+      const script = this.debate.dialogueScript(npc);
+      this.#maxProReactions = script.reactions;
+      npc.def.hint = `Your artistic position: ${this.debate.positionTitle}. It means everything. It means nothing.`;
+      this.dialogue.start(npc, script);
+      return;
+    }
     this.dialogue.start(npc);
   }
+
 
   #travelTo(zoneKey) {
     this.audio.uiConfirm();
@@ -892,13 +1086,25 @@ class Game {
       this.paint.attachTo(z.group);
       this.#applyZoneAtmosphere(zoneKey);
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
-      this.ui.toast(ZONES[zoneKey].name, pick({
+      if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
+        this.#cowVisitedThisRun = true;
+        const visits = recordCowVisit();
+        if (visits >= 3) this.ui.toast('THE COW REMEMBERS', `This is your ${visits}th visit. The cow has prepared a file on you.`, 'good');
+      }
+      this.ui.toast(ZONES[zoneKey].name, {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
         vault: 'Cold air, gold light. The cages are listening.',
         leatherLatex: 'The collector’s house: warm hide up front, black gloss in the back. One bassline, two moods.',
-      }[zoneKey]));
+        gildedFork: 'One long table. Every big shot. All of them drunk and messed up.',
+        maxPro: 'Forty metres of wall. One painting. Somewhere in it, an argument.',
+        dildoBall: 'The bass is wearing a crown. The court is in session. Wobble accordingly.',
+        daylightClub: 'Noon pours through the roof. The performers orbit chrome while deer critique the bass.',
+      }[zoneKey]);
+
+      if (zoneKey === 'maxPro') this.debate.enter();
       this.quests.notify('zoneEntered', { zone: zoneKey });
+
     });
   }
 
@@ -907,22 +1113,22 @@ class Game {
     this.scene.fog.color.set(z.fog.color);
     this.scene.fog.density = z.fog.density;
     this.scene.background.set(z.fog.color);
-    // the garret gets the record player; market spaces get the drone
-    if (zoneKey === 'garret') {
-      this.audio.setMood('off');
-      this.audio.setMusic('garret', MUSIC);
-    } else {
+    this.audio.setMood(ZONES[zoneKey].mood);
+
+    // The royal combo is acoustically sealed inside the Dildo Ball. It never
+    // leaks into another room and no communal record may talk over the band.
+    if (zoneKey === 'dildoBall') {
       this.audio.setMusic(null);
-      this.audio.setMood(ZONES[zoneKey].mood);
+      this.audio.setRoomScore(null, false);
+      this.audio.startJazz();
+      this.world.setRecordPlayerState(null);
+      return;
     }
-    // The leather & latex rig never truly turns off — from the hallway you
-    // hear it through the walls; inside, it blooms open.
-    if (zoneKey === 'leatherLatex') {
-      this.audio.startTechno();
-      this.audio.setTechnoMuffle(false);
-    } else if (this.audio.technoPlaying) {
-      this.audio.setTechnoMuffle(true);   // the party leaks through the door
-    }
+
+    this.audio.stopJazz();
+    this.audio.setMusic(this.#recordKey, MUSIC);
+    this.audio.setRoomScore(zoneKey, !this.#recordKey);
+    this.world.setRecordPlayerState(this.#recordKey);
   }
 
 
@@ -941,6 +1147,64 @@ class Game {
     const x = (v.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
     this.ui.damageNumber(x, y, text, cls);
+  }
+
+  /** The cow actually talks: a synthesized moo, a comic bubble over its
+      tiny crown, and the narrator translating in the toast stack. */
+  #addressTheCow(it) {
+    this.audio.moo(0.85 + Math.random() * 0.3);
+    const anchor = this.world.anchors().cow;
+    if (anchor) {
+      const v = anchor.clone();
+      v.y = 2.05;                       // just above the tiny crown
+      v.project(this.camera);
+      if (v.z <= 1) {
+        const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+        this.ui.speechBubbleImage(x, y, pick(this.#cowBubbleUrls), 3500);
+      }
+    }
+    this.#advanceDaily('cow');
+    this.ui.toast('THE COW', pick(it.lines));
+  }
+
+  /** Let the cow offer unsolicited artworld commentary while the court is in session. */
+  #updateCowSpeech(dt) {
+    if (this.world.current !== 'dildoBall') {
+      this.#cowBubbleTimer = Math.max(this.#cowBubbleTimer, 2);
+      return;
+    }
+
+    this.#cowBubbleTimer -= dt;
+    if (this.#cowBubbleTimer > 0) return;
+
+    // Keep the stream lively enough that bubbles occasionally overlap, but not
+    // so dense that they cover the player's view.
+    this.#cowBubbleTimer = rand(this.#daily.bubbleMin, this.#daily.bubbleMax);
+    const anchor = this.world.anchors().cow;
+    if (!anchor || !this.#cowBubbleUrls.length) return;
+
+    const v = anchor.clone();
+    v.y = 2.2;
+    v.project(this.camera);
+    if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) return;
+
+    const x = (v.x * 0.5 + 0.5) * window.innerWidth + rand(-42, 42);
+    const y = (-v.y * 0.5 + 0.5) * window.innerHeight + rand(-14, 14);
+    this.audio.moo(rand(0.82, 1.18));
+    this.ui.speechBubbleImage(x, y, pick(this.#cowBubbleUrls), rand(3000, 4200));
+    this.#advanceDaily('cow');
+  }
+
+  #advanceDaily(event) {
+    if (this.#daily.event !== event || dailyComplete(this.#dailyStamp)) return;
+    this.#dailyProgress = Math.min(this.#daily.goal, this.#dailyProgress + 1);
+    this.ui.setDailyCard({ title: this.#daily.title, description: this.#daily.desc, progress: `${this.#dailyProgress} / ${this.#daily.goal} — IN PROGRESS` });
+    if (this.#dailyProgress < this.#daily.goal) return;
+    completeDaily(this.#dailyStamp);
+    this.audio.nightChime();
+    this.ui.setDailyCard({ title: this.#daily.title, description: this.#daily.desc, progress: 'COMPLETED', complete: true });
+    this.ui.toast('DAILY MALFUNCTION COMPLETE', 'The artworld has issued you one (1) invisible trophy.', 'good');
   }
 
   /* ============================================================
@@ -966,25 +1230,28 @@ class Game {
       const moving = this.player.update(dt, this.world.colliders());
 
       // the room's pulse: everything in the frame answers the kick
-      const beatPhase = this.audio.technoBeatPhase;
-      this.player.setBeat(this.world.current === 'leatherLatex' ? beatPhase : -1);
-      this.world.update(dt, now, beatPhase);
+      const beatPhase = this.world.current === 'dildoBall'
+        ? this.audio.jazzBeatPhase
+        : this.audio.roomBeatPhase;
+      this.player.setBeat(beatPhase);
 
-      // The Gimp is the murk's epicenter — near him, the house drone is gone
-      if (this.audio.technoPlaying && this.world.current === 'leatherLatex') {
-        const gimp = this.npcs.byId('gimp');
-        if (gimp) {
-          const d = this.player.position.distanceTo(gimp.group.position);
-          this.audio.setTechnoMuffle(d > 7.5);   // step back and it ducks behind the door again
-        }
+      const worldEvent = this.world.update(dt, now, beatPhase);
+      if (worldEvent?.type === 'boxingImpact') {
+        this.audio.boxingImpact(worldEvent.variant);
       }
 
       this.npcs.update(dt, now, this.player.position);
-      this.chatter.update(dt, this.npcs.inCurrentZone, {
-        zoneName: ZONES[this.world.current]?.name ?? 'the scene',
-        night: this.state.night,
-        busy: () => this.mode !== 'playing',
-      });
+      if (this.world.current === 'maxPro') {
+        // the argument is scripted; the ghostwriter is not invited to MAX PRO
+        this.debate.update(dt, { busy: () => this.mode !== 'playing' });
+      } else {
+        this.chatter.update(dt, this.npcs.inCurrentZone, {
+          zoneName: ZONES[this.world.current]?.name ?? 'the scene',
+          night: this.state.night,
+          busy: () => this.mode !== 'playing',
+        });
+      }
+
       this.paint.update(dt);
       this.hand.update(dt, { moving, sprinting: this.player.sprinting });
       this.arti.update(dt);
@@ -999,6 +1266,8 @@ class Game {
       if (this.state.meters.heat > 0) {
         this.state.addMeter('heat', -SWING.heatDecayPerSec * dt, '');
       }
+
+      this.#updateCowSpeech(dt);
 
       this.#updateInteractPrompt();
     }
@@ -1035,6 +1304,22 @@ class Game {
       this.#interactTarget = null;
       this.ui.interactPrompt(null);
     }
+  }
+
+  #playNextRecord() {
+    const keys = Object.keys(MUSIC);
+    const current = keys.indexOf(this.#recordKey);
+    this.#recordKey = keys[(current + 1 + keys.length) % keys.length];
+    if (this.world.current === 'dildoBall') {
+      this.world.setRecordPlayerState(null);
+      this.ui.toast('THE ROYAL SOUND POLICY', `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`, 'good');
+      return;
+    }
+    this.audio.setMusic(this.#recordKey, MUSIC);
+    this.audio.setRoomScore(this.world.current, false);
+    this.world.setRecordPlayerState(this.#recordKey);
+    this.ui.setNowPlaying(MUSIC_TITLES[this.#recordKey]);
+    this.ui.toast('THE COMMUNAL RECORD PLAYER', `Now spinning: ${MUSIC_TITLES[this.#recordKey]}. Every room hears it.`, 'good');
   }
 }
 

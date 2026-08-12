@@ -64,7 +64,8 @@
 
     <!-- Now playing chip -->
     <div id="now-playing" class="hidden">
-      <span class="np-icon">♫</span><span id="np-title">…</span>
+      <span class="np-icon">◉</span><span id="np-title">…</span>
+      <button id="np-next" aria-label="Play the next record" title="Next record">▶│</button>
       <button id="np-stop" aria-label="Stop the music">■</button>
     </div>
 
@@ -186,6 +187,33 @@
     </div>
   </section>
 
+  <!-- ============ ARTI CALL — Milo is unhappy with the painter ============ -->
+  <section id="arti-call" class="hidden" role="dialog" aria-modal="true" aria-label="ARTI call with Milo">
+    <div class="call-screen">
+      <header class="call-header">
+        <div class="call-status"><span class="call-live-dot"></span> ARTI CALL · LIVE</div>
+        <div class="call-duration" id="call-duration">00:00</div>
+      </header>
+      <div class="call-stage">
+        <div class="call-signal" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="call-avatar-wrap">
+          <img id="call-portrait" class="call-portrait" src="puplic/people/collector.png" alt="Milo Mister Madsen" />
+          <div class="call-speaking-ring" aria-hidden="true"></div>
+        </div>
+        <div class="call-name" id="call-name">Milo “Mister M” Madsen</div>
+        <div class="call-handle" id="call-handle">@milo.collects</div>
+        <div class="call-role" id="call-role">Collector — Host of the Private Party</div>
+        <div class="call-caption" id="call-caption">Connecting the portfolio...</div>
+      </div>
+      <div class="call-transcript" id="call-transcript" aria-live="polite"></div>
+      <div class="call-options" id="call-options" role="group" aria-label="Call responses"></div>
+      <footer class="call-footer">
+        <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> answer the collector</span>
+        <button class="btn ghost call-end" id="call-end">End call <kbd>Esc</kbd></button>
+      </footer>
+    </div>
+  </section>
+
   <!-- ============ THE SÉANCE ============ -->
   <section id="seance" class="hidden" role="dialog" aria-modal="true" aria-label="The séance">
     <div class="seance-card">
@@ -222,6 +250,12 @@
       <p class="title-kicker">AN ARTWORLD DESCENT IN THREE NIGHTS</p>
       <h1 class="wordmark">PAINTER<span class="wordmark-sub">ASCENSION</span></h1>
       <p class="title-tag">The Market has corrupted the Eight Virtues of Art.<br/>You have a brush, a grudge, and three studios left to survive.</p>
+      <section id="daily-card" class="daily-card" aria-label="Today's curatorial malfunction">
+        <div class="daily-kicker">TODAY'S CURATORIAL MALFUNCTION</div>
+        <strong id="daily-title">LOADING THE OMEN</strong>
+        <p id="daily-description">The artworld is consulting a damp spreadsheet.</p>
+        <div id="daily-progress" class="daily-progress">RETURN TO FIND OUT</div>
+      </section>
       <nav class="title-menu" aria-label="Main menu">
         <button class="btn primary xl" id="btn-begin">Begin Night One</button>
         <button class="btn ghost" id="btn-howto">How to Play</button>
@@ -229,6 +263,31 @@
       </nav>
       <div class="endings-strip" id="endings-strip" aria-label="Endings discovered"></div>
       <p class="title-foot">A keyboard & mouse are required. Headphones recommended. No critics were harmed irreversibly.</p>
+    </div>
+  </section>
+
+  <!-- Opening film — the situation, before the player becomes responsible for it. -->
+  <section id="onboarding" class="hidden" role="dialog" aria-modal="true" aria-label="Opening story">
+    <div class="film-grain" aria-hidden="true"></div>
+    <button class="film-skip" id="onboarding-skip">Skip film <kbd>Esc</kbd></button>
+    <div class="film-frame" id="onboarding-frame" data-scene="garret">
+      <div class="film-image" aria-hidden="true">
+        <div class="film-moon"></div>
+        <div class="film-window"></div>
+        <div class="film-canvas"></div>
+        <div class="film-phone"><span>241</span></div>
+        <div class="film-invite">BIANCA<br><small>PRIVATE VIEW</small></div>
+        <div class="film-figures"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="film-copy" aria-live="polite">
+        <p class="film-kicker" id="onboarding-kicker">OSLO · 02:13</p>
+        <h2 id="onboarding-title">YOU ARE STILL A PAINTER.</h2>
+        <p id="onboarding-body">Your garret is cold. Rent is late. The canvas is blank. Outside, the artworld is having a party without you.</p>
+      </div>
+      <div class="film-controls">
+        <div class="film-progress" id="onboarding-progress" aria-label="Scene 1 of 5"></div>
+        <button class="btn primary" id="onboarding-next">Continue <kbd>Space</kbd></button>
+      </div>
     </div>
   </section>
 

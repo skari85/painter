@@ -6,7 +6,7 @@
  */
 
 import { clamp, rand, pick } from './utils.js';
-import { MUSIC_LEVEL } from './config.js';
+import { MUSIC_LEVEL, ROOM_SCORES } from './config.js';
 
 
 /* Vowel formant pairs (F1, F2) — the mumble alphabet: a, e, i, o, u. */
@@ -19,6 +19,7 @@ const MOODS = {
   leatherLatex: { freqs: [196, 246.9, 392], cutoff: 1400, gain: 0.028 },
   galleria:    { freqs: [146.8, 220, 293.7], cutoff: 900, gain: 0.035 },
   vault:       { freqs: [55, 82.4, 110], cutoff: 380,   gain: 0.07 },
+  gildedFork:  { freqs: [98, 147, 196], cutoff: 720,  gain: 0.045 },
   off:         { freqs: [], cutoff: 400, gain: 0 },
 };
 
@@ -36,6 +37,27 @@ const TECHNO = {
 
 export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
 
+/* The Dildo Ball's house band: a weird jazz-tronica seance. Broken beat,
+   detuned Rhodes-ish keys, a sub that forgets the changes, and little
+   synth ghosts wandering the upper register. 96 BPM, swing optional,
+   taste negotiable. */
+const JAZZ = {
+  bpm: 96,
+  level: 0.34,
+  swing: 0.62,        // how drunk the ride pattern is
+  chords: [           // Fm9 → Bbm7 → Dbmaj7#11 → C7alt — the court's changes, broken
+    [174.61, 207.65, 261.63, 311.13, 392.0],
+    [116.54, 174.61, 207.65, 261.63, 311.13],
+    [138.59, 174.61, 220.0, 261.63, 349.23],
+    [130.81, 164.81, 233.08, 277.18, 311.13],
+  ],
+  bassRoots: [43.65, 58.27, 34.65, 65.41],    // F1 Bb1 Db2 C2 — the sub is confused
+  melodyScale: [349.23, 392.0, 466.16, 523.25, 622.25, 698.46, 830.61],
+  muffleCutoff: 300,
+  muffleLevel: 0.14,
+};
+
+
 export class AudioEngine {
   #ctx = null;
   #master = null;
@@ -49,6 +71,12 @@ export class AudioEngine {
   #fadeTimer = null;
   #techno = null;      // { gain, timer } while the leather room is playing
   #technoStep = 0;
+  #jazz = null;        // the court's combo, while the Dildo Ball is in session
+  #jazzRequested = false;
+  #jazzStep = 0;
+  #roomScore = null;   // one profile-driven procedural rig for the current room
+  #roomScoreKey = null;
+  #roomScoreStep = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -72,6 +100,8 @@ export class AudioEngine {
     }
     // if music was requested before the first gesture, retry now
     if (this.#music?.paused) this.#music.play().catch(() => {});
+    if (this.#roomScoreKey && !this.#roomScore) this.#startRoomScore(this.#roomScoreKey);
+    if (this.#jazzRequested && !this.#jazz) this.#startJazzRig();
   }
 
   setVolume(v) {
@@ -173,6 +203,155 @@ export class AudioEngine {
     src.stop(t + attack + decay + 0.05);
   }
 
+  /* ---------------- generated room scores ---------------- */
+
+  /** Select a room's coded score, or disable it while a communal record plays. */
+  setRoomScore(zoneKey, enabled = true) {
+    const nextKey = enabled && ROOM_SCORES[zoneKey] ? zoneKey : null;
+    if (this.#roomScoreKey === nextKey && (!!this.#roomScore === !!nextKey)) return;
+    this.#roomScoreKey = nextKey;
+    this.#stopRoomScoreRig();
+    if (nextKey && this.#ctx) this.#startRoomScore(nextKey);
+  }
+
+  stopRoomScore() { this.setRoomScore(null, false); }
+
+  get roomScorePlaying() { return !!this.#roomScore; }
+  get roomScoreName() { return this.#roomScoreKey; }
+
+  /** 0..1 phase of the current quarter-note beat; -1 while records override it. */
+  get roomBeatPhase() {
+    const s = this.#roomScore;
+    if (!s || !this.#ctx) return -1;
+    const beatDur = s.stepDur * 4;
+    return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
+  }
+
+  #startRoomScore(key) {
+    const profile = ROOM_SCORES[key];
+    if (!profile || !this.#ctx || this.#roomScore) return;
+    const t = this.#ctx.currentTime;
+    const filter = this.#ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = profile.cutoff;
+    filter.Q.value = key === 'leatherLatex' ? 5.5 : 1.4;
+    filter.connect(this.#master);
+
+    const bus = this.#ctx.createGain();
+    bus.gain.value = 0.0001;
+    bus.gain.setTargetAtTime(profile.level, t, 0.65);
+    bus.connect(filter);
+
+    // A quiet harmonic bed makes travel crossfades musical rather than abrupt.
+    const padGain = this.#ctx.createGain();
+    padGain.gain.value = key === 'vault' ? 0.025 : 0.018;
+    const padFilter = this.#ctx.createBiquadFilter();
+    padFilter.type = 'lowpass';
+    padFilter.frequency.value = Math.max(180, profile.cutoff * 0.55);
+    const padOscs = profile.pad.map((semi, i) => {
+      const osc = this.#ctx.createOscillator();
+      osc.type = i % 2 ? profile.wave : 'sine';
+      osc.frequency.value = profile.root * 2 * Math.pow(2, semi / 12);
+      osc.detune.value = rand(-9, 9);
+      osc.connect(padFilter);
+      osc.start(t);
+      return osc;
+    });
+    padFilter.connect(padGain).connect(bus);
+
+    const stepDur = 60 / profile.bpm / 4;
+    this.#roomScore = {
+      key, profile, bus, filter, padOscs,
+      stepDur, startTime: t, nextTime: t + 0.06,
+      timer: setInterval(() => this.#roomScoreTick(), 40),
+    };
+    this.#roomScoreStep = 0;
+  }
+
+  #stopRoomScoreRig() {
+    const s = this.#roomScore;
+    if (!s) return;
+    this.#roomScore = null;
+    clearInterval(s.timer);
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    s.bus.gain.cancelScheduledValues(t);
+    s.bus.gain.setTargetAtTime(0.0001, t, 0.28);
+    s.padOscs.forEach((osc) => { try { osc.stop(t + 1.5); } catch { /* gone */ } });
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 1800);
+  }
+
+  #roomScoreTick() {
+    const s = this.#roomScore;
+    if (!s || !this.#ctx) return;
+    const horizon = this.#ctx.currentTime + 0.12;
+    while (s.nextTime < horizon) {
+      this.#roomScoreStep16(this.#roomScoreStep, s.nextTime, s);
+      this.#roomScoreStep = (this.#roomScoreStep + 1) % 64;
+      s.nextTime += s.stepDur;
+    }
+  }
+
+  #scoreTone(t, freq, { bus, type = 'sine', peak = 0.1, decay = 0.2, cutoff = 1200, slide = 1 }) {
+    const osc = this.#ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(Math.max(freq, 1), t);
+    if (slide !== 1) osc.frequency.exponentialRampToValueAtTime(Math.max(freq * slide, 1), t + decay);
+    const filter = this.#ctx.createBiquadFilter();
+    filter.type = 'lowpass'; filter.frequency.value = cutoff; filter.Q.value = 2.5;
+    const gain = this.#ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    osc.connect(filter).connect(gain).connect(bus);
+    osc.start(t); osc.stop(t + decay + 0.04);
+  }
+
+  #scoreNoise(t, { bus, peak, decay, freq, type = 'highpass' }) {
+    const src = this.#ctx.createBufferSource();
+    src.buffer = this.#noiseBuffer;
+    const filter = this.#ctx.createBiquadFilter();
+    filter.type = type; filter.frequency.value = freq;
+    const gain = this.#ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(peak, t + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    src.connect(filter).connect(gain).connect(bus);
+    src.start(t, rand(0, 0.8)); src.stop(t + decay + 0.03);
+  }
+
+  #roomScoreStep16(step, t, s) {
+    const p = s.profile;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * p.swing : t;
+
+    if (p.kick.includes(pos)) {
+      this.#scoreTone(swung, 145, { bus: s.bus, peak: 0.56, decay: 0.22, cutoff: 500, slide: 0.24 });
+    }
+    if (p.snare.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: 0.12, decay: 0.12, freq: 1100, type: 'bandpass' });
+    if (p.hats.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: 0.045, decay: 0.045, freq: 6500 });
+
+    if (pos % 2 === 0) {
+      const semi = p.bass[pos / 2];
+      if (semi !== null && semi !== undefined) {
+        const freq = p.root * Math.pow(2, semi / 12);
+        this.#scoreTone(swung, freq, { bus: s.bus, type: p.bassWave, peak: 0.16, decay: s.stepDur * 1.7, cutoff: Math.min(p.cutoff, 520), slide: s.key === 'vault' ? 0.92 : 1 });
+      }
+    }
+
+    const scaleIndex = p.lead[pos];
+    if (scaleIndex !== null && scaleIndex !== undefined && (step < 48 || pos % 3 !== 0)) {
+      const semi = p.scale[scaleIndex % p.scale.length];
+      const octave = s.key === 'maxPro' ? 4 : 3;
+      const freq = p.root * Math.pow(2, semi / 12) * octave;
+      this.#scoreTone(swung, freq, { bus: s.bus, type: p.wave, peak: 0.035, decay: s.stepDur * (s.key === 'dildoBall' ? 3 : 1.35), cutoff: p.cutoff * 1.4, slide: s.key === 'maxPro' ? 1.06 : 1 });
+    }
+
+    if (p.texture > 0 && pos === 15 && Math.random() < p.texture) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.055, decay: s.stepDur * 4, freq: 2600, type: 'bandpass' });
+    }
+  }
+
   /* ---------------- game verbs ---------------- */
 
   uiMove()    { this.#tone({ freq: 1150, type: 'sine', peak: 0.06, decay: 0.05 }); }
@@ -205,6 +384,27 @@ export class AudioEngine {
 
   gasp() {
     this.#tone({ freq: 380, freqEnd: 760, type: 'sine', peak: 0.1, decay: 0.18 });
+  }
+
+  /** MAX PRO's ring: glove thud, synthetic bell and an inhuman little grunt. */
+  boxingImpact(variant = 0) {
+    if (!this.#ctx) return;
+    const hard = variant % 3 === 2;
+    this.#noise({
+      peak: hard ? 0.28 : 0.2,
+      attack: 0.002,
+      decay: hard ? 0.16 : 0.11,
+      filterFreq: hard ? 760 : 1050,
+      filterEnd: 180,
+      q: 1.8,
+      type: 'bandpass',
+    });
+    this.#tone({ freq: hard ? 132 : 168, freqEnd: 54, type: 'triangle', peak: 0.2, decay: 0.15 });
+    this.#tone({ freq: 620 + variant * 137, freqEnd: 310 + variant * 41, type: 'square', peak: 0.035, attack: 0.008, decay: 0.12 });
+    setTimeout(() => {
+      this.talkBlip(variant % 2 ? 0.58 : 0.76);
+      if (hard) this.#tone({ freq: 74, freqEnd: 118, type: 'sawtooth', peak: 0.06, attack: 0.03, decay: 0.24 });
+    }, 35);
   }
 
   /** A mumble-voice syllable: buzzy glottal saw → throat → two vowel formants. */
@@ -241,6 +441,80 @@ export class AudioEngine {
     voice.connect(this.#master);
     osc.start(t);
     osc.stop(t + dur + 0.05);
+  }
+
+  /**
+   * The royal cow speaks. A synthesized moo: low glottal buzz with vibrato
+   * that fades in, two formants opening from a nasal "mmm" into a round
+   * "ooo", a tired downward pitch sag at the end, and breath underneath.
+   * Fail-soft like everything else — no context, no cow.
+   */
+  moo(pitch = 1) {
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    const dur = rand(0.9, 1.4);
+    const f0 = 92 * pitch * rand(0.92, 1.08);          // adult-cow register
+
+    // glottal source: sawtooth buzz, steady then sagging — the moo gives up
+    const osc = this.#ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.setValueAtTime(f0, t + dur * 0.55);
+    osc.frequency.exponentialRampToValueAtTime(f0 * 0.72, t + dur);
+    const vib = this.#ctx.createOscillator();
+    vib.frequency.value = rand(4.5, 6);
+    const vibAmt = this.#ctx.createGain();
+    vibAmt.gain.setValueAtTime(0.0001, t);
+    vibAmt.gain.linearRampToValueAtTime(f0 * 0.05, t + dur * 0.4);
+    vib.connect(vibAmt).connect(osc.frequency);
+
+    // the mouth: low-passed throat into two formants that open and re-close
+    const throat = this.#ctx.createBiquadFilter();
+    throat.type = 'lowpass';
+    throat.frequency.value = 1600;
+    throat.Q.value = 0.6;
+    const f1 = this.#ctx.createBiquadFilter();
+    f1.type = 'bandpass';
+    f1.Q.value = 4;
+    f1.frequency.setValueAtTime(240, t);               // mmm — mouth shut
+    f1.frequency.exponentialRampToValueAtTime(720, t + dur * 0.35);
+    f1.frequency.exponentialRampToValueAtTime(420, t + dur);
+    const f2 = this.#ctx.createBiquadFilter();
+    f2.type = 'bandpass';
+    f2.Q.value = 6;
+    f2.frequency.setValueAtTime(650, t);
+    f2.frequency.exponentialRampToValueAtTime(1050, t + dur * 0.35);
+    f2.frequency.exponentialRampToValueAtTime(800, t + dur);
+
+    // amplitude: slow nasal attack, full open "OO", long dignified sag
+    const g = this.#ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + dur * 0.18);
+    g.gain.exponentialRampToValueAtTime(0.5, t + dur * 0.38);
+    g.gain.setValueAtTime(0.5, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(throat);
+    throat.connect(f1).connect(g);
+    throat.connect(f2).connect(g);
+    g.connect(this.#master);
+
+    // breath: a soft bovine exhale under the whole statement
+    const breath = this.#ctx.createBufferSource();
+    breath.buffer = this.#noiseBuffer;
+    breath.loop = true;
+    const breathF = this.#ctx.createBiquadFilter();
+    breathF.type = 'lowpass';
+    breathF.frequency.value = 500;
+    const breathG = this.#ctx.createGain();
+    breathG.gain.setValueAtTime(0.0001, t);
+    breathG.gain.exponentialRampToValueAtTime(0.05, t + dur * 0.3);
+    breathG.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    breath.connect(breathF).connect(breathG).connect(this.#master);
+
+    osc.start(t); osc.stop(t + dur + 0.05);
+    vib.start(t); vib.stop(t + dur + 0.05);
+    breath.start(t, rand(0, 0.8)); breath.stop(t + dur + 0.05);
   }
 
   footstep() {
@@ -494,6 +768,233 @@ export class AudioEngine {
       });
     }
   }
+
+  /* ---------------- the dildo ball's royal jazz combo ---------------- */
+
+  /**
+   * Start the court's band: low electric piano, brushed kit, lazy 84 BPM.
+   * Idempotent, fail-soft. Same lookahead-scheduler discipline as the
+   * techno rig, but the groove is loose on purpose — swing, not grid.
+   */
+  startJazz() {
+    this.#jazzRequested = true;
+    this.#startJazzRig();
+  }
+
+  #startJazzRig() {
+    if (!this.#ctx || this.#jazz || !this.#jazzRequested) return;
+    const t = this.#ctx.currentTime;
+
+    // the ballroom door: open inside the court, a warm murmur from outside
+    const doorFilter = this.#ctx.createBiquadFilter();
+    doorFilter.type = 'lowpass';
+    doorFilter.frequency.value = 19000;
+    doorFilter.Q.value = 0.4;
+    doorFilter.connect(this.#master);
+
+    const bus = this.#ctx.createGain();
+    bus.gain.value = 0.0001;
+    bus.gain.setTargetAtTime(JAZZ.level * this.#volume, t, 1.6);
+    bus.connect(doorFilter);
+
+    // the room tone of royalty: a soft pink-ish hush, like velvet air
+    const hushSrc = this.#ctx.createBufferSource();
+    hushSrc.buffer = this.#noiseBuffer;
+    hushSrc.loop = true;
+    const hushFilter = this.#ctx.createBiquadFilter();
+    hushFilter.type = 'lowpass';
+    hushFilter.frequency.value = 420;
+    const hushGain = this.#ctx.createGain();
+    hushGain.gain.value = 0.012;
+    hushSrc.connect(hushFilter).connect(hushGain).connect(bus);
+    hushSrc.start(t, rand(0, 0.8));
+
+    const stepDur = 60 / JAZZ.bpm / 4;           // 16th note, loosely held
+    this.#jazz = {
+      bus, doorFilter, hushSrc,
+      nextTime: t + 0.08,
+      startTime: t,
+      timer: setInterval(() => this.#jazzTick(), 50),
+      stepDur,
+    };
+    this.#jazzStep = 0;
+  }
+
+  /** The ballroom door. muffled=true turns the combo into a warm rumor. */
+  setJazzMuffle(muffled) {
+    const s = this.#jazz;
+    if (!s || !this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    s.doorFilter.frequency.cancelScheduledValues(t);
+    s.doorFilter.frequency.setTargetAtTime(muffled ? JAZZ.muffleCutoff : 19000, t, 0.4);
+    s.bus.gain.cancelScheduledValues(t);
+    s.bus.gain.setTargetAtTime((muffled ? JAZZ.muffleLevel : JAZZ.level) * this.#volume, t, 0.4);
+  }
+
+  /** 0..1 phase of the current beat — the disco ball answers every kick. */
+  get jazzBeatPhase() {
+    const s = this.#jazz;
+    if (!s || !this.#ctx) return -1;
+    const beatDur = s.stepDur * 4;
+    return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
+  }
+
+  stopJazz() {
+    this.#jazzRequested = false;
+    const s = this.#jazz;
+    if (!s) return;
+    this.#jazz = null;
+    clearInterval(s.timer);
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime;
+    s.bus.gain.cancelScheduledValues(t);
+    s.bus.gain.setTargetAtTime(0.0001, t, 0.6);
+    try { s.hushSrc.stop(t + 3); } catch { /* already gone */ }
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 3200);
+  }
+
+  get jazzPlaying() { return !!this.#jazz; }
+
+  /** Lookahead scheduler: book every 16th that falls due inside the window. */
+  #jazzTick() {
+    const s = this.#jazz;
+    if (!s || !this.#ctx) return;
+    const horizon = this.#ctx.currentTime + 0.15;
+    while (s.nextTime < horizon) {
+      this.#jazzStep16(this.#jazzStep, s.nextTime, s);
+      this.#jazzStep = (this.#jazzStep + 1) % 64;   // four bars, four chords
+      s.nextTime += s.stepDur;
+    }
+  }
+
+  /**
+   * One voice of the combo, scheduled into the rig's bus.
+   * The "piano" is a broken Rhodes: a detuned saw body with a sine tine
+   * on top, low-passed into the carpet, then pitch-drunk. Humanized,
+   * always slightly late, occasionally wrong on purpose.
+   */
+  #jazzVoice(t, freq, { peak = 0.1, attack = 0.012, decay = 1.1, tine = 0.35, bus, drunk = 0.5 }) {
+    const body = this.#ctx.createOscillator();
+    body.type = 'sawtooth';
+    body.frequency.value = freq * rand(0.985, 1.015);
+    body.detune.value = rand(-35, 35);
+    const tineOsc = this.#ctx.createOscillator();
+    tineOsc.type = 'sine';
+    tineOsc.frequency.value = freq * 2 * rand(0.99, 1.01);
+    // the pitch wobbles like the keyboardist is leaning on the pitch wheel
+    if (drunk > 0) {
+      const wob = this.#ctx.createOscillator();
+      wob.frequency.value = rand(2.2, 5.5);
+      const wobAmt = this.#ctx.createGain();
+      wobAmt.gain.value = freq * 0.008 * drunk;
+      wob.connect(wobAmt).connect(body.frequency);
+      wob.start(t); wob.stop(t + attack + decay + 0.05);
+    }
+    const lp = this.#ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1800;
+    lp.Q.value = 1.4;
+    const g = this.#ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+    const tg = this.#ctx.createGain();
+    tg.gain.setValueAtTime(0.0001, t);
+    tg.gain.exponentialRampToValueAtTime(Math.max(peak * tine, 0.0002), t + attack * 0.6);
+    tg.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay * 0.4);
+    body.connect(lp).connect(g).connect(bus);
+    tineOsc.connect(tg).connect(bus);
+    body.start(t); body.stop(t + attack + decay + 0.05);
+    tineOsc.start(t); tineOsc.stop(t + attack + decay * 0.5);
+  }
+
+  /** One 16th-note of the court's groove. step 0..63, absolute time `t`. */
+  #jazzStep16(step, t, s) {
+    const beat = step % 16;
+    const bar = Math.floor(step / 16);
+    const chord = JAZZ.chords[bar];
+    const late = () => rand(0, 0.035);         // the band is good, not sober
+
+    // broken hats: a swung tick on 1, the and-of-2, and the e-of-4
+    if (beat === 0 || beat === 7 || beat === 10 || beat === 13) {
+      const tt = t + late();
+      const src = this.#ctx.createBufferSource();
+      src.buffer = this.#noiseBuffer;
+      const bp = this.#ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 7200; bp.Q.value = 3.5;
+      const g = this.#ctx.createGain();
+      const vel = beat === 10 ? 0.03 : 0.05;
+      g.gain.setValueAtTime(0.0001, tt);
+      g.gain.exponentialRampToValueAtTime(vel, tt + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + (beat === 10 ? 0.06 : 0.11));
+      src.connect(bp).connect(g).connect(s.bus);
+      src.start(tt, rand(0, 0.5)); src.stop(tt + 0.15);
+    }
+
+    // glitch snare: 2 and 4, but one of them is always late or wrong
+    if (beat === 4 || beat === 12) {
+      const tt = t + late() + (beat === 12 ? rand(0.01, 0.05) : 0);
+      const src = this.#ctx.createBufferSource();
+      src.buffer = this.#noiseBuffer;
+      const bp = this.#ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 1600 + rand(-300, 400); bp.Q.value = 1.2;
+      const g = this.#ctx.createGain();
+      g.gain.setValueAtTime(0.0001, tt);
+      g.gain.exponentialRampToValueAtTime(0.055, tt + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.11);
+      src.connect(bp).connect(g).connect(s.bus);
+      src.start(tt, rand(0, 0.5)); src.stop(tt + 0.16);
+    }
+
+    // the king's stagger: a lopsided kick on 1 and the uh-of-3
+    if (beat === 0 || beat === 11) {
+      const tt = t + late();
+      const osc = this.#ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, tt);
+      osc.frequency.exponentialRampToValueAtTime(36, tt + 0.1);
+      const g = this.#ctx.createGain();
+      g.gain.setValueAtTime(0.0001, tt);
+      g.gain.exponentialRampToValueAtTime(beat === 0 ? 0.38 : 0.18, tt + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.22);
+      osc.connect(g).connect(s.bus);
+      osc.start(tt); osc.stop(tt + 0.28);
+    }
+
+    // the confused sub: root on 1, a fifth that arrives late on 3, and
+    // sometimes a wrong note that the band pretends was intentional
+    if (beat === 0 || beat === 8 || (beat === 14 && Math.random() < 0.35)) {
+      const root = JAZZ.bassRoots[bar];
+      const f = beat === 0 ? root : beat === 8 ? root * 1.5 : root * 1.19; // the wrong one
+      this.#jazzVoice(t + late(), f, { peak: 0.18, attack: 0.015, decay: 1.1, tine: 0.06, bus: s.bus, drunk: 0.3 });
+    }
+
+    // the broken Rhodes: the chord arrives on the and-of-1, detuned, held
+    if (beat === 2) {
+      const tt = t + late();
+      chord.forEach((f, i) =>
+        this.#jazzVoice(tt + i * 0.02, f, { peak: 0.06, attack: 0.02, decay: 2.6, tine: 0.22, bus: s.bus, drunk: 0.8 }));
+    }
+    // a second, smaller apology on the and-of-3, some bars only
+    if (beat === 10 && bar % 2 === 1) {
+      const tt = t + late();
+      chord.slice(1, 4).forEach((f, i) =>
+        this.#jazzVoice(tt + i * 0.018, f * 2, { peak: 0.032, attack: 0.015, decay: 1.7, tine: 0.3, bus: s.bus, drunk: 0.7 }));
+    }
+
+    // the synth ghosts: sparse, warbly, mostly on the off-beats, sometimes
+    // sliding in from nowhere like they remembered the tune mid-note
+    if ((beat === 6 || beat === 14) && Math.random() < 0.45) {
+      const f = pick(JAZZ.melodyScale);
+      const tt = t + late() + rand(0, 0.05);
+      this.#jazzVoice(tt, f, { peak: 0.055, attack: 0.04, decay: 2.0, tine: 0.5, bus: s.bus, drunk: 1.6 });
+      if (Math.random() < 0.3) {
+        // a harmony ghost, a third up, slightly more drunk
+        this.#jazzVoice(tt + 0.06, f * 1.26, { peak: 0.028, attack: 0.05, decay: 1.6, tine: 0.5, bus: s.bus, drunk: 2.0 });
+      }
+    }
+  }
+
 
   /* ---------------- ambient drone ---------------- */
 

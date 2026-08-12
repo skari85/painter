@@ -78,12 +78,116 @@ export const ZONES = {
   galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
   vault:       { name: 'THE VAULT',         mood: 'vault' },
   leatherLatex: { name: 'THE LEATHER & LATEX ROOMS', mood: 'leatherLatex' },
+  gildedFork:  { name: 'THE GILDED FORK',   mood: 'gildedFork' },
+  maxPro:      { name: 'MAX PRO KUNST 2000', mood: 'galleria' },
+  dildoBall:   { name: 'THE DILDO BALL',    mood: 'off' },
+  daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
 };
+
+/**
+ * Seven coded club identities. Patterns are one 16-step bar; bass values are
+ * semitone offsets from root and lead values are indexes into scale.
+ */
+export const ROOM_SCORES = {
+  garret: {
+    bpm: 82, level: 0.28, root: 55, scale: [0, 3, 5, 7, 10, 12],
+    wave: 'triangle', bassWave: 'sine', cutoff: 820, pad: [0, 3, 7, 10],
+    bass: [0, null, 0, 7, null, 3, 0, null], lead: [null, null, 4, null, null, 2, null, 5, null, null, 1, null, null, 3, null, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.08, texture: 0.08,
+  },
+  galleria: {
+    bpm: 118, level: 0.27, root: 73.42, scale: [0, 2, 4, 7, 9, 11, 14],
+    wave: 'sine', bassWave: 'triangle', cutoff: 2400, pad: [0, 4, 7, 11],
+    bass: [0, 0, 7, 0, 9, 7, 4, 11], lead: [6, null, 4, null, 2, null, 5, 3, null, 1, null, 4, 2, null, 5, null],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0, texture: 0.03,
+  },
+  vault: {
+    bpm: 70, level: 0.36, root: 36.71, scale: [0, 1, 5, 6, 7, 10, 12],
+    wave: 'square', bassWave: 'sawtooth', cutoff: 360, pad: [0, 1, 6, 10],
+    bass: [0, null, 0, 1, null, 6, 0, -5], lead: [null, null, null, 3, null, null, 1, null, null, 4, null, null, null, 2, null, 5],
+    kick: [0, 3, 8, 11], snare: [6, 14], hats: [1, 5, 9, 13], swing: 0.03, texture: 0.22,
+  },
+  leatherLatex: {
+    bpm: 126, level: 0.34, root: 55, scale: [0, 3, 5, 7, 10, 12, 15],
+    wave: 'sawtooth', bassWave: 'sawtooth', cutoff: 1050, pad: [0, 3, 7, 10],
+    bass: [0, 0, 12, 0, 7, 0, 3, 0], lead: [null, 0, null, 2, null, 1, 4, null, null, 3, null, 2, 5, null, 1, null],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14, 15], swing: 0, texture: 0.12,
+  },
+  gildedFork: {
+    bpm: 108, level: 0.29, root: 65.41, scale: [0, 2, 4, 7, 9, 12, 14],
+    wave: 'triangle', bassWave: 'square', cutoff: 1750, pad: [0, 4, 7, 9],
+    bass: [0, 7, 4, 9, 0, 12, 7, 4], lead: [5, null, 3, 1, null, 4, 2, null, 6, 4, null, 2, 0, null, 3, 1],
+    kick: [0, 6, 8, 14], snare: [4, 12], hats: [2, 5, 7, 10, 13, 15], swing: 0.12, texture: 0.05,
+  },
+  maxPro: {
+    bpm: 138, level: 0.25, root: 61.74, scale: [0, 1, 4, 6, 8, 11, 13],
+    wave: 'square', bassWave: 'triangle', cutoff: 3200, pad: [0, 1, 6, 8],
+    bass: [0, 6, null, 1, 8, null, 13, 4], lead: [6, 0, null, 5, 1, null, 4, 2, null, 6, 3, null, 0, 5, null, 1],
+    kick: [0, 5, 8, 10, 14], snare: [3, 7, 12, 15], hats: [1, 2, 6, 9, 11, 13], swing: 0.02, texture: 0.18,
+  },
+  dildoBall: {
+    bpm: 96, level: 0.3, root: 43.65, scale: [0, 3, 5, 7, 10, 12, 14],
+    wave: 'sine', bassWave: 'triangle', cutoff: 1450, pad: [0, 3, 7, 10, 14],
+    bass: [0, null, 7, 10, 3, null, 12, 5], lead: [null, 5, null, 2, 6, null, 3, null, 1, null, 4, 2, null, 6, null, 3],
+    kick: [0, 7, 11], snare: [4, 12, 15], hats: [0, 3, 7, 10, 13], swing: 0.2, texture: 0.1,
+  },
+  daylightClub: {
+    bpm: 132, level: 0.36, root: 49, scale: [0, 2, 3, 7, 10, 12, 14],
+    wave: 'sawtooth', bassWave: 'square', cutoff: 1850, pad: [0, 3, 7, 10],
+    bass: [0, 0, 12, 3, 7, 0, 10, 2], lead: [null, 5, 1, null, 3, null, 6, 2, null, 4, null, 0, 5, null, 2, 6],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14, 15], swing: 0.01, texture: 0.2,
+  },
+};
+
+
+
+/** MAX PRO KUNST 2000 — an oversized white cube, newsroom, club, and boxing broadcast. */
+export const MAXPRO = {
+  room: { w: 42, d: 24, h: 9 },       // forty metres of wall, and then some
+  painting: { w: 0.11, h: 0.08, y: 1.62, z: -11.78 },   // 11 × 8 cm, oil on canvas, immense
+  benchZ: 9.6,                        // the bench is positioned absurdly far away
+};
+
 
 export const STORAGE = {
   settings: 'painter.settings.v1',
   endings:  'painter.endings.v1',
+  meta:     'painter.meta.v1',
 };
+
+/** Daily mutations keep repeat runs recognizable, but never respectable. */
+export const DAILY_PHENOMENA = [
+  {
+    title: 'COW PARLIAMENT',
+    desc: 'The cow has been elected. It will issue three unsolicited statements.',
+    bubbleMin: 0.85, bubbleMax: 2.8, event: 'cow', goal: 3,
+  },
+  {
+    title: 'THE PAINTINGS ARE MOLTING',
+    desc: 'Finish one work before the old skin falls off the easel.',
+    bubbleMin: 1.8, bubbleMax: 5.2, event: 'paint', goal: 1,
+  },
+  {
+    title: 'ARTI IS A SEANCE',
+    desc: 'Open the phone. Something on the other side has followed you.',
+    bubbleMin: 1.5, bubbleMax: 4.5, event: 'arti', goal: 1,
+  },
+  {
+    title: 'MAX PRO HAS SHRUNK',
+    desc: 'Make three marks in the tiny gallery. The walls will deny it.',
+    bubbleMin: 1.8, bubbleMax: 5.2, event: 'splat', goal: 3,
+  },
+  {
+    title: 'THE WALLS HAVE PRONOUNS',
+    desc: 'Appraise three objects. They are tired of being described as surfaces.',
+    bubbleMin: 1.8, bubbleMax: 5.2, event: 'appraise', goal: 3,
+  },
+  {
+    title: 'EVERYONE IS THE SAME PERSON',
+    desc: 'Address two artworld figures. Watch the distinction collapse.',
+    bubbleMin: 1.4, bubbleMax: 4.2, event: 'talk', goal: 2,
+  },
+];
 
 export const ENDINGS = {
   ascension: { name: 'ASCENSION',              blurb: 'Eight virtues, cleansed in pigment.' },

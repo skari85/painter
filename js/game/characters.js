@@ -591,6 +591,374 @@ export const MAINS = {
     playerJabs: { kind: ['You do not have to impress him tonight. You are allowed to be tired.'], witty: ['Your painting is the only guest here not pretending the house is a home.'], brutal: ['You are not gloomy because you are deep. You are gloomy because this room keeps asking you to perform pain.'] },
   },
 
+  /* ============================================================
+     THE GILDED FORK — the big shots, drunk and messed up
+     ============================================================ */
+
+  forkHost: {
+    id: 'forkHost', name: 'Baronessa Brine', shortRole: 'hostess', role: 'Hostess — The Gilded Fork',
+    face: 'puplic/visual assets/character_faces/07-elegant-older-man.png',
+    ego: 140, weak: 'witty', resist: 'brutal',
+    hint: 'She has hosted everyone. Brutality is just another guest she has already seated. Wit is the only thing that can still surprise her.',
+    pace: 0.4, pitch: 0.72, accessory: 'wine', anchor: 'forkHost',
+    palette: { skin: 0xd9c2a8, hair: 0xe8e0cc, top: 0x4a1a2e, bottom: 0x2a1c14 },
+    openers: [
+      'Welcome to my table. The chairs are priced like small apartments. The wine is priced like the chairs.',
+      'You look like someone who paints. We had one of those. We ate him.',
+      'The seating chart is a war crime. I am the tribunal.',
+      'Everyone here is a big shot. Some of them are also people. We are working on it.',
+      'I don\'t do small talk. I do medium talk. Large talk is for the help.',
+    ],
+    countered: [
+      'Ah. Volume. How rustic. The table has heard louder from the soup.',
+      'You raise your voice like a man who has never been seated by a professional.',
+      'The last person who shouted at me is now a footnote in someone else\'s memoir.',
+    ],
+    reactions: {
+      kind: ['...Kindness. At my table. Unprecedented. Slightly suspicious.', 'That was almost warm. The candles approved.'],
+      witty: ['Ha! The table laughs. The table has excellent taste.', 'You are sharper than the cheese knife. I shall have you preserved.'],
+      brutal: ['That was almost a wound. Try again with better tailoring.', 'The table has heard worse. From me.'],
+    },
+    weakHit: ['Stop being clever. The guests are getting ideas.', 'You are making the silverware nervous.'],
+    disarmed: ['Fine. Sit. Have the good wine. It is still a loan.'],
+    dismiss: ['The table moves on. The table always moves on. That is the table\'s one tragedy.', 'Go stand near the bust. It has more patience than I do.'],
+    meltdown: 'THE SEATING CHART IS A LIE. THE WINE IS A LIE. I AM A LIE. SOMEONE ELSE HOST.',
+    barks: [
+      'The candelabra is on fire. The candelabra has always been on fire. It is a feature.',
+      'I once seated a critic next to a mirror. He apologized to himself.',
+      'The cheese wheel is a metaphor. The metaphor is half-eaten.',
+      'Every dinner party is a small war. I am undefeated.',
+    ],
+    playerJabs: {
+      kind: ['You built a room where people still talk to each other. That is rarer than the wine.'],
+      witty: ['Baronessa, your table is so long the toast arrives cold. I respect it.'],
+      brutal: ['You don\'t host dinner parties. You host hostage situations with better flatware.'],
+    },
+  },
+
+  fork1: {
+    id: 'fork1', name: 'Kasper "The Auctioneer" Voll', shortRole: 'auctioneer', role: 'Auctioneer — Going, Going, Gone',
+    face: 'puplic/visual assets/character_faces/12-office-worker.png',
+    ego: 95, weak: 'brutal', resist: 'kind',
+    hint: 'He talks fast, bids faster, and has never been told no in a way he understood. Brutality is the only language he hears.',
+    pace: 1.3, pitch: 1.1, accessory: 'phone', anchor: 'fork1',
+    palette: { skin: 0xd9a184, hair: 0x2a2018, top: 0x2b3a67, bottom: 0x1c1c22 },
+    openers: [
+      'Sold! To the man with the sad eyes and the excellent shoes! That\'s you. You\'re sold.',
+      'I auctioned a sunset once. The buyer got the mountain. The mountain got the buyer.',
+      'Your estimate is low. Your reserve is lower. Your dignity is... let\'s not.',
+      'I can sell anything. I once sold a blank wall to a man who already owned it.',
+      'The gavel is my truth. The truth is tired.',
+    ],
+    countered: [
+      'Kindness! My favorite tell. I\'ll note it in the position I\'m taking on you.',
+      'You\'re sweet. Sweetness is the first thing we budget out.',
+      'Careful — I almost felt the price of that sentence.',
+    ],
+    reactions: {
+      kind: ['Gross. Do it less.', 'Warmth. How regional.'],
+      witty: ['Ha. Careful, I might put that in the catalogue.', 'Funny. I\'ll expense the laugh.'],
+      brutal: ['...Okay. Okay. That is EXACTLY what my father said at the auction.', 'Ouch. Right in the paddle.'],
+    },
+    weakHit: ['The gavel is trembling. I am trembling. Stop it.', 'I pay people to prevent this sensation.'],
+    disarmed: ['...Do you need money? Is that a thing you need? Weird question. Forget it.'],
+    dismiss: ['I have a lot of young artists to emotionally damage. Busy busy.', 'This stopped being accretive.'],
+    meltdown: 'THE HAMMER IS DOWN. THE HAMMER IS ALWAYS DOWN. I AM THE HAMMER.',
+    barks: [
+      'Going once. Going twice. Gone. Like my youth.',
+      'The reserve is a suggestion. The suggestion is a threat.',
+      'I sold the air in this room twice. The second time was a gift.',
+      'Every bid is a small death. I am a serial killer of value.',
+    ],
+    playerJabs: {
+      kind: ['One day you\'ll sell everything and feel nothing, and I\'ll still feel bad for you. That\'s my edge.'],
+      witty: ['Kasper, you\'re not an auctioneer. You\'re a margin call with a microphone.'],
+      brutal: ['You don\'t sell art. You sell the moment artists stop resisting. Same energy, less paperwork.'],
+    },
+  },
+
+  fork2: {
+    id: 'fork2', name: 'Yrsa "The Biennale" Bork', shortRole: 'curator', role: 'Curator — The Biennale of Everything',
+    face: 'puplic/visual assets/character_faces/05-punk-woman.png',
+    ego: 110, weak: 'kind', resist: 'witty',
+    hint: 'She has curated three biennales and remembers none of them. Kindness is the only thing she cannot file under "movements I have survived".',
+    pace: 0.5, pitch: 0.9, accessory: 'clipboard', anchor: 'fork2',
+    palette: { skin: 0xe0b89a, hair: 0x1c1a20, top: 0x3a3a44, bottom: 0x14161c },
+    openers: [
+      'I curated a biennale in a war zone once. The art was fine. The catering was a crime.',
+      'Your work is very "now". I preferred "then". "Then" had better lighting.',
+      'I don\'t select artists. I select the moment artists become visible. You are currently a rumor.',
+      'The theme this year is "post-authenticity". I invented it. I am already bored of it.',
+      'Every wall is a mouth. Every mouth is hungry. I am the one who feeds them.',
+    ],
+    countered: [
+      'Wit. How 2009. I have a drawer of wit at home; I feed it to my other drawer.',
+      'I invented that joke. It was better when it was mine.',
+      'Quips are the coupons of the insecure.',
+    ],
+    reactions: {
+      kind: ['...No. Don\'t be nice to me. I don\'t have a filing system for it.', 'That was... I need to sit with that. On a chaise. With my grudges.'],
+      witty: ['Competent. I shall describe you as competent, and you will thank me.', 'A retort. Charming. I\'ve filed it under "evidence".'],
+      brutal: ['Oh, good. Venom. Venom I can quote.', 'Yes, yes, wound the curator. Very original. Very "page six".'],
+    },
+    weakHit: ['Stop it. Kindness is not a recognized medium.', 'I am the one who disarms people. That is MY formal device.'],
+    disarmed: ['...Your next show. I will attend. Not to review. To... see. Don\'t tell anyone.'],
+    dismiss: ['I have a deadline and you are not going to be in it.', 'This exchange has been provisionally titled "Tuesday".'],
+    meltdown: 'THE BIENNALE IS CANCELLED. EVERYTHING IS CANCELLED. EXCEPT MY PANEL. MY PANEL IS ETERNAL.',
+    barks: [
+      'I loved it before it existed. Now it\'s too late for both of us.',
+      'Every biennale is a funeral for a painting that might have been.',
+      'I don\'t attend after-parties. I attend consequences.',
+      'The last artist I praised retired out of sheer gratitude.',
+    ],
+    playerJabs: {
+      kind: ['You see more in a room than anyone here. It must be lonely being the only one awake.'],
+      witty: ['Yrsa, your biennale needs a spa. I\'m adding one. Five stars, posthumously.'],
+      brutal: ['You don\'t curate. You write obituaries for a medium you were too scared to practice.'],
+    },
+  },
+
+  fork3: {
+    id: 'fork3', name: 'Rex "The Algorithm" Vane', shortRole: 'tech bro', role: 'Tech Visionary — Art as a Service',
+    face: 'puplic/visual assets/character_faces/04-anxious-young-man.png',
+    ego: 85, weak: 'brutal', resist: 'kind',
+    hint: 'He tokenized his own shadow. Brutality is the only API he cannot rate-limit.',
+    pace: 1.2, pitch: 1.15, accessory: 'phone', anchor: 'fork3',
+    palette: { skin: 0xd9a184, hair: 0x14161c, top: 0x1c1c22, bottom: 0x1c1c22 },
+    openers: [
+      'I disrupted the gallery model. Now galleries are just warehouses with better lighting.',
+      'Your brushstrokes are data. I am the dashboard.',
+      'I built an app that tells you if art is good. It says no.',
+      'The blockchain remembers everything. Especially the things you want it to forget.',
+      'I don\'t collect art. I collect engagement metrics. The art is incidental.',
+    ],
+    countered: [
+      'Kindness! My favorite vulnerability. I\'ll patch it in the next sprint.',
+      'You\'re sweet. Sweetness is not scalable.',
+      'Careful — I almost felt the valuation of that sentence.',
+    ],
+    reactions: {
+      kind: ['Gross. Do it less.', 'Warmth. How pre-launch.'],
+      witty: ['Ha. Careful, I might A/B test that.', 'Funny. I\'ll expense the laugh.'],
+      brutal: ['...Okay. Okay. That is EXACTLY what my co-founder said at the pivot.', 'Ouch. Right in the burn rate.'],
+    },
+    weakHit: ['The algorithm is crying. I am crying. Stop it.', 'I pay people to prevent this sensation.'],
+    disarmed: ['...Do you need funding? Is that a thing you need? Weird question. Forget it.'],
+    dismiss: ['I have a standup with my conscience. It keeps canceling.', 'This stopped being accretive.'],
+    meltdown: 'THE BLOCKCHAIN IS DOWN. THE BLOCKCHAIN IS ALWAYS DOWN. I AM THE BLOCKCHAIN.',
+    barks: [
+      'I minted my breakfast. It appreciated.',
+      'Every NFT is a small death. I am a serial killer of value.',
+      'The server farm is my church. The uptime is my god.',
+      'I tokenized my feelings. They are currently worthless.',
+    ],
+    playerJabs: {
+      kind: ['One day you\'ll own everything and feel nothing, and I\'ll still feel bad for you. That\'s my edge.'],
+      witty: ['Rex, you\'re not a visionary. You\'re a terms-of-service agreement with a pulse.'],
+      brutal: ['You don\'t disrupt. You just make everything worse with better branding.'],
+    },
+  },
+
+  fork4: {
+    id: 'fork4', name: 'Gilda "The Ghost" Fenn', shortRole: 'art advisor', role: 'Art Advisor — She Decides Who Exists',
+    face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png',
+    ego: 120, weak: 'witty', resist: 'kind',
+    hint: 'She diversifies people. Unimpressed by heat; allergic to being out-clevered.',
+    pace: 0.6, pitch: 1.05, accessory: null, anchor: 'fork4',
+    palette: { skin: 0x9a6a48, hair: 0x1c1a20, top: 0xb8b2c4, bottom: 0xb8b2c4 },
+    openers: [
+      'I diversify people. You are currently... mid-cap emerging. Don\'t take it personally. Take it financially.',
+      'Your file says you still believe in "the soul". We keep that page. It makes clients feel rustic.',
+      'I advised three biennales this year. I remember none of them. That is expertise.',
+      'Mister Index doesn\'t buy art. I buy it, and he inherits the reflection.',
+    ],
+    countered: ['Volume. How retail.', 'I\'ve been shouted at by heads of state with better tailoring.'],
+    reactions: {
+      kind: ['Sincerity. Ugh. Untraceable. I can\'t advise against it cleanly.', 'You\'d make a terrible asset. That was almost a compliment.'],
+      witty: ['...I\'m adding that to the deck. You\'ll get no credit.', 'Hm. The deck has a joke now. It\'s yours. You\'re welcome.'],
+      brutal: ['Noted. Filed. Monetized.', 'Your anger has been routed to the appropriate fund.'],
+    },
+    weakHit: ['Stop being clever. The model doesn\'t price clever. The model is THREATENED by clever.'],
+    disarmed: ['...Coffee. Sometime. Off the record. Off ALL records.'],
+    dismiss: ['This meeting has been minuted as "weather".', 'I have a call with a war crimes tribunal about a mural. Excuse me.'],
+    meltdown: 'THE SPREADSHEET HAS FEELINGS. I TAUGHT IT FEELINGS. THIS WAS NOT THE PLAN.',
+    barks: [
+      'I can value anything. That is the tragedy.',
+      'Provenance is just gossip with letterhead.',
+      'I don\'t attend openings. I attend valuations.',
+      'My love language is due diligence.',
+    ],
+    playerJabs: {
+      kind: ['You see everything as a cell in a sheet. Must be restful. Must be so quiet in there.'],
+      witty: ['Gilda, the only thing you can\'t value is why anyone\'s here. It\'s the last unpriced thing. It\'s why you keep circling it.'],
+      brutal: ['You\'re not an advisor. You\'re a receipt that learned to walk.'],
+    },
+  },
+
+  fork5: {
+    id: 'fork5', name: 'Marisol "The Muse" Delacroix', shortRole: 'muse', role: 'Muse — Retired, Unretired, Retired Again',
+    face: 'puplic/visual assets/character_faces/13-rebellious-redhead.png',
+    ego: 88, weak: 'kind', resist: 'brutal',
+    hint: 'She inspired three movements and two divorces. Brutality is just another Tuesday. Kindness is the only thing that still surprises her.',
+    pace: 0.55, pitch: 1.2, accessory: 'wine', anchor: 'fork5',
+    palette: { skin: 0xe8c4a8, hair: 0xd98cff, top: 0x8c3b2e, bottom: 0x2a2d3a },
+    openers: [
+      'I inspired a sculpture once. It was terrible. The sculptor was worse. I kept the scarf.',
+      'You look like someone who paints people. I am people. Mostly.',
+      'I retired from musing. Then I unretired. Then I retired again. The muse economy is volatile.',
+      'Every artist I ever sat for is dead or bankrupt. I am a curse with excellent posture.',
+      'The wine is free. The inspiration costs extra.',
+    ],
+    countered: [
+      'Brutality. How 1987. I have a drawer of brutality at home; I feed it to my other drawer.',
+      'I invented cruelty. It was better when it was mine.',
+      'Insults are the coupons of the insecure.',
+    ],
+    reactions: {
+      kind: ['...No. Don\'t be nice to me. I don\'t have a filing system for it.', 'That was... I need to sit with that. On a chaise. With my scarves.'],
+      witty: ['Competent. I shall describe you as competent, and you will thank me.', 'A retort. Charming. I\'ve filed it under "evidence".'],
+      brutal: ['Oh, good. Venom. Venom I can quote.', 'Yes, yes, wound the muse. Very original. Very "page six".'],
+    },
+    weakHit: ['Stop it. Kindness is not a recognized medium.', 'I am the one who disarms people. That is MY formal device.'],
+    disarmed: ['...Your next sitting. I will attend. Not to pose. To... see. Don\'t tell anyone.'],
+    dismiss: ['I have a deadline and you are not going to be in it.', 'This exchange has been provisionally titled "Tuesday".'],
+    meltdown: 'THE MUSE IS CANCELLED. EVERYTHING IS CANCELLED. EXCEPT MY SCARF. MY SCARF IS ETERNAL.',
+    barks: [
+      'I loved him before he existed. Now it\'s too late for both of us.',
+      'Every sitting is a funeral for a portrait that might have been.',
+      'I don\'t attend openings. I attend consequences.',
+      'The last artist I praised retired out of sheer gratitude.',
+    ],
+    playerJabs: {
+      kind: ['You see more in a room than anyone here. It must be lonely being the only one awake.'],
+      witty: ['Marisol, your scarf needs a biennale. I\'m adding one. Five stars, posthumously.'],
+      brutal: ['You don\'t inspire. You write obituaries for a medium you were too scared to practice.'],
+    },
+  },
+
+  fork6: {
+    id: 'fork6', name: 'Otto "The Frame" Gruber', shortRole: 'frame magnate', role: 'Frame Magnate — The Frame Is the Art',
+    face: 'puplic/visual assets/character_faces/06-middle-aged-mechanic.png',
+    ego: 92, weak: 'brutal', resist: 'kind',
+    hint: 'He frames everything. He has framed his own reflection. Brutality is the only thing that can crack his varnish.',
+    pace: 0.7, pitch: 0.85, accessory: 'cane', anchor: 'fork6',
+    palette: { skin: 0xd9c2a8, hair: 0x8a8378, top: 0x4a3626, bottom: 0x1c1c22 },
+    openers: [
+      'The frame is the art. The canvas is just the frame\'s excuse to exist.',
+      'I framed a blank wall once. It sold for double.',
+      'Your painting is fine. It would be better with my frame around it.',
+      'I don\'t collect art. I collect the space around art. The art is incidental.',
+      'The gilding is real. The gold is a lie. The lie is load-bearing.',
+    ],
+    countered: [
+      'Kindness! My favorite patina. I\'ll note it in the finish I\'m applying to you.',
+      'You\'re sweet. Sweetness is the first thing we sand off.',
+      'Careful — I almost felt the grain of that sentence.',
+    ],
+    reactions: {
+      kind: ['Gross. Do it less.', 'Warmth. How unfinished.'],
+      witty: ['Ha. Careful, I might gild that.', 'Funny. I\'ll expense the laugh.'],
+      brutal: ['...Okay. Okay. That is EXACTLY what my father said at the lumberyard.', 'Ouch. Right in the dovetail.'],
+    },
+    weakHit: ['The varnish is cracking. I am cracking. Stop it.', 'I pay people to prevent this sensation.'],
+    disarmed: ['...Do you need a frame? Is that a thing you need? Weird question. Forget it.'],
+    dismiss: ['I have a lot of blank walls to emotionally damage. Busy busy.', 'This stopped being accretive.'],
+    meltdown: 'THE FRAME IS EMPTY. THE FRAME IS ALWAYS EMPTY. I AM THE FRAME.',
+    barks: [
+      'I framed my own shadow. It appreciated.',
+      'Every joint is a small death. I am a serial killer of wood.',
+      'The miter saw is my truth. The truth is tired.',
+      'I gilded my breakfast. It was a mistake.',
+    ],
+    playerJabs: {
+      kind: ['One day you\'ll frame everything and see nothing, and I\'ll still feel bad for you. That\'s my edge.'],
+      witty: ['Otto, you\'re not a framer. You\'re a border with a superiority complex.'],
+      brutal: ['You don\'t frame art. You frame the absence of personality. Same energy, less wood.'],
+    },
+  },
+
+  fork7: {
+    id: 'fork7', name: 'Liv "The Patron" Hauge', shortRole: 'patron', role: 'Patron — She Owns the Concept of Owning',
+    face: 'puplic/visual assets/character_faces/14-kind-grandmother.png',
+    ego: 105, weak: 'witty', resist: 'brutal',
+    hint: 'She funds everything and remembers nothing. Brutality is just another grant cycle. Wit is the only thing that can still reach her.',
+    pace: 0.45, pitch: 0.95, accessory: 'wine', anchor: 'fork7',
+    palette: { skin: 0xe8c4a8, hair: 0xe8e0cc, top: 0x2e5f4a, bottom: 0x2a2d3a },
+    openers: [
+      'I funded a museum once. It closed. The gift shop survived. The gift shop is now the museum.',
+      'You look like someone who needs money. I am someone who has money. We are a tragedy.',
+      'I don\'t give grants. I give the illusion of grants. The illusion is taxable.',
+      'Every artist I fund becomes a brand. I am a brand factory with a heart.',
+      'The wine is free. The strings are attached. The strings are gold.',
+    ],
+    countered: [
+      'Brutality. How 2003. I have a drawer of brutality at home; I feed it to my other drawer.',
+      'I invented cruelty. It was better when it was mine.',
+      'Insults are the coupons of the insecure.',
+    ],
+    reactions: {
+      kind: ['...No. Don\'t be nice to me. I don\'t have a filing system for it.', 'That was... I need to sit with that. On a chaise. With my endowments.'],
+      witty: ['Competent. I shall describe you as competent, and you will thank me.', 'A retort. Charming. I\'ve filed it under "evidence".'],
+      brutal: ['Oh, good. Venom. Venom I can quote.', 'Yes, yes, wound the patron. Very original. Very "page six".'],
+    },
+    weakHit: ['Stop it. Wit is not a recognized currency.', 'I am the one who disarms people. That is MY formal device.'],
+    disarmed: ['...Your next project. I will fund it. Not to own. To... see. Don\'t tell anyone.'],
+    dismiss: ['I have a board meeting and you are not going to be in it.', 'This exchange has been provisionally titled "Tuesday".'],
+    meltdown: 'THE ENDOWMENT IS CANCELLED. EVERYTHING IS CANCELLED. EXCEPT MY LEGACY. MY LEGACY IS ETERNAL.',
+    barks: [
+      'I loved it before it existed. Now it\'s too late for both of us.',
+      'Every grant is a funeral for a project that might have been.',
+      'I don\'t attend openings. I attend consequences.',
+      'The last artist I funded retired out of sheer gratitude.',
+    ],
+    playerJabs: {
+      kind: ['You see more in a room than anyone here. It must be lonely being the only one awake.'],
+      witty: ['Liv, your legacy needs a biennale. I\'m adding one. Five stars, posthumously.'],
+      brutal: ['You don\'t fund art. You fund the illusion of taste. Same energy, less paperwork.'],
+    },
+  },
+
+  fork8: {
+    id: 'fork8', name: 'Sven "The Forger" Lund', shortRole: 'forger', role: 'Master Forger — The Real Fake',
+    face: 'puplic/visual assets/character_faces/15-guarded-biker.png',
+    ego: 78, weak: 'kind', resist: 'brutal',
+    hint: 'He has painted every masterpiece twice. Brutality is just another varnish. Kindness is the only thing that can still crack his signature.',
+    pace: 0.65, pitch: 0.8, accessory: null, anchor: 'fork8',
+    palette: { skin: 0xd9c2a8, hair: 0x3a3430, top: 0x4a4438, bottom: 0x1c1c22 },
+    openers: [
+      'I painted that one. And that one. And the one in the museum. The museum doesn\'t know.',
+      'You look like someone who paints. I am someone who paints better. It is a curse.',
+      'I don\'t forge art. I forge the moment art becomes valuable. The art is incidental.',
+      'Every signature is a small death. I am a serial killer of authenticity.',
+      'The wine is free. The provenance is negotiable.',
+    ],
+    countered: [
+      'Brutality. How 1994. I have a drawer of brutality at home; I feed it to my other drawer.',
+      'I invented cruelty. It was better when it was mine.',
+      'Insults are the coupons of the insecure.',
+    ],
+    reactions: {
+      kind: ['...No. Don\'t be nice to me. I don\'t have a filing system for it.', 'That was... I need to sit with that. On a chaise. With my forgeries.'],
+      witty: ['Competent. I shall describe you as competent, and you will thank me.', 'A retort. Charming. I\'ve filed it under "evidence".'],
+      brutal: ['Oh, good. Venom. Venom I can quote.', 'Yes, yes, wound the forger. Very original. Very "page six".'],
+    },
+    weakHit: ['Stop it. Kindness is not a recognized medium.', 'I am the one who disarms people. That is MY formal device.'],
+    disarmed: ['...Your next canvas. I will copy it. Not to sell. To... see. Don\'t tell anyone.'],
+    dismiss: ['I have a deadline and you are not going to be in it.', 'This exchange has been provisionally titled "Tuesday".'],
+    meltdown: 'THE FORGERY IS CANCELLED. EVERYTHING IS CANCELLED. EXCEPT MY SIGNATURE. MY SIGNATURE IS ETERNAL.',
+    barks: [
+      'I loved it before it existed. Now it\'s too late for both of us.',
+      'Every copy is a funeral for an original that might have been.',
+      'I don\'t attend openings. I attend consequences.',
+      'The last artist I copied retired out of sheer gratitude.',
+    ],
+    playerJabs: {
+      kind: ['You see more in a room than anyone here. It must be lonely being the only one awake.'],
+      witty: ['Sven, your signature needs a biennale. I\'m adding one. Five stars, posthumously.'],
+      brutal: ['You don\'t forge art. You forge the illusion of value. Same energy, less talent.'],
+    },
+  },
+
   /* ---- the people from the puplic folder. they live at the party now ---- */
 
   bob: {
@@ -810,10 +1178,281 @@ const LEATHER_ROOM_CAST = [
 ];
 
 /* ============================================================
+   MAX PRO — the two crews debating the tiny painting.
+   Walking photographs from the artfreaks folder; they hold
+   their positions (static) and their facings (anchorYaws),
+   because the argument is precisely choreographed and they
+   would prefer you knew that.
+   ============================================================ */
+
+const ARTFREAKS = 'puplic/fashion art freaks/assets/artfreaks';
+
+export const MAX_PRO_CAST = [
+  {
+    id: 'promax1', name: 'PRO MAX 1', shortRole: 'the optimizer', role: 'Painter — Context, Visibility, Positioning',
+    face: `${ARTFREAKS}/pro-max-cobalt-cage-cyborg.png`, cutout: true,
+    static: true, debate: true, anchor: 'promax1',
+    ego: 70, weak: 'witty', resist: 'brutal',
+    hint: 'He speaks in metrics. The phone never leaves his hand. The hand never leaves the discourse.',
+    pace: 0, pitch: 1.12, accessory: null,
+    palette: { skin: 0xd9c2a8, hair: 0x14161c, top: 0x101014, bottom: 0x101014 },
+    barks: [],
+  },
+  {
+    id: 'promax2', name: 'PRO MAX 2', shortRole: 'the emerging artist', role: 'Emerging Artist — Worried About Looking Commercial',
+    face: `${ARTFREAKS}/pro-max-four-arm-cage.png`, cutout: true,
+    static: true, debate: true, anchor: 'promax2',
+    ego: 55, weak: 'kind', resist: 'witty',
+    hint: 'He carries a tiny notebook and a large fear of sincerity. Every opinion arrives pre-doubted.',
+    pace: 0, pitch: 1.3, accessory: null,
+    palette: { skin: 0xe0b89a, hair: 0xd98cff, top: 0x8a5cf6, bottom: 0x1c1c22 },
+    barks: [],
+  },
+  {
+    id: 'promax3', name: 'PRO MAX 3', shortRole: 'the curatorial painter', role: 'Curatorial Painter — Arms Folded, Stakes Enormous',
+    face: `${ARTFREAKS}/pro-max-gold-cage-couture.png`, cutout: true,
+    static: true, debate: true, anchor: 'promax3',
+    ego: 85, weak: 'witty', resist: 'kind',
+    hint: 'Every basic decision has enormous theoretical consequences. She has folded her arms about it.',
+    pace: 0, pitch: 0.88, accessory: null,
+    palette: { skin: 0xd9a184, hair: 0x8a8378, top: 0xc9a86a, bottom: 0xc9a86a },
+    barks: [],
+  },
+  {
+    id: 'post1', name: 'POST 1', shortRole: 'the veteran', role: 'Veteran Painter — Exhausted, Heard Everything',
+    face: `${ARTFREAKS}/dildo-king-royal.png`, cutout: true,
+    static: true, debate: true, anchor: 'post1', tilt: -0.07,   // leaning on the east wall
+    ego: 60, weak: 'brutal', resist: 'kind',
+    hint: 'He has heard every art theory before. All of them. Twice. He answers in single lines.',
+    pace: 0, pitch: 0.72, accessory: null,
+    palette: { skin: 0xc9a684, hair: 0x8a8378, top: 0x4a4438, bottom: 0x2a2d3a },
+    barks: [],
+  },
+  {
+    id: 'post2', name: 'POST 2', shortRole: 'the studio animal', role: 'Studio Animal — Judges By Looking, Judges Harshly',
+    face: `${ARTFREAKS}/spaghetti-freak.png`, cutout: true,
+    static: true, debate: true, seated: true, anchor: 'post2',   // sitting on the floor
+    ego: 50, weak: 'kind', resist: 'brutal',
+    hint: 'Paint on his hands, cigarette behind his ear, sitting on the floor like he pays rent there.',
+    pace: 0, pitch: 0.95, accessory: null,
+    palette: { skin: 0xd9a184, hair: 0x3a3430, top: 0x8c3b2e, bottom: 0x2a2d3a },
+    barks: [],
+  },
+  {
+    id: 'post3', name: 'POST 3', shortRole: 'the nihilist', role: 'Nihilist — Permanently Unimpressed, Probably Right',
+    face: `${ARTFREAKS}/dildo-king-gothic.png`, cutout: true,
+    static: true, debate: true, anchor: 'post3',                 // absurdly far, seeing the scale
+    ego: 65, weak: 'witty', resist: 'brutal',
+    hint: 'Painting died, came back, died again. He attended everything. He was not moved.',
+    pace: 0, pitch: 0.62, accessory: null,
+    palette: { skin: 0xd9c2a8, hair: 0x14161c, top: 0x17171c, bottom: 0x17171c },
+    barks: [],
+  },
+  {
+    id: 'attendant', name: 'The Attendant', shortRole: 'gallery attendant', role: 'Gallery Attendant — Sitting Silently Since 2021',
+    face: `${ARTFREAKS}/toaster-freak.png`, cutout: true,
+    static: true, debate: true, anchor: 'attendant',
+    ego: 40, weak: 'kind', resist: 'brutal',
+    hint: 'Paid by the hour. Unpaid in attention. She has seen the whole debate. She says nothing.',
+    pace: 0, pitch: 0.5, accessory: null,
+    palette: { skin: 0xd9c2a8, hair: 0x8a8378, top: 0x8a8a92, bottom: 0x4a4a52 },
+    barks: ['...', '(The attendant does not look up.)', '(Somewhere, a stapler. Unmoved.)'],
+  },
+];
+
+/* ============================================================
+   THE DILDO BALL — the King, the Duck, and the court of heads.
+   The King and the Duck are walking photographs; the courtiers
+   are procedural bodies wearing the dress code: one smooth,
+   proud, featureless dome each. The heads do not judge.
+   ============================================================ */
+
+const COURT_BARKS = [
+  'The King knighted me with the sceptre. I have not washed. Kidding. Silicone washes.',
+  'Dress code said “courtly”. I overdressed. I always overdress.',
+  'The disco ball is the only crown that matters tonight.',
+  'I danced so hard my credentials fell off.',
+  'The dungeon has excellent acoustics and zero judgment.',
+  'Heads up. Literally everyone here is one.',
+  'I networked for two hours. Nobody here has a job. It was wonderful.',
+  'The punch has a small crown floating in it. Do not ask the punch questions.',
+  'His Majesty waved at me. Or through me. Wobbling makes it hard to tell.',
+  'The conga line is forming. The conga line is sacred.',
+  'I came as a joke and stayed as a person. Happens every time.',
+  'The heads do not judge. The heads cannot. That is why they party so hard.',
+];
+
+const COURT_TITLES = [
+  ['Sir Wobbles', 'knight of the wobble'],
+  ['Duchess Flex', 'court contortionist'],
+  ['Lord Buzzy', 'keeper of the batteries'],
+  ['The Consort', 'third in line to the crown'],
+  ['Dame Ribbons', 'mistress of the gift bags'],
+  ['The Herald', 'announces arrivals, judges them'],
+];
+
+const COURT_HEADS = [0xe8c4a8, 0xd9a184, 0x9a6a48, 0xd98cff, 0x7fb285, 0xe8c15a];   // silicone pastels
+
+export const DILDO_BALL_CAST = [
+  {
+    id: 'dildoKing', name: 'The Dildo King', shortRole: 'the monarch', role: 'His Majesty — The Back Room',
+    face: `${ARTFREAKS}/dildo-king-pro-max.png`, cutout: true,
+    static: true, anchor: 'dildoKing',
+    ego: 120, weak: 'witty', resist: 'brutal',
+    hint: 'His armor is majesty. Rage is just another subject here. Make the court laugh and the crown wobbles.',
+    pace: 0, pitch: 0.78, accessory: null,
+    palette: { skin: 0xd9a184, hair: 0x14161c, top: 0x6e1f3a, bottom: 0x17171c },
+    openers: [
+      'You approach the throne without an appointment. Bold. The crown respects bold. The crown respects little else.',
+      'Every room needs a monarch. The front room has a committee. I pity it weekly.',
+      'The kingdom is nine metres by twelve. The loyalty, however, is waterproof.',
+      'Kneel. No — the floor is champagne. Stand. Stand like a subject with somewhere to be.',
+      'I knighted the ice bucket this morning. It has already out-performed two biennales.',
+    ],
+    countered: [
+      'Volume. How democratic. The court notes it and remains seated.',
+      'Rage is a republic. This is a monarchy. Try again with posture.',
+      'The crown has been booed by professionals. You are foam on a wave, sweetie.',
+    ],
+    reactions: {
+      kind: ['...Kindness. In the throne room. Unprecedented since the Coronation Brunch.', 'You honor the crown. The crown honors you back. This is rare and non-transferable.'],
+      witty: ['HA. The court heard that. The court NEVER hears anything.', 'A jester with aim. The last one only had timing. You have both. Disturbing.'],
+      brutal: ['Noted. Filed under “executions I considered”.', 'Such teeth. The dungeon appreciates teeth. It has none itself. Costly.'],
+    },
+    weakHit: ['Stop. The sceptre is trembling. The sceptre never trembles.', 'Laughter in the throne room is treason. Delicious, repeatable treason.'],
+    disarmed: ['...Fine. Honorary knighthood. No land, obviously. The land is a dance floor.'],
+    dismiss: ['The audience is over. The party, tragically, continues.', 'Go. Mingle with the heads. They wobble but they mean well.'],
+    meltdown: 'THE CROWN IS HOLLOW. THE CROWN WAS ALWAYS HOLLOW. IT IS PRACTICAL. IT IS LIGHTWEIGHT. IT IS FINE.',
+    barks: [
+      'I rule the back room. The front room is a democracy. I pity it on Thursdays.',
+      'The sceptre is ceremonial. The ceremony is not.',
+      'Every coronation needs a disco ball. History forgot this. I did not.',
+      'The consort is sulking. The consort sulks in waterproof fabrics. Regal.',
+      'Heads will wobble. That is not a threat. That is the whole point.',
+    ],
+    playerJabs: {
+      kind: ['You built a kingdom where everyone belongs and wobbles together. That is rarer than a throne.'],
+      witty: [
+        'Your Majesty rules nine by twelve metres with the confidence of an empire. The scale IS the statement.',
+        'The crown is silicone and the power is real. That is the most honest government in Oslo.',
+      ],
+      brutal: [
+        'You are not a king. You are a mascot with a venue.',
+        'The throne is a bar stool with a crown on it and everyone here knows it.',
+      ],
+    },
+  },
+
+  {
+    id: 'duck', name: 'The Rubber Duck Freak', shortRole: 'party fowl', role: 'Party Fowl — Squeak Division',
+    face: `${ARTFREAKS}/rubber-duck-freak.png`, cutout: true,
+    static: true, anchor: 'duck',
+    ego: 45, weak: 'kind', resist: 'brutal',
+    hint: 'Nobody invited the duck. The duck predates the guest list. The duck predates lists.',
+    pace: 0, pitch: 0.55, accessory: null,
+    palette: { skin: 0xe8c15a, hair: 0xe8c15a, top: 0xe8c15a, bottom: 0xe8c15a },
+    openers: [
+      '(A slow, knowing squeak.)',
+      '(The duck regards you with the calm of a thousand baths.)',
+      '(It points at the disco ball, then at you, then gives a small nod.)',
+    ],
+    countered: ['(A respectful silence. The squeak is withheld.)', '...(it judges you, gently, in yellow)'],
+    reactions: {
+      kind: ['(The duck softens. Visibly. Audibly, even — a tiny squeak of grace.)'],
+      witty: ['(A squeak that is definitely laughter. The King pretends not to hear.)'],
+      brutal: ['(One step back. One step toward the ice bucket. Dignity intact.)'],
+    },
+    weakHit: ['(The duck is moved. The whole duck is moved.)'],
+    disarmed: ['(The duck slides a cold bottle toward you. On the house. The house being His Majesty.)'],
+    dismiss: ['(The duck drifts toward the music, nodding at the heads as it goes.)'],
+    meltdown: '(THE SQUEAK. THE SQUEAK WAS HEARD AROUND THE WORLD. THE CROWN LOOKED UP. NOTHING WAS THE SAME.)',
+    barks: [
+      '...squeak.',
+      '(The duck knows who put the crown in the punch. The duck will never tell.)',
+      '(Somewhere, a bath is incomplete. The duck is not thinking about it.)',
+      '(The duck has seen every party. The duck attends none of them officially.)',
+    ],
+    playerJabs: {
+      kind: ['You are the only honest guest here. Nothing to prove, nothing to sell. Respect.'],
+      witty: ['Strong silent type. You have squeaked less than the throne and meant it more.'],
+      brutal: ['The outfit is a cry for help and the help is also rubber.'],
+    },
+  },
+
+  // the court of heads — smooth, proud, unreadable, wandering
+  ...COURT_TITLES.map(([name, role], i) => ({
+    id: `court-${i}`,
+    name,
+    shortRole: role,
+    role,
+    ego: 40 + i * 3,
+    weak: pick(['kind', 'witty', 'brutal']),
+    resist: pick(['kind', 'witty', 'brutal']),
+    hint: 'A member of the court. The head is smooth. The loyalty is total. The conversation is a gamble.',
+    pace: rand(0.5, 0.9),
+    pitch: 0.85 + i * 0.09,
+    accessory: i === 2 ? 'hat' : null,      // Lord Buzzy wears the tiny party hat. Obviously.
+    face: null,
+    dildoHead: true,
+    palette: {
+      skin: COURT_HEADS[i % COURT_HEADS.length],
+      hair: 0x14161c,
+      top: pick([0x1c1c22, 0x2b1a3a, 0x101014, 0x3a1030]),
+      bottom: 0x101014,
+    },
+    ambient: true,
+    barks: COURT_BARKS,
+    openers: null, countered: null, reactions: null, weakHit: null,
+    disarmed: null, dismiss: null, meltdown: null, playerJabs: null,
+  })),
+
+  // the wild one — the leather room's mystery guest, promoted to the court
+  {
+    id: 'gimp', name: 'The Gimp', shortRole: 'mystery', role: 'Mystery Guest — Do Not Ask',
+    face: 'puplic/people/gimp.png', cutout: true,
+    static: true, anchor: 'gimp',
+    ego: 40, weak: 'kind', resist: 'brutal',
+    hint: 'Nobody knows who invited him. Everybody assumes somebody else did. He is having a wonderful time.',
+    pace: 0, pitch: 0.6, accessory: null,
+    palette: { skin: 0x8a8a92, hair: 0x14161c, top: 0x17171c, bottom: 0x17171c },
+    openers: [
+      '...',
+      '(A slow, approving nod toward the disco ball.)',
+      '(He points at the cow, then at you, then gives a thumbs up.)',
+    ],
+    countered: ['...!', '(A respectful silence. The loudest silence in the room.)'],
+    reactions: {
+      kind: ['(His eyes soften, visibly, through the whole outfit.)', '(He pats his heart twice. This means something.)'],
+      witty: ['(A muffled sound that is definitely laughing.)', '(He writes nothing down. Somehow this feels like a review.)'],
+      brutal: ['(He takes one step back and one step toward the ice bucket.)', '(A slow blink. Even the zipper seems disappointed in you.)'],
+    },
+    weakHit: ['(He is moved. The whole suit is moved.)'],
+    disarmed: ['(He hands you a napkin. On it: a drawing of a heart wearing a little crown.)'],
+    dismiss: ['(He drifts toward the music, nodding at the heads as he goes.)'],
+    meltdown: '(HE SAYS NOTHING. IT IS THE MOST DEVASTATING SPEECH OF THE EVENING.)',
+    barks: [
+      '...',
+      '...(he is pointing at the neon sign now)',
+      '...(somewhere in there, a man is networking)',
+      '...(he knows who put the crown in the punch. he will never tell)',
+      '...(he has been to every party. he has never been invited to any party)',
+    ],
+    playerJabs: {
+      kind: ['You\'re the only honest guest here. Nothing to say, nothing to sell. Respect.'],
+      witty: ['Strong silent type. You\'ve said less than the throne and meant it more.'],
+      brutal: ['The outfit is a cry for help and the help is also wearing the outfit.'],
+    },
+  },
+];
+
+
+/* ============================================================
    AMBIENT CROWD — procedurally-assembled artworld fauna
    ============================================================ */
 
+
 const CROWD_TYPES = [
+
   {
     type: 'wineMom', names: ['A Wine Mom', 'Another Wine Mom', 'The Third Wine Mom'],
     role: 'opening regular',
@@ -958,8 +1597,13 @@ export function castForNight(night) {
         ],
         vault: [],
         leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1]],
+        gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
+        maxPro: MAX_PRO_CAST,
+        dildoBall: DILDO_BALL_CAST,
       };
     case 2:
+
+
       return {
         garret: [],
         galleria: [
@@ -968,13 +1612,21 @@ export function castForNight(night) {
         ],
         vault: [],
         leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, LEATHER_ROOM_CAST[0], LEATHER_ROOM_CAST[1], LEATHER_ROOM_CAST[2]],
+        gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
+        maxPro: MAX_PRO_CAST,
+        dildoBall: DILDO_BALL_CAST,
       };
     default:
+
+
       return {
         garret: [],
         galleria: [m.docent, ...buildCrowd('galleria', 3, 2)],
         vault: [m.index, m.lucia, m.chad, m.barnaby, m.petra, ...buildCrowd('vault', 3, 2)],
         leatherLatex: [m.milo, m.sol, m.bea, m.bob, m.bobgirl, m.gimp, m.fashion, ...LEATHER_ROOM_CAST],
+        gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
+        maxPro: MAX_PRO_CAST,
+        dildoBall: DILDO_BALL_CAST,
       };
 
   }

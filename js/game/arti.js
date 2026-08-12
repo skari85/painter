@@ -20,8 +20,153 @@ export const NPC_HANDLES = {
   victoria: '@victoriavane', kreyo: '@kreyo.eth', dolores: '@thepaleview',
   chad: '@chadsterlingboats', muffy: '@muffyfeelings', docent: '@docent_year9',
   index: '@misterindex', barnaby: '@barnabyflips', petra: '@petra.gatekeeps',
-  baron: '@baronvoncarpark', lucia: '@luciafennadvises',
+  baron: '@baronvoncarpark', lucia: '@luciafennadvises', milo: '@milo.collects',
 };
+
+/** Milo's phone call: a tiny social feature with the emotional scale of a tax audit. */
+export const COLLECTOR_CALL = {
+  id: 'milo',
+  name: 'Milo “Mister M” Madsen',
+  handle: '@milo.collects',
+  role: 'Collector — Host of the Private Party',
+  face: 'puplic/people/collector.png',
+  opening: 'Painter. I am calling because someone told me you have been explaining my hat incorrectly.',
+  rounds: [
+    {
+      line: 'Also, the little painting you made is making the room feel emotionally uninsured.',
+      options: [
+        { text: 'The painting is fine. The room is the problem.', tone: 'witty', reply: 'That is a very expensive way to say you dislike my furniture.', unhappy: 1 },
+        { text: 'I can repaint it in a way that hurts less.', tone: 'kind', reply: 'Do not offer kindness while I am holding a portfolio.', unhappy: 0 },
+        { text: 'Your hat has more personality than your collection.', tone: 'brutal', reply: 'I knew this call was a mistake. The hat is vintage.', unhappy: 2 },
+      ],
+    },
+    {
+      line: 'I have put you on speaker. The sculpture is listening and it has a stronger market position.',
+      options: [
+        { text: 'Ask the sculpture what it thinks of your curtains.', tone: 'witty', reply: 'The sculpture says nothing because it has learned boundaries.', unhappy: 1 },
+        { text: 'Please take me off speaker. This is private.', tone: 'kind', reply: 'Privacy is a luxury good. I have three units.', unhappy: 0 },
+        { text: 'Your entire house is a waiting room for a personality.', tone: 'brutal', reply: 'I am ending this before the furniture starts agreeing with you.', unhappy: 2 },
+      ],
+    },
+    {
+      line: 'Final question: did you paint the canvas, or did the canvas simply survive you?',
+      options: [
+        { text: 'It survived the collector. That is the important part.', tone: 'witty', reply: 'Unprofessional. Accurate. I dislike both qualities.', unhappy: 1 },
+        { text: 'I am still figuring out what it wants to be.', tone: 'kind', reply: 'It wants a better room. Everyone wants a better room.', unhappy: 0 },
+        { text: 'It painted itself. You just failed to purchase the credit.', tone: 'brutal', reply: 'Goodbye, painter. I am putting your number in a very elegant drawer.', unhappy: 2 },
+      ],
+    },
+  ],
+  endings: [
+    'Milo has muted you. The mute is upholstered.',
+    'Milo has ended the call. The collector is not happy with the painter.',
+    'Milo has saved your number as “DO NOT LET NEAR THE LINEN”.',
+  ],
+};
+
+const TALK_PROFILES = {
+  victoria: {
+    opening: 'You have thirty seconds. Make them useful, or make them expensive.',
+    rounds: [
+      { line: 'What are you trying to make people feel?', options: [
+        { text: 'A little less alone.', tone: 'kind', reply: 'Annoyingly sincere. That can be marketed.', unhappy: 0 },
+        { text: 'Uncomfortable, but with good lighting.', tone: 'witty', reply: 'Now that is a gallery answer.', unhappy: 0 },
+        { text: 'The urge to leave before the price talk.', tone: 'brutal', reply: 'Honesty is not a sales strategy. Usually.', unhappy: 1 },
+      ] },
+      { line: 'And what do you want from this artworld?', options: [
+        { text: 'A room and a chance.', tone: 'kind', reply: 'A room is possible. The chance is billable.', unhappy: 0 },
+        { text: 'A wall near the toilet, obviously.', tone: 'witty', reply: 'You listened. I respect that.', unhappy: 0 },
+        { text: 'Less pricing, more looking.', tone: 'brutal', reply: 'Then you have chosen the wrong century.', unhappy: 1 },
+      ] },
+    ],
+  },
+  kreyo: {
+    opening: 'You found the chat button. Bold. I usually charge for access to this much vision.',
+    rounds: [
+      { line: 'Tell me your medium. Quickly. I have a drop in twelve minutes.', options: [
+        { text: 'Paint, mostly. Sometimes panic.', tone: 'kind', reply: 'Panic is a strong color. Very underused.', unhappy: 0 },
+        { text: 'Whatever survives the caption.', tone: 'witty', reply: 'Okay, that one is annoyingly good.', unhappy: 0 },
+        { text: 'Not a brand, if that is what you mean.', tone: 'brutal', reply: 'My brand just blocked your tone.', unhappy: 1 },
+      ] },
+      { line: 'Would you put your work on-chain?', options: [
+        { text: 'Only if the chain can carry it.', tone: 'kind', reply: 'That is almost a manifesto. Do not ruin it.', unhappy: 0 },
+        { text: 'I prefer a wall. It has better uptime.', tone: 'witty', reply: 'I hate that I want to repost this.', unhappy: 0 },
+        { text: 'I would rather put your sneeze in a museum.', tone: 'brutal', reply: 'The sneeze has representation.', unhappy: 1 },
+      ] },
+    ],
+  },
+  dolores: {
+    opening: 'I am listening. Do not mistake that for approval.',
+    rounds: [
+      { line: 'What is the work refusing to say?', options: [
+        { text: 'That it needs permission.', tone: 'kind', reply: 'Good. Refusal is often the first honest sentence.', unhappy: 0 },
+        { text: 'Its own exhibition statement.', tone: 'witty', reply: 'A mercy to the reader.', unhappy: 0 },
+        { text: 'Anything that would fit in a review.', tone: 'brutal', reply: 'You have read too many reviews.', unhappy: 1 },
+      ] },
+      { line: 'Do you want me to write about it?', options: [
+        { text: 'Only if you actually look at it.', tone: 'kind', reply: 'A dangerous request. I accept.', unhappy: 0 },
+        { text: 'Write “Tuesday” and let the public panic.', tone: 'witty', reply: 'That title is already taken by three columns.', unhappy: 0 },
+        { text: 'No. It has suffered enough.', tone: 'brutal', reply: 'Finally, a responsible artist.', unhappy: 0 },
+      ] },
+    ],
+  },
+  chad: {
+    opening: 'Hey! Is this the artist chat? Muffy, I found the artist chat.',
+    rounds: [
+      { line: 'Would your painting work on a yacht?', options: [
+        { text: 'Only if the yacht can sit with uncertainty.', tone: 'kind', reply: 'Mine has a therapist for that.', unhappy: 0 },
+        { text: 'Does the yacht come with a wall?', tone: 'witty', reply: 'Great question. I will ask the captain.', unhappy: 0 },
+        { text: 'Your yacht already has enough bad art.', tone: 'brutal', reply: 'Muffy, the artist is doing a critique.', unhappy: 1 },
+      ] },
+      { line: 'What does it cost?', options: [
+        { text: 'Enough to make you look at it twice.', tone: 'kind', reply: 'That is a very compelling number.', unhappy: 0 },
+        { text: 'One boat, no trades.', tone: 'witty', reply: 'I have several boats and strong feelings.', unhappy: 0 },
+        { text: 'More than your attention span.', tone: 'brutal', reply: 'Muffy says that was mean. Accurate, though.', unhappy: 1 },
+      ] },
+    ],
+  },
+  milo: {
+    opening: 'This is not the call. This is the chat. The chat is less upholstered.',
+    rounds: [
+      { line: 'Have you been telling people about my collection?', options: [
+        { text: 'Only the flattering parts.', tone: 'kind', reply: 'There are flattering parts?', unhappy: 0 },
+        { text: 'The collection has been telling people about itself.', tone: 'witty', reply: 'That sounds like my furniture speaking again.', unhappy: 1 },
+        { text: 'I have been warning them.', tone: 'brutal', reply: 'A bold use of a public platform.', unhappy: 2 },
+      ] },
+      { line: 'One sentence. Why should I keep following you?', options: [
+        { text: 'Because I make the room less lonely.', tone: 'kind', reply: 'I will allow one sincere sentence.', unhappy: 0 },
+        { text: 'Because your hat needs better company.', tone: 'witty', reply: 'The hat is vintage. The company is pending.', unhappy: 1 },
+        { text: 'You should not. It builds character.', tone: 'brutal', reply: 'Do not make unfollowing sound aspirational.', unhappy: 2 },
+      ] },
+    ],
+  },
+};
+
+const GENERIC_TALK = {
+  opening: 'ARTI has connected you. The other person is pretending this was intentional.',
+  rounds: [
+    { line: 'What are you working on right now?', options: [
+      { text: 'Something honest, even if it is messy.', tone: 'kind', reply: 'That is a respectable risk.', unhappy: 0 },
+      { text: 'A piece with excellent networking potential.', tone: 'witty', reply: 'Finally, a medium everyone understands.', unhappy: 0 },
+      { text: 'Trying not to become content.', tone: 'brutal', reply: 'Too late. The chat has archived you.', unhappy: 1 },
+    ] },
+    { line: 'What do you want people to remember?', options: [
+      { text: 'That they were there.', tone: 'kind', reply: 'Memory is a difficult collector. Good answer.', unhappy: 0 },
+      { text: 'The lighting, obviously.', tone: 'witty', reply: 'ARTI has clipped that for the story.', unhappy: 0 },
+      { text: 'That the artworld survived me.', tone: 'brutal', reply: 'The artworld is filing a response.', unhappy: 1 },
+    ] },
+  ],
+};
+
+/** Short ARTI chats for the roster; the full collector call remains special. */
+export const ARTI_TALKS = Object.fromEntries(
+  Object.entries(NPC_HANDLES).map(([id, handle]) => [id, {
+    id,
+    handle,
+    ...(TALK_PROFILES[id] ?? GENERIC_TALK),
+    endings: ['The chat ended. ARTI saved the transcript and called it networking.', 'They left you on read with professional confidence.'],
+  }])
+);
 
 const COMMENTS_GOOD = [
   'would look great in the guesthouse',

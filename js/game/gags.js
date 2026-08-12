@@ -24,7 +24,27 @@ const NPC_APPRAISALS = {
   petra: 'Petra Voss. Gatekeeping Emerita. Estimate: one velvet rope, eternally replenishing.',
   baron: 'Baron von Carpark. Hereditary, obviously. The title is load-bearing.',
   lucia: 'Lucia Fenn. Advisor to the Vault. Charges by the withheld opinion.',
+  forkHost: 'Baronessa Brine. Hostess. The table is her weapon. The wine is her alibi.',
+  fork1: 'Kasper "The Auctioneer" Voll. Going, going, gone. The gavel is his truth. The truth is tired.',
+  fork2: 'Yrsa "The Biennale" Bork. Curator of Everything. She has forgotten more biennales than you will ever attend.',
+  fork3: 'Rex "The Algorithm" Vane. Tech visionary. He tokenized his own shadow. It is currently worthless.',
+  fork4: 'Gilda "The Ghost" Fenn. Art advisor. She decides who exists. Currently, you are a rumor.',
+  fork5: 'Marisol "The Muse" Delacroix. Retired muse. Unretired muse. Retired again. The muse economy is volatile.',
+  fork6: 'Otto "The Frame" Gruber. Frame magnate. The frame is the art. The canvas is just the excuse.',
+  fork7: 'Liv "The Patron" Hauge. Patron. She owns the concept of owning. The concept is taxable.',
+  fork8: 'Sven "The Forger" Lund. Master forger. He painted that one. And that one. The museum doesn\'t know.',
+  promax1: 'PRO MAX 1. The Optimizer. Estimate: context, visibility, positioning. Condition: phone-adjacent.',
+  promax2: 'PRO MAX 2. The Emerging Artist. Emerging since 2019. The notebook is the real work.',
+  promax3: 'PRO MAX 3. The Curatorial Painter. Her arms have been folded since the studio visit. Appraised folded.',
+  post1: 'POST 1. The Veteran. Heard every theory before. Appraised at dust, insured for spite.',
+  post2: 'POST 2. The Studio Animal. Paint on his hands, floor in his spine. Not for sale. Nobody asked.',
+  post3: 'POST 3. The Nihilist. Estimate: nothing. He checked. He was right.',
+  attendant: 'The Attendant. Sitting silently since 2021. The only one here with a contract.',
+  dildoKing: 'The Dildo King. Estimate: nine by twelve metres of absolute authority. The crown is hollow. The power is not.',
+  duck: 'The Rubber Duck Freak. Priceless. The appraisal division refuses to elaborate. Squeak.',
 };
+
+
 
 const OBJECT_APPRAISALS = {
   floor: 'The floor. $8,000 a square foot. It is doing the work of three paintings.',
@@ -38,7 +58,30 @@ const OBJECT_APPRAISALS = {
   displayFrame: 'A frame with ambition. It has seen things. It framed them.',
   giftshop: 'The Gift Shop. Where art goes to be affordable and vaguely ashamed.',
   radio: 'The GARRET-2000. Not for sale. It has heard everything and judges gently.',
+  recordPlayer: 'The communal record player. Every room owns the same one. The logistics are conceptual.',
+  maxProPainting: 'UNTITLED, 2026. Oil on canvas, 11 × 8 cm. Price on application. The application is reviewed by the wall.',
+  maxProRedDot: 'The red dot. Not a sale. A position. Someone with money blinked.',
+  maxProLabel: 'The wall label. It reads exactly like the truth. That is what makes it suspicious.',
+  maxProLabelBig: 'The exhibition label. Fourteen times larger than the work. Appraised as “generous”.',
+  maxProBench: 'The bench. Positioned at the exact distance of understanding. Understanding remains elsewhere.',
+  maxProDesk: 'The attendant’s desk. Enormous. Black. It prices everyone who approaches, quietly, at zero.',
+  maxProGlass: 'A champagne glass, abandoned mid-argument. Estimate: one toast, unclaimed.',
+  maxProCatalogue: 'The catalogue. Two hundred pages about one tiny painting. Page 80 is the word “whereas”.',
+  maxProPlinth: 'A plinth for a book about a painting. The gallery’s whole economy in one object.',
+  kunstRing: 'The ring. Football geometry, club lighting, office liability. The ropes are the clearest argument here.',
+  kunstCanvas: 'The canvas. Finally, a painting surface with a points system. Current score: nil–nil–infinity.',
+  kunstNewsDesk: 'The news desk. Breaking news sits here until it learns to stand.',
+  kunstMonitor: 'A monitor announcing nothing at professional brightness.',
+  kunstScoreboard: 'MAX PRO KUNST 2000: 0–0 after ninety minutes plus infinity. A classic.',
+  skylight: 'The skylight. Soft neutral daylight, free of charge, currently outperforming the exhibition.',
+  'the dais': 'The dais. Raised nine inches, which in this kingdom is basically a mountain.',
+  'royal bar': 'The royal bar. Every bottle ceremonial, every ceremony open. The ice bucket outranks you.',
+  'dance floor': 'The dance floor. Dark gloss, ancient confetti, zero judgment. $8,000 a square foot, memories included.',
+  royalTV: 'The royal television. Currently broadcasting the kingdom’s only channel. Estimate: one crown, slightly used. The blur is load-bearing.',
 };
+
+
+
 
 const GENERIC_APPRAISALS = [
   'Estimate: $40,000. Provenance: unclear. Smell: present.',

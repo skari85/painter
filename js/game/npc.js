@@ -255,9 +255,15 @@ function buildBody(def) {
     );
     photo.position.set(0, H / 2, 0.012);
     card.add(back, photo);
+    if (def.seated) {
+      // sitting on the floor: the paper person sinks politely into the concrete
+      card.position.y = -0.52;
+      card.rotation.x = -0.05;
+    }
     head = card;                  // head-tracking turns the whole photo toward you
     cutout = card;
   } else {
+
     const legMat = def.underwear ? mats.skin : mats.bottom;
     const legL = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.52, 0.13), legMat);
     legL.position.set(-0.09, 0.26, 0);
@@ -284,26 +290,35 @@ function buildBody(def) {
 
     head = new THREE.Group();
     head.position.y = 1.38;
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
-    skull.position.y = 0.24;
-    // the face — a pen sketch wrapped over the front of the skull, under the hairline
-    const face = new THREE.Mesh(
-      new THREE.SphereGeometry(0.142, 18, 14, Math.PI / 2 - 1.05, 2.1, 1.45, 1.45),
-      // white base for illustrated portraits so skin tone doesn't tint the art
-      new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
-    );
-    face.position.y = 0.24;
-    const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-      mats.hair
-    );
-    hair.position.y = 0.27;
-    head.add(skull, face, hair);
+    if (def.dildoHead) {
+      // the court's dress code: a smooth, proud, featureless dome.
+      // no face. the heads do not judge. the heads cannot.
+      const dome = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.2, 6, 14), mats.skin);
+      dome.position.y = 0.3;
+      head.add(dome);
+    } else {
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.14, 18, 14), mats.skin);
+      skull.position.y = 0.24;
+      // the face — a pen sketch wrapped over the front of the skull, under the hairline
+      const face = new THREE.Mesh(
+        new THREE.SphereGeometry(0.142, 18, 14, Math.PI / 2 - 1.05, 2.1, 1.45, 1.45),
+        // white base for illustrated portraits so skin tone doesn't tint the art
+        new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
+      );
+      face.position.y = 0.24;
+      const hair = new THREE.Mesh(
+        new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        mats.hair
+      );
+      hair.position.y = 0.27;
+      head.add(skull, face, hair);
+    }
     g.add(legL, legR, torso, armL, armR);
   }
 
-  const labelY = def.cutout ? 1.88 : 2.12;
-  const egoY = def.cutout ? 1.7 : 1.9;
+  const labelY = def.cutout ? (def.seated ? 1.32 : 1.88) : 2.12;
+  const egoY = def.cutout ? (def.seated ? 1.18 : 1.7) : 1.9;
+
 
   // blob shadow
   const shadow = new THREE.Mesh(
@@ -362,8 +377,11 @@ export class NPC {
     this.egoFill = parts.egoFill;
     this.torso = parts.torso;
     this.cutout = parts.cutout ?? null;
+    this.#cutoutBaseY = this.cutout ? this.cutout.position.y : 0;
+    this.homeYaw = null;          // set by spawn — static NPCs return to this facing
 
     this.#target = null;
+
     this.#idleFor = rand(1, 4);
     this.#walkPhase = rand(0, 6);
     this.#staggerT = 0;
@@ -372,8 +390,9 @@ export class NPC {
     this.#splats = 0;
   }
 
-  #target; #idleFor; #walkPhase; #staggerT; #meltdownT; #exit; #splats;
+  #target; #idleFor; #walkPhase; #staggerT; #meltdownT; #exit; #splats; #cutoutBaseY;
   #staggerDir = new THREE.Vector3();
+
 
   place(pos, faceYaw = rand(0, Math.PI * 2)) {
     this.group.position.copy(pos);
@@ -489,15 +508,22 @@ export class NPC {
         if (this.cutout) {
           // the photograph emotes — agitated little paper person
           this.cutout.rotation.z = Math.sin(t * 3.4 + this.uid) * 0.05;
-          this.cutout.position.y = Math.abs(Math.sin(t * 2.8 + this.uid)) * 0.025;
+          this.cutout.position.y = this.#cutoutBaseY + Math.abs(Math.sin(t * 2.8 + this.uid)) * 0.025;
         }
+
         this.#trackHead(ctx.playerPos, dt);
         break;
       }
 
       default: { // idle / wander
         this.#idleFor -= dt;
-        if (this.#target) {
+        if (this.def.static) {
+          // planted: hold the position, drift back to the argument's facing
+          if (this.homeYaw != null) {
+            this.group.rotation.y = damp(this.group.rotation.y, this.homeYaw, 3, dt);
+          }
+          this.group.rotation.z = damp(this.group.rotation.z, this.def.tilt ?? 0, 3, dt);
+        } else if (this.#target) {
           const d = this.#target.clone().sub(pos); d.y = 0;
           const dist = d.length();
           if (dist < 0.35) {
@@ -520,8 +546,9 @@ export class NPC {
         if (this.cutout && !this.#target) {
           // standing still: a quiet paper breathing
           this.cutout.rotation.z = damp(this.cutout.rotation.z, Math.sin(t * 1.6 + this.uid) * 0.03, 6, dt);
-          this.cutout.position.y = damp(this.cutout.position.y, 0, 8, dt);
+          this.cutout.position.y = damp(this.cutout.position.y, this.#cutoutBaseY, 8, dt);
         }
+
 
         // head tracks the player when near — the artworld is watching
         if (pos.distanceTo(ctx.playerPos) < 4.5) this.#trackHead(ctx.playerPos, dt);
@@ -534,9 +561,10 @@ export class NPC {
     if (this.cutout) {
       // paper-doll locomotion: the photo rocks and hops its way across the room
       this.cutout.rotation.z = Math.sin(this.#walkPhase) * 0.09 * intensity;
-      this.cutout.position.y = Math.abs(Math.sin(this.#walkPhase)) * 0.055 * intensity;
+      this.cutout.position.y = this.#cutoutBaseY + Math.abs(Math.sin(this.#walkPhase)) * 0.055 * intensity;
       return;
     }
+
     if (!this.armL) return;
     const s = Math.sin(this.#walkPhase) * 0.4 * intensity;
     this.armL.rotation.x = s;
@@ -560,6 +588,8 @@ export class NPC {
 export class NPCManager extends Emitter {
   #all = [];
   #barkT = 6;
+  #forkFightT = rand(14, 22);
+  #forkFight = null;
 
   constructor(world, audio) {
     super();
@@ -570,21 +600,27 @@ export class NPCManager extends Emitter {
   clear() {
     for (const n of this.#all) n.group.removeFromParent();
     this.#all = [];
+    this.#forkFight = null;
+    this.#forkFightT = rand(14, 22);
   }
 
   spawn(cast, zoneKey) {
     const zone = this.world.zone(zoneKey);
     const anchors = zone.anchors;
+    const yaws = zone.anchorYaws ?? {};
     for (const def of cast) {
       const npc = new NPC(def, zoneKey);
       const anchor = def.anchor && anchors[def.anchor]
         ? anchors[def.anchor]
         : pick(zone.waypoints);
-      npc.place(anchor.clone());
+      const yaw = (def.anchor && yaws[def.anchor] != null) ? yaws[def.anchor] : rand(0, Math.PI * 2);
+      npc.place(anchor.clone(), yaw);
+      npc.homeYaw = yaw;
       zone.group.add(npc.group);
       this.#all.push(npc);
     }
   }
+
 
   get inCurrentZone() {
     return this.#all.filter((n) => !n.dead && n.zoneKey === this.world.current);
@@ -637,19 +673,69 @@ export class NPCManager extends Emitter {
       }
     }
 
+    this.#updateForkFight(dt);
+
     // ambient barks — subtitles from whoever is near enough to overhear
     this.#barkT -= dt;
     if (this.#barkT <= 0) {
       this.#barkT = rand(7, 15);
       const near = this.inCurrentZone.filter(
         (n) => n.state !== 'meltdown' && n.state !== 'leaving' &&
+               n.def.barks?.length &&
                n.group.position.distanceTo(playerPos) < 8
       );
+
       if (near.length) {
         const n = pick(near);
         const line = pick(n.def.barks);
         this.emit('bark', { name: n.def.name, text: line, pitch: n.def.pitch });
       }
     }
+  }
+
+  /**
+   * Dinner-party violence is theatre, not a duel: two guests stagger, trade
+   * three absurd lines, and return to their seats. It never melts anyone down
+   * and only exists while the Gilded Fork is the active zone.
+   */
+  #updateForkFight(dt) {
+    if (this.world.current !== 'gildedFork') {
+      this.#forkFight = null;
+      this.#forkFightT = Math.max(this.#forkFightT, 4);
+      return;
+    }
+    if (this.#forkFight) {
+      this.#forkFight.t += dt;
+      const f = this.#forkFight;
+      if (f.t > 0.82 && !f.hit) {
+        f.hit = true;
+        f.b.stagger(f.dir.clone().negate());
+        this.emit('fight', { phase: 'hit', a: f.a, b: f.b });
+      } else if (f.t > 1.75 && !f.end) {
+        f.end = true;
+        this.emit('fight', { phase: 'end', a: f.a, b: f.b });
+      } else if (f.t > 2.6) {
+        this.#forkFight = null;
+        this.#forkFightT = rand(22, 38);
+      }
+      return;
+    }
+    this.#forkFightT -= dt;
+    if (this.#forkFightT > 0) return;
+    const candidates = this.inCurrentZone.filter((n) =>
+      !n.dead && n.state === 'idle' && n.def.id !== 'forkHost' && n.def.id !== 'forkWaiter'
+    );
+    if (candidates.length < 2) {
+      this.#forkFightT = 8;
+      return;
+    }
+    const a = pick(candidates);
+    const b = pick(candidates.filter((n) => n !== a));
+    const dir = b.group.position.clone().sub(a.group.position).setY(0).normalize();
+    a.group.rotation.y = Math.atan2(dir.x, dir.z);
+    b.group.rotation.y = Math.atan2(-dir.x, -dir.z);
+    a.stagger(dir);
+    this.#forkFight = { a, b, dir, t: 0, hit: false, end: false };
+    this.emit('fight', { phase: 'start', a, b });
   }
 }

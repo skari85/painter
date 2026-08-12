@@ -107,7 +107,10 @@ export class GameState extends Emitter {
 function read(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? { ...fallback, ...parsed }
+      : { ...fallback };
   } catch { return { ...fallback }; }
 }
 
@@ -121,6 +124,10 @@ const defaultSettings = () => ({
   quality: 1,
   reduceMotion: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   invertY: false,
+});
+
+const defaultMeta = () => ({
+  lastVisit: '', streak: 0, visits: 0, cowVisits: 0, completedDays: [],
 });
 
 export function loadSettings() {
@@ -145,4 +152,56 @@ export function unlockEnding(key) {
     write(STORAGE.endings, list);
   }
   return list;
+}
+
+/** Local calendar stamp used for the daily malfunction and return streak. */
+export function dayStamp(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function loadMeta() {
+  const meta = read(STORAGE.meta, defaultMeta());
+  return {
+    ...defaultMeta(),
+    ...meta,
+    streak: Number.isFinite(meta.streak) ? Math.max(0, meta.streak) : 0,
+    visits: Number.isFinite(meta.visits) ? Math.max(0, meta.visits) : 0,
+    cowVisits: Number.isFinite(meta.cowVisits) ? Math.max(0, meta.cowVisits) : 0,
+    completedDays: Array.isArray(meta.completedDays) ? meta.completedDays.filter((d) => typeof d === 'string') : [],
+  };
+}
+
+export function registerVisit() {
+  const meta = loadMeta();
+  const today = dayStamp();
+  if (meta.lastVisit !== today) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    meta.streak = meta.lastVisit === dayStamp(yesterday) ? meta.streak + 1 : 1;
+    meta.lastVisit = today;
+    meta.visits++;
+    write(STORAGE.meta, meta);
+  }
+  return meta;
+}
+
+export function recordCowVisit() {
+  const meta = loadMeta();
+  meta.cowVisits++;
+  write(STORAGE.meta, meta);
+  return meta.cowVisits;
+}
+
+export function dailyComplete(stamp = dayStamp()) {
+  return loadMeta().completedDays.includes(stamp);
+}
+
+export function completeDaily(stamp = dayStamp()) {
+  const meta = loadMeta();
+  if (!meta.completedDays.includes(stamp)) {
+    meta.completedDays = [...meta.completedDays.slice(-29), stamp];
+    write(STORAGE.meta, meta);
+  }
+  return meta;
 }

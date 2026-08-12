@@ -21,6 +21,9 @@ export class UIManager {
   #artiUnread = 0;
   #artiDeltaTimer = null;
   #artiBuzzTimer = null;
+  #callTimer = null;
+  #callStartedAt = 0;
+  #onboardingKey = null;
 
   constructor() {
     this.el = {
@@ -57,6 +60,14 @@ export class UIManager {
       curtain: $('curtain'),
       credPulse: $('cred-pulse'),
       title: $('title-screen'),
+      onboarding: $('onboarding'),
+      onboardingFrame: $('onboarding-frame'),
+      onboardingKicker: $('onboarding-kicker'),
+      onboardingTitle: $('onboarding-title'),
+      onboardingBody: $('onboarding-body'),
+      onboardingProgress: $('onboarding-progress'),
+      onboardingNext: $('onboarding-next'),
+      onboardingSkip: $('onboarding-skip'),
       endingsStrip: $('endings-strip'),
       howto: $('howto'),
       settings: $('settings'),
@@ -75,6 +86,18 @@ export class UIManager {
       endingStats: $('ending-stats'),
       fatal: $('fatal'),
       fatalText: $('fatal-text'),
+      dailyTitle: $('daily-title'),
+      dailyDescription: $('daily-description'),
+      dailyProgress: $('daily-progress'),
+      call: $('arti-call'),
+      callPortrait: $('call-portrait'),
+      callName: $('call-name'),
+      callHandle: $('call-handle'),
+      callRole: $('call-role'),
+      callCaption: $('call-caption'),
+      callDuration: $('call-duration'),
+      callTranscript: $('call-transcript'),
+      callOptions: $('call-options'),
     };
   }
 
@@ -84,6 +107,57 @@ export class UIManager {
 
   show(name) { $(name)?.classList.remove('hidden'); }
   hide(name) { $(name)?.classList.add('hidden'); }
+
+  /** A compact opening film. Gameplay is not initialized until it completes. */
+  openOnboarding(onComplete) {
+    const scenes = [
+      { scene: 'garret', kicker: 'OSLO · 02:13', title: 'YOU ARE STILL A PAINTER.', body: 'Your garret is cold. Rent is late. The canvas is blank. Outside, the artworld is having a party without you.' },
+      { scene: 'market', kicker: 'MEANWHILE · ACROSS THE CITY', title: 'THE MARKET ATE THE VIRTUES.', body: 'Vision became branding. Courage became scandal. Community became networking. Everyone calls the damage a movement.' },
+      { scene: 'phone', kicker: 'ARTI · 241 FOLLOWERS', title: 'THE PHONE KNOWS YOU ARE INVISIBLE.', body: 'KREYO.ETH is minting other people’s feelings. Collectors are buying silence by the square metre. Your feed keeps asking what you are working on.' },
+      { scene: 'invite', kicker: 'ONE MESSAGE · NO APOLOGY', title: 'BIANCA HAS LEFT THE DOOR OPEN.', body: 'Three nights. Openings, private rooms, impossible patrons. Make work, survive conversations, and decide what part of yourself is actually for sale.' },
+      { scene: 'choice', kicker: 'NIGHT ONE · THE GARRET', title: 'PAINT SOMETHING. ENTER THE SCENE.', body: 'Your brush can make art or enemies. Fame opens doors. Integrity lets you recognize yourself when they do.' },
+    ];
+    let index = 0;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      document.removeEventListener('keydown', this.#onboardingKey);
+      this.#onboardingKey = null;
+      this.hide('onboarding');
+      onComplete();
+    };
+    const render = () => {
+      const shot = scenes[index];
+      const frame = this.el.onboardingFrame;
+      frame.classList.remove('shot-enter');
+      void frame.offsetWidth;
+      frame.dataset.scene = shot.scene;
+      this.el.onboardingKicker.textContent = shot.kicker;
+      this.el.onboardingTitle.textContent = shot.title;
+      this.el.onboardingBody.textContent = shot.body;
+      this.el.onboardingNext.childNodes[0].textContent = index === scenes.length - 1 ? 'Begin Night One ' : 'Continue ';
+      this.el.onboardingProgress.innerHTML = scenes.map((_, i) => `<span class="${i <= index ? 'on' : ''}"></span>`).join('');
+      this.el.onboardingProgress.setAttribute('aria-label', `Scene ${index + 1} of ${scenes.length}`);
+      frame.classList.add('shot-enter');
+    };
+    const next = () => {
+      if (index >= scenes.length - 1) { finish(); return; }
+      index += 1;
+      render();
+    };
+    this.el.onboardingNext.onclick = next;
+    this.el.onboardingSkip.onclick = finish;
+    this.#onboardingKey = (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); finish(); }
+      if (event.target instanceof HTMLButtonElement && (event.key === ' ' || event.key === 'Enter')) return;
+      if (event.key === ' ' || event.key === 'Enter' || event.key === 'ArrowRight') { event.preventDefault(); next(); }
+    };
+    document.addEventListener('keydown', this.#onboardingKey);
+    this.show('onboarding');
+    render();
+    this.el.onboardingNext.focus();
+  }
 
   get isDialogueOpen() { return !this.el.dialogue.classList.contains('hidden'); }
   get isCodexOpen() { return !this.el.codex.classList.contains('hidden'); }
@@ -147,6 +221,13 @@ export class UIManager {
     this.show('hint-bar');
   }
 
+  setDailyCard({ title, description, progress, complete = false }) {
+    this.el.dailyTitle.textContent = title;
+    this.el.dailyDescription.textContent = description;
+    this.el.dailyProgress.textContent = complete ? 'COMPLETED — THE OMEN IS IMPRESSED' : progress;
+    this.el.dailyProgress.classList.toggle('complete', complete);
+  }
+
   /** Keep the keyboard legend visible, while changing it for each overlay. */
   setHotkeys(mode) {
     const presets = {
@@ -163,6 +244,7 @@ export class UIManager {
       map: { title: 'MAP', items: [['Mouse', 'choose room'], ['M / Esc', 'close']] },
       codex: { title: 'VIRTUES', items: [['Tab / Esc', 'close']] },
       arti: { title: 'ARTI', items: [['Mouse', 'use phone'], ['N / Esc', 'close']] },
+      'arti-call': { title: 'LIVE CALL', items: [['1', 'answer'], ['2', 'answer'], ['3', 'answer'], ['Esc', 'end call']] },
       seance: { title: 'SÉANCE', items: [['Mouse', 'choose / ask'], ['Esc', 'leave']] },
       naming: { title: 'TITLE THE WORK', items: [['Type', 'name painting'], ['Enter', 'confirm'], ['Esc', 'cancel']] },
       paused: { title: 'PAUSED', items: [['Esc', 'resume'], ['Mouse', 'choose menu']] },
@@ -218,6 +300,36 @@ export class UIManager {
     setTimeout(() => t.remove(), 3000);
   }
 
+  /** A comic speech bubble at a screen position — for talking livestock. */
+  speechBubble(x, y, text, ms = 3000) {
+    const b = document.createElement('div');
+    b.className = 'speech-bubble';
+    b.textContent = text;
+    b.style.left = `${x}px`;
+    b.style.top = `${y}px`;
+    this.el.damageLayer.appendChild(b);
+    setTimeout(() => b.classList.add('leaving'), ms);
+    setTimeout(() => b.remove(), ms + 400);
+  }
+
+  /** Image speech bubble at a screen position — for the cow's artworld nonsense. */
+  speechBubbleImage(x, y, url, ms = 3500) {
+    const b = document.createElement('div');
+    b.className = 'speech-bubble-image';
+    const img = document.createElement('img');
+    img.src = encodeURI(url);
+    img.style.display = 'block';
+    img.style.maxWidth = '220px';
+    img.style.maxHeight = '160px';
+    img.style.borderRadius = '14px';
+    b.appendChild(img);
+    b.style.left = `${x}px`;
+    b.style.top = `${y}px`;
+    this.el.damageLayer.appendChild(b);
+    setTimeout(() => b.classList.add('leaving'), ms);
+    setTimeout(() => b.remove(), ms + 400);
+  }
+
   subtitle(name, text, pitch, audio) {
     clearTimeout(this.#subtitleTimer);
     this.el.subtitle.innerHTML =
@@ -237,7 +349,8 @@ export class UIManager {
     chip.classList.remove('hidden');
   }
 
-  bindNowPlaying(onStop) {
+  bindNowPlaying(onNext, onStop) {
+    $('np-next').addEventListener('click', () => onNext());
     $('np-stop').addEventListener('click', () => onStop());
   }
 
@@ -434,6 +547,59 @@ export class UIManager {
 
   closeArti() { this.hide('arti'); }
 
+  openCollectorCall(call, onPick) {
+    const { callPortrait, callName, callHandle, callRole, callCaption, callTranscript, callOptions } = this.el;
+    callPortrait.src = encodeURI(call.face);
+    callPortrait.alt = call.name;
+    callName.textContent = call.name;
+    callHandle.textContent = call.handle;
+    callRole.textContent = call.role;
+    callCaption.textContent = 'Connecting the portfolio...';
+    callTranscript.innerHTML = '';
+    callOptions.innerHTML = '';
+    this.#callStartedAt = performance.now();
+    clearInterval(this.#callTimer);
+    this.#callTimer = setInterval(() => {
+      const elapsed = Math.floor((performance.now() - this.#callStartedAt) / 1000);
+      this.el.callDuration.textContent = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+    }, 250);
+    this.show('arti-call');
+    this.callLine(call.opening, call.name);
+    this.showCallOptions(call.rounds[0]?.options ?? [], onPick);
+  }
+
+  callLine(text, speaker = '') {
+    const transcript = this.el.callTranscript;
+    const row = document.createElement('div');
+    row.className = `call-line${speaker ? ' collector-line' : ' painter-line'}`;
+    row.innerHTML = `<span class="call-line-who">${escapeHtml(speaker || 'YOU')}</span><span>${escapeHtml(text)}</span>`;
+    transcript.appendChild(row);
+    transcript.scrollTop = transcript.scrollHeight;
+    this.el.callCaption.textContent = text;
+    this.el.callPortrait.classList.remove('speaking');
+    void this.el.callPortrait.offsetWidth;
+    this.el.callPortrait.classList.add('speaking');
+  }
+
+  showCallOptions(options, onPick) {
+    const wrap = this.el.callOptions;
+    wrap.innerHTML = '';
+    options.forEach((opt, i) => {
+      const b = document.createElement('button');
+      b.className = `call-option tone-${opt.tone}`;
+      b.innerHTML = `<kbd>${i + 1}</kbd><span>${escapeHtml(opt.text)}</span><small>${escapeHtml(opt.tone)}</small>`;
+      b.addEventListener('click', () => onPick(i));
+      wrap.appendChild(b);
+    });
+  }
+
+  closeCollectorCall() {
+    clearInterval(this.#callTimer);
+    this.#callTimer = null;
+    this.el.callPortrait.classList.remove('speaking');
+    this.hide('arti-call');
+  }
+
   renderArti(arti) {
     $('arti-followers').textContent = arti.followers;
     $('arti-following').textContent = arti.following;
@@ -457,9 +623,13 @@ export class UIManager {
             `<div class="arti-p-handle">${escapeHtml(NPC_HANDLES[r.id] ?? '')}</div>` +
           `</div>` +
           (followsYou ? '<span class="arti-fyou">FOLLOWS YOU</span>' : '') +
-          `<button class="arti-follow-btn${following ? ' following' : ''}">${following ? 'Following' : 'Follow'}</button>`;
-        row.querySelector('button').addEventListener('click', () => {
+          `<button class="arti-follow-btn${following ? ' following' : ''}">${following ? 'Following' : 'Follow'}</button>` +
+          (r.id === 'milo' ? '<button class="arti-call-btn">Call</button>' : '');
+        row.querySelector('.arti-follow-btn').addEventListener('click', () => {
           this.#artiHandlers?.onToggleFollow(r.id);
+        });
+        row.querySelector('.arti-call-btn')?.addEventListener('click', () => {
+          this.#artiHandlers?.onCall(r.id);
         });
         people.appendChild(row);
       }
@@ -635,7 +805,13 @@ const MAP_ZONES = [
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
   { key: 'leatherLatex', name: 'THE LEATHER & LATEX ROOMS', desc: 'The collector\'s house. Warm hide up front, black gloss in the back — one bassline, two moods.' },
+  { key: 'gildedFork', name: 'THE GILDED FORK', desc: 'One long table. Every big shot. All of them drunk and messed up.' },
+  { key: 'maxPro', name: 'MAX PRO KUNST 2000', desc: 'Football broadcast. Berlin club. Office boxing. No result.' },
+  { key: 'dildoBall', name: 'THE DILDO BALL', desc: 'The collector’s other back room. The court is in session. The heads do not judge.' },
+  { key: 'daylightClub', name: 'THE DAYLIGHT FLESH GARDEN', desc: 'An adults-only sculpture club at noon. Chrome poles, generous bodies, moss, and animals with no guest list.' },
 ];
+
+
 
 /* Ending prose lives with the UI that renders it. */
 
