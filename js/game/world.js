@@ -2482,6 +2482,104 @@ export class World {
     });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  ZONE 8 — THE DAYLIGHT FLESH GARDEN                        */
+  /* ---------------------------------------------------------- */
+  #buildDaylightClub() {
+    const z = this.#newZone('daylightClub');
+    shell(z, { w: 18, d: 13, floorColor: 0x536348, wallColor: 0xd8ccb7, ceilColor: 0xdce9df });
+    z.spawn.set(-7.7, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xc7d8ca, density: 0.012 };
+
+    // A mossy floor beneath a bright, overconfident conservatory roof.
+    plane(z, {
+      w: 17.9, h: 12.9, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
+      material: mat(0x40563a, { roughness: 0.96 }),
+      noSplat: true, name: 'daylight moss floor',
+    });
+    plane(z, {
+      w: 12, h: 5.2, x: 1.2, y: 3.56, z: 0, rx: Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({ color: 0xeaf7ee, transparent: true, opacity: 0.72, side: THREE.DoubleSide }),
+      noSplat: true, name: 'daylight skylight',
+    });
+
+    const chrome = mat(0xd7dde0, { metalness: 0.92, roughness: 0.12 });
+    for (const [x, zz] of [[-2.6, -2.4], [1.2, 0], [5.0, 2.4]]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 3.25, 16), chrome);
+      pole.position.set(x, 1.625, zz);
+      pole.userData.noSplat = true;
+      pole.name = 'daylight chrome pole';
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.08, 24), chrome);
+      base.position.set(x, 0.04, zz);
+      base.userData.noSplat = true;
+      z.group.add(pole, base);
+      z.colliders.push({ minX: x - 0.34, maxX: x + 0.34, minZ: zz - 0.34, maxZ: zz + 0.34 });
+    }
+
+    // Soft abstract bodies orbit the poles; this is sculpture, according to the waiver.
+    const skin = [0xd7a07e, 0x9b624b, 0x6b3f31, 0xe3b89b];
+    for (const [i, x, zz, scale] of [[0, -3.4, -1.7, 1.0], [1, 0.4, 0.7, 1.2], [2, 4.2, 1.7, 0.92], [3, 5.8, -2.8, 1.08]]) {
+      const body = new THREE.Mesh(
+        new THREE.SphereGeometry(0.55, 20, 14),
+        mat(skin[i], { roughness: 0.72 })
+      );
+      body.position.set(x, 0.78 * scale, zz);
+      body.scale.set(0.82 * scale, 1.25 * scale, 0.72 * scale);
+      body.castShadow = true;
+      body.userData.noSplat = true;
+      body.name = 'daylight figure';
+      z.group.add(body);
+    }
+
+    // The animals have no guest list and considerably better boundaries.
+    for (const [x, zz, ry] of [[-5.6, 3.7, 0.5], [6.4, -3.8, -0.8]]) {
+      const deer = new THREE.Group();
+      deer.position.set(x, 0, zz);
+      deer.rotation.y = ry;
+      const hide = mat(0x9a6b45, { roughness: 0.9 });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), hide);
+      body.position.y = 0.78; body.scale.set(1.35, 0.72, 0.68);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.72, 10), hide);
+      neck.position.set(0.42, 1.18, 0); neck.rotation.z = -0.32;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), hide);
+      head.position.set(0.58, 1.55, 0); head.scale.set(1.1, 0.72, 0.72);
+      deer.add(body, neck, head);
+      for (const lx of [-0.28, 0.28]) {
+        for (const lz of [-0.18, 0.18]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.72, 8), hide);
+          leg.position.set(lx, 0.36, lz);
+          deer.add(leg);
+        }
+      }
+      deer.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(deer);
+      z.colliders.push({ minX: x - 0.75, maxX: x + 0.75, minZ: zz - 0.55, maxZ: zz + 0.55 });
+    }
+
+    z.group.add(new THREE.HemisphereLight(0xf5fff1, 0x385034, 1.65));
+    const sun = new THREE.DirectionalLight(0xfff1cf, 2.1);
+    sun.position.set(-4, 8, 3);
+    sun.castShadow = true;
+    z.group.add(sun);
+
+    z.interactables.push({
+      id: 'daylight-poles', type: 'flavor', label: 'Critique the daylight performance',
+      pos: new THREE.Vector3(1.2, 1.2, 0), radius: 3.2,
+      lines: [
+        'Noon pours through the roof. Nobody has located the off switch.',
+        'The chrome poles are listed as structural, emotional, and tax deductible.',
+        'The deer critique the bass by continuing to be deer.',
+      ],
+    });
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.waypoints = [
+      new THREE.Vector3(-5.5, 0, -3.5), new THREE.Vector3(-2.5, 0, 2.8),
+      new THREE.Vector3(1.5, 0, -3.8), new THREE.Vector3(4.4, 0, 3.6),
+      new THREE.Vector3(6.4, 0, -1.2), new THREE.Vector3(0, 0, 3.8),
+    ];
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
