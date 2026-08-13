@@ -9,8 +9,11 @@
  */
 
 import * as THREE from 'three';
+import { inject } from '@vercel/analytics';
 
 import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, DAILY_PHENOMENA } from './core/config.js';
+
+inject();
 
 
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily } from './core/state.js';
