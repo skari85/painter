@@ -239,7 +239,7 @@ function buildBody(def) {
   if (def.cutout) {
     // a WALKING PHOTOGRAPH — no procedural body, the picture is the person.
     // flat card with a dark back; alpha-cut if the png has transparency.
-    const H = 1.55, W = H * (2 / 3);
+    const H = def.cutoutHeight ?? 1.55, W = H * (2 / 3);
     const card = new THREE.Group();
     const back = new THREE.Mesh(
       new THREE.BoxGeometry(W + 0.06, H + 0.06, 0.02),
@@ -251,10 +251,12 @@ function buildBody(def) {
       new THREE.MeshStandardMaterial({
         color: 0xffffff, map: faceTexture(def), roughness: 0.85,
         transparent: true, alphaTest: 0.15,
+        side: def.cutoutNoBack ? THREE.DoubleSide : THREE.FrontSide,
       })
     );
     photo.position.set(0, H / 2, 0.012);
-    card.add(back, photo);
+    if (!def.cutoutNoBack) card.add(back);
+    card.add(photo);
     if (def.seated) {
       // sitting on the floor: the paper person sinks politely into the concrete
       card.position.y = -0.52;
@@ -332,7 +334,8 @@ function buildBody(def) {
   const label = new THREE.Sprite(new THREE.SpriteMaterial({
     map: labelTexture(def.name, def.shortRole ?? def.role), transparent: true, depthWrite: false,
   }));
-  label.scale.set(1.5, 0.375, 1);
+  const labelScale = def.labelScale ?? 1;
+  label.scale.set(1.5 * labelScale, 0.375 * labelScale, 1);
   label.position.y = labelY;
 
   // ego bar (billboarded pair)
@@ -590,6 +593,8 @@ export class NPCManager extends Emitter {
   #barkT = 6;
   #forkFightT = rand(14, 22);
   #forkFight = null;
+  #upFightT = 1.8;
+  #upFight = null;
 
   constructor(world, audio) {
     super();
@@ -602,6 +607,8 @@ export class NPCManager extends Emitter {
     this.#all = [];
     this.#forkFight = null;
     this.#forkFightT = rand(14, 22);
+    this.#upFight = null;
+    this.#upFightT = 1.8;
   }
 
   spawn(cast, zoneKey) {
@@ -674,11 +681,12 @@ export class NPCManager extends Emitter {
     }
 
     this.#updateForkFight(dt);
+    this.#updateUpAndCummingFight(dt);
 
     // ambient barks — subtitles from whoever is near enough to overhear
     this.#barkT -= dt;
     if (this.#barkT <= 0) {
-      this.#barkT = rand(7, 15);
+      this.#barkT = this.world.current === 'daylightClub' ? rand(24, 34) : rand(7, 15);
       const near = this.inCurrentZone.filter(
         (n) => n.state !== 'meltdown' && n.state !== 'leaving' &&
                n.def.barks?.length &&
@@ -737,5 +745,51 @@ export class NPCManager extends Emitter {
     a.stagger(dir);
     this.#forkFight = { a, b, dir, t: 0, hit: false, end: false };
     this.emit('fight', { phase: 'start', a, b });
+  }
+
+  /** Muscle Mania protects the inventory; Zebra Zebrason protects the quarter. */
+  #updateUpAndCummingFight(dt) {
+    if (this.world.current !== 'upAndCumming') {
+      this.#upFight = null;
+      this.#upFightT = Math.max(this.#upFightT, 1.8);
+      return;
+    }
+
+    const muscle = this.byId('muscleMania300');
+    const zebra = this.byId('zebraZebrason');
+    if (!muscle || !zebra || muscle.dead || zebra.dead) return;
+
+    if (this.#upFight) {
+      const f = this.#upFight;
+      f.t += dt;
+      if (f.t > 0.55 && !f.zebraPush) {
+        f.zebraPush = true;
+        muscle.stagger(f.dir);
+        this.audio?.boxingImpact?.(0);
+        this.emit('bark', { name: zebra.def.name, text: 'SIGN. THE. SALE. AGREEMENT.', pitch: zebra.def.pitch });
+      } else if (f.t > 1.7 && !f.musclePush) {
+        f.musclePush = true;
+        zebra.stagger(f.dir.clone().negate());
+        this.audio?.boxingImpact?.(2);
+        this.emit('bark', { name: muscle.def.name, text: 'THE WORK IS NOT LEAVING THIS ROOM!', pitch: muscle.def.pitch });
+      } else if (f.t > 3.25) {
+        const zone = this.world.zone('upAndCumming');
+        muscle.place(zone.anchors.muscleMania300.clone(), zone.anchorYaws.muscleMania300);
+        zebra.place(zone.anchors.zebraZebrason.clone(), zone.anchorYaws.zebraZebrason);
+        muscle.homeYaw = zone.anchorYaws.muscleMania300;
+        zebra.homeYaw = zone.anchorYaws.zebraZebrason;
+        this.#upFight = null;
+        this.#upFightT = rand(5.5, 8.5);
+      }
+      return;
+    }
+
+    this.#upFightT -= dt;
+    if (this.#upFightT > 0 || muscle.state !== 'idle' || zebra.state !== 'idle') return;
+    const dir = muscle.group.position.clone().sub(zebra.group.position).setY(0).normalize();
+    muscle.group.rotation.y = Math.atan2(-dir.x, -dir.z);
+    zebra.group.rotation.y = Math.atan2(dir.x, dir.z);
+    this.#upFight = { t: 0, dir, zebraPush: false, musclePush: false };
+    this.emit('bark', { name: zebra.def.name, text: 'Two red dots before lunch. I am trying to save your career!', pitch: zebra.def.pitch });
   }
 }

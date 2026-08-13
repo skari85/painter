@@ -35,6 +35,29 @@ const TOPICS = [
   'someone wearing paint on their shoes, on purpose',
 ];
 
+const DAYLIGHT_TOPICS = [
+  'whether a post-contemporary artist is thinking, performing thought, or checking lunch options',
+  'the enormous rainbow and the unicorn standing on top as if symbolism paid rent',
+  'whether sincerity can survive daylight, bass, and an institutional partnership',
+  'the colorful public treating moss as both seating and critical framework',
+  'the difference between having a thought and publishing an artist statement about one',
+  'whether the unicorn is an artwork, a critic, or simply the only guest with boundaries',
+];
+
+/** Authored exchanges keep the garden conversational even without an API key. */
+const DAYLIGHT_EXCHANGES = [
+  ['Do you think the post-contemporary artist is thinking?', 'Constantly. That is why the work looks so tired.'],
+  ['The artist says the body is a site.', 'Mine has requested rezoning and a small snack.'],
+  ['Is the unicorn part of the installation?', 'No. The installation is part of the unicorn’s emerging practice.'],
+  ['I felt something before reading the wall text.', 'Careful. They can revoke your critical distance for that.'],
+  ['What comes after post-contemporary?', 'A panel explaining why nothing came after post-contemporary.'],
+  ['Maybe the artist is not thinking at all.', 'At last: a sustainable studio practice.'],
+  ['This rainbow is aggressively sincere.', 'Give the curator ten minutes. They will call it infrastructural doubt.'],
+  ['The bass makes the theory easier to believe.', 'Everything becomes rigorous at the correct volume.'],
+  ['I cannot tell whether this is joy or critique.', 'Good. The grant requires both and funds neither.'],
+  ['Do you think color can think?', 'Yellow can. Beige has delegated it to an assistant.'],
+];
+
 const SYSTEM = `You write ambient party chatter for PAINTER, a satirical artworld game set in Oslo.
 Two guests at a collector's private party exchange exactly two lines.
 Rules: each line under 18 words; dry, absurd, art-world satire; stay in each persona;
@@ -77,6 +100,7 @@ export class ChatterEngine extends Emitter {
   #state;
   #queue = [];
   #timer = rand(12, 20);       // the first exchange lands early enough to be noticed
+  #localTimer = rand(5, 9);
   #inflight = false;
 
   constructor(ai, state) {
@@ -92,8 +116,29 @@ export class ChatterEngine extends Emitter {
    * @param {object} ctx         { zoneName, night, busy() }
    */
   update(dt, near, ctx) {
-    if (!this.#ai.enabled) return;          // authored barks carry the night
     if (ctx.busy()) return;                  // never talk over a duel or a menu
+
+    // The Flesh Garden is explicitly a thinking public. Its authored pairs do
+    // not depend on the ghostwriter, so the room still talks when offline.
+    if (ctx.zoneKey === 'daylightClub') {
+      if (near.length >= 2) {
+        this.#localTimer -= dt;
+        if (this.#localTimer <= 0) {
+          this.#localTimer = rand(15, 24);
+          const [a, b] = pickPair(near);
+          const [first, reply] = pick(DAYLIGHT_EXCHANGES);
+          this.emit('line', { name: a.def.name, text: first, pitch: a.def.pitch });
+          setTimeout(() => {
+            if (!ctx.busy() && (!ctx.active || ctx.active())) {
+              this.emit('line', { name: b.def.name, text: reply, pitch: b.def.pitch });
+            }
+          }, rand(2200, 3300));
+        }
+      }
+      return;                                // authored room; never stack AI chatter on top
+    }
+
+    if (!this.#ai.enabled) return;          // authored barks carry the other rooms
 
     this.#timer -= dt;
     if (this.#timer <= 0 && this.#queue.length) {
@@ -120,7 +165,7 @@ export class ChatterEngine extends Emitter {
       lastEvent ? `Something just happened: ${lastEvent}. They may gossip about it.` : '',
       `A is ${persona(a.def)}`,
       `B is ${persona(b.def)}`,
-      `They are standing near: ${pick(TOPICS)}.`,
+      `They are standing near: ${pick(ctx.zoneKey === 'daylightClub' ? DAYLIGHT_TOPICS : TOPICS)}.`,
       'Write their two-line exchange.',
     ].filter(Boolean).join('\n');
 

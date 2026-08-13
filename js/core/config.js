@@ -82,6 +82,7 @@ export const ZONES = {
   maxPro:      { name: 'MAX PRO KUNST 2000', mood: 'galleria' },
   dildoBall:   { name: 'THE DILDO BALL',    mood: 'off' },
   daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
+  upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
 };
 
 /**
@@ -132,10 +133,40 @@ export const ROOM_SCORES = {
     kick: [0, 7, 11], snare: [4, 12, 15], hats: [0, 3, 7, 10, 13], swing: 0.2, texture: 0.1,
   },
   daylightClub: {
-    bpm: 132, level: 0.36, root: 49, scale: [0, 2, 3, 7, 10, 12, 14],
-    wave: 'sawtooth', bassWave: 'square', cutoff: 1850, pad: [0, 3, 7, 10],
-    bass: [0, 0, 12, 3, 7, 0, 10, 2], lead: [null, 5, 1, null, 3, null, 6, 2, null, 4, null, 0, 5, null, 2, 6],
-    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14, 15], swing: 0.01, texture: 0.2,
+    // Sun-warmed experimental jazz-electronica: dusty drums and tape wobble
+    // underneath crooked electric chords and a wordless formant voice.
+    bpm: 108, level: 0.31, root: 49, scale: [0, 2, 3, 7, 9, 10, 14],
+    wave: 'triangle', bassWave: 'sine', cutoff: 980, pad: [0, 3, 7, 10],
+    bass: [0, null, 0, 7, 3, null, 10, 2], lead: [null, 5, null, 1, null, 3, null, 2, null, 4, null, 0, null, 2, 6, null],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.11, texture: 0.38,
+    kickLevel: 0.4, snareLevel: 0.075, hatLevel: 0.026,
+    bassLevel: 0.115, bassDecay: 1.85, leadLevel: 0.028,
+    lofi: {
+      hissLevel: 0.009, hissHighpass: 620, hissLowpass: 5600,
+      wowRate: 0.21, wowDepth: 44, detune: 7,
+      leadAttack: 0.022, leadDecay: 1.75, cutoffScale: 1.2,
+    },
+    jazz: {
+      steps: [2, 10, 19, 29, 34, 42, 51, 61],
+      chords: [[0, 3, 7, 10], [2, 5, 9, 12], [-2, 2, 5, 9], [0, 4, 7, 11]],
+      octave: 2, level: 0.014, attack: 0.055, decaySteps: 7.2,
+      cutoff: 1850, spread: 0.014,
+    },
+    vocal: {
+      steps: [7, 27, 43, 59], notes: [10, 7, 14, 9],
+      durationSteps: [10, 13, 9, 15], octave: 2, level: 0.032,
+      vibratoRate: 5.1, vibratoDepth: 18, glide: 0.91,
+      // Each gesture morphs from one two-formant vowel into another.
+      vowels: [[760, 1180, 520, 880], [540, 920, 730, 1220],
+        [820, 1280, 610, 980], [620, 1040, 470, 820]],
+    },
+  },
+  upAndCumming: {
+    // Bright, restless gallery pop: clean daylight with a sale always pending.
+    bpm: 124, level: 0.24, root: 65.41, scale: [0, 2, 4, 7, 9, 12, 14],
+    wave: 'triangle', bassWave: 'sine', cutoff: 2600, pad: [0, 4, 7, 9],
+    bass: [0, null, 7, null, 4, 9, null, 12], lead: [4, null, 2, 5, null, 1, null, 6, 3, null, 5, null, 2, 0, null, 4],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.04, texture: 0.025,
   },
 };
 
@@ -212,4 +243,3 @@ export const MUSIC_TITLES = {
   garret: 'SA SLITEN',
   ending: 'JEG LIKER DEG (DEMO)',
 };
-

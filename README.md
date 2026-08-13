@@ -52,8 +52,24 @@ Four endings. Dots on the title screen track which you've found.
 ## Soundtrack & the radio
 
 Warm songs from `puplic/songs/` play on the title screen, in the garret, and
-over the endings — the market spaces get cold procedural drones. (The folder
+over the endings — the market spaces get coded procedural room scores. (The folder
 is spelled `puplic`; left as found.)
+
+### The Daylight Flesh Garden
+
+The garden has its own 108 BPM procedural experimental jazz-electronica room
+score: dusty restrained drums, soft sine bass, crooked electric-piano voicings,
+filtered tape hiss, and irregular wordless "ah/oh" moans made from moving vocal
+formants, pitch bends, and vibrato. It is synthesized at runtime in
+`js/core/audio.js`; there is no sampled soundtrack file to ship or loop.
+
+The garden surfaces use the 1K JPG diffuse, OpenGL normal, and roughness maps
+from Poly Haven's [Forest Ground 04](https://polyhaven.com/a/forest_ground_04)
+and [Painted Plaster Wall](https://polyhaven.com/a/painted_plaster_wall).
+Both assets are published under Poly Haven's CC0 license. The six source MD5
+values from Poly Haven's asset API are recorded in
+`puplic/polyhaven/daylight-garden/CHECKSUMS.md5` so local copies can be checked
+without relying on filenames or file sizes alone.
 
 **The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
 face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
@@ -71,9 +87,9 @@ js/core/
   utils.js            math, Emitter event bus, seeded RNG, escapeHtml
   state.js            run state (meters, virtues, flags) + localStorage meta
   input.js            keyboard/mouse/pointer-lock abstraction
-  audio.js            100% procedural WebAudio (no assets): SFX + ambient drones
+  audio.js            procedural WebAudio: SFX + profile-driven room scores
 js/game/
-  world.js            the 4 zones: procedural geometry, colliders, doors, splat decals
+  world.js            expanding zone set: geometry, colliders, doors, splat decals
   player.js           FPS controller: per-axis AABB collision, head bob
   hand.js             procedural visible hands: swing, gestures, carried painting
   paint.js            GPU particle pool (one draw call, custom shader) + easel overlay

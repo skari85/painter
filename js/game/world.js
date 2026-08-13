@@ -105,6 +105,73 @@ function tinyMasterpieceTexture() {
   });
 }
 
+/** A cucumber with duct-tape repairs and the sort of confidence that reads as sold. */
+function ductTapedCucumberTexture() {
+  return canvasTexture(420, 520, (ctx, w, h) => {
+    ctx.fillStyle = '#efe7dc'; ctx.fillRect(0, 0, w, h);
+
+    const cx = w * 0.5;
+    const cy = h * 0.52;
+    ctx.translate(cx, cy);
+
+    ctx.beginPath();
+    ctx.moveTo(-112, 130);
+    ctx.bezierCurveTo(-168, 32, -154, -128, -30, -172);
+    ctx.bezierCurveTo(110, -210, 184, -88, 184, 18);
+    ctx.bezierCurveTo(184, 132, 100, 202, 10, 188);
+    ctx.bezierCurveTo(-62, 174, -100, 156, -112, 130);
+    ctx.closePath();
+    ctx.fillStyle = '#82af6b';
+    ctx.fill();
+    ctx.strokeStyle = '#3b5a3a';
+    ctx.lineWidth = 12;
+    ctx.stroke();
+
+    for (let i = -2; i <= 2; i++) {
+      const y = i * 30;
+      ctx.beginPath();
+      ctx.moveTo(-104, y + 18);
+      ctx.quadraticCurveTo(-14, y - 16, 104, y + 8);
+      ctx.strokeStyle = 'rgba(38, 55, 35, 0.44)';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#5d7d4d';
+    for (const px of [-60, -14, 42, 90]) {
+      ctx.beginPath();
+      ctx.arc(px, 20, 9 + Math.abs(px % 18), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.translate(-cx, -cy);
+
+    const tape = ['#c8c1b2', '#adb0b8', '#d7cfbf'];
+    for (let i = 0; i < tape.length; i++) {
+      const y = 90 + i * 82;
+      ctx.fillStyle = tape[i];
+      ctx.beginPath();
+      ctx.moveTo(w * 0.18, y + 12);
+      ctx.lineTo(w * 0.82, y + 38);
+      ctx.lineTo(w * 0.74, y + 86);
+      ctx.lineTo(w * 0.14, y + 62);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(32, 34, 38, 0.35)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#d53636';
+    ctx.beginPath();
+    ctx.arc(w * 0.78, h * 0.22, 28, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.72)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+}
+
 /** The small wall label beside the tiny painting. Reads exactly like the truth. */
 function wallLabelTexture() {
   return canvasTexture(512, 384, (ctx, w) => {
@@ -429,6 +496,7 @@ export class World {
     this.#buildMaxPro();
     this.#buildDildoBall();
     this.#buildDaylightClub();
+    this.#buildUpAndCumming();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -465,6 +533,7 @@ export class World {
       maxPro:       { x: -18.4, z: 9.75,  ry: Math.PI },
       dildoBall:    { x: -6.35, z: 4.75,  ry: Math.PI },
       daylightClub: { x: 8.4,   z: 5.25,  ry: Math.PI },
+      upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
     };
 
     for (const [key, p] of Object.entries(placements)) {
@@ -719,6 +788,7 @@ export class World {
     hangingArt(z, { x: 6.5, y: 1.9, z: -6.28, ry: 0, seed: 107 });
     hangingArt(z, { x: -4, y: 1.9, z: 6.28, ry: Math.PI, seed: 109 });
     hangingArt(z, { x: 4.5, y: 1.9, z: 6.28, ry: Math.PI, seed: 113 });
+    hangingPhoto(z, { x: 1.2, y: 1.9, z: -6.28, ry: 0, url: 'puplic/penis banana.jpg', h: 1.3 });
 
     // YOUR SPOT — where the player's work gets hung
     const spotFrame = box(z, {
@@ -793,6 +863,7 @@ export class World {
     });
     door(z, { x: 0, z: -6.62, ry: 0, label: 'LEATHER & LATEX →', to: 'leatherLatex' });
     door(z, { x: 8.8, z: -4.4, ry: -Math.PI / 2, label: 'DAYLIGHT FLESH GARDEN →', to: 'daylightClub' });
+    door(z, { x: 8.8, z: 4.4, ry: -Math.PI / 2, label: 'UP AND CUMMING ARTIST →', to: 'upAndCumming' });
     door(z, { x: 0, z: 6.62, ry: Math.PI, label: 'THE GILDED FORK →', to: 'gildedFork' });
     door(z, { x: 6.8, z: 6.62, ry: Math.PI, label: 'MAX PRO KUNST 2000 →', to: 'maxPro' });
 
@@ -1935,6 +2006,41 @@ export class World {
       z.group.add(tiny);
     }
 
+    // the wildly sincere cucumber — duct-taped, framed, and professionally embarrassing
+    {
+      const cucumber = new THREE.Group();
+      cucumber.position.set(-4.8, 1.82, -11.8);
+      cucumber.rotation.y = 0.18;
+
+      const frame = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 1.4, 0.04),
+        mat(0x2b2118, { roughness: 0.5 })
+      );
+      frame.name = 'maxProCucumberFrame';
+
+      const art = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.06, 1.26),
+        new THREE.MeshStandardMaterial({
+          map: ductTapedCucumberTexture(),
+          roughness: 0.82,
+        })
+      );
+      art.position.z = 0.024;
+      art.userData.noSplat = true;
+      art.name = 'maxProCucumberArt';
+
+      const sold = new THREE.Mesh(
+        new THREE.CircleGeometry(0.082, 18),
+        new THREE.MeshBasicMaterial({ color: 0xc02a2a })
+      );
+      sold.position.set(0.38, -0.44, 0.045);
+      sold.userData.noSplat = true;
+      sold.name = 'maxProCucumberSoldDot';
+
+      cucumber.add(frame, art, sold);
+      z.group.add(cucumber);
+    }
+
     // the tiny red sales dot — not a sale, a position
     {
       const dot = new THREE.Mesh(
@@ -2492,17 +2598,208 @@ export class World {
     z.spawnYaw = -Math.PI / 2;
     z.fog = { color: 0xc7d8ca, density: 0.012 };
 
-    // A mossy floor beneath a bright, overconfident conservatory roof.
+    // A mossy floor beneath a bright, overconfident conservatory roof. The
+    // local Poly Haven maps arrive asynchronously; these colors remain useful
+    // fallbacks if an asset is missing or the browser declines the request.
+    const textureLoader = new THREE.TextureLoader();
+    const applyGardenMap = (material, slot, url, repeat, srgb = false, tint = 0xffffff) => {
+      textureLoader.load(encodeURI(url), (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(repeat[0], repeat[1]);
+        tex.anisotropy = 4;
+        if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+        material[slot] = tex;
+        if (slot === 'map') material.color.set(tint);
+        material.needsUpdate = true;
+      });
+    };
+    const mossMaterial = mat(0x40563a, { roughness: 0.96 });
+    const mossRoot = 'puplic/polyhaven/daylight-garden/forest_ground_04';
+    applyGardenMap(mossMaterial, 'map', `${mossRoot}/forest_ground_04_diff_1k.jpg`, [4.5, 3.25], true, 0x91a982);
+    applyGardenMap(mossMaterial, 'normalMap', `${mossRoot}/forest_ground_04_nor_gl_1k.jpg`, [4.5, 3.25]);
+    applyGardenMap(mossMaterial, 'roughnessMap', `${mossRoot}/forest_ground_04_rough_1k.jpg`, [4.5, 3.25]);
     plane(z, {
       w: 17.9, h: 12.9, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
-      material: mat(0x40563a, { roughness: 0.96 }),
+      material: mossMaterial,
       noSplat: true, name: 'daylight moss floor',
+    });
+
+    const plasterMaterial = mat(0xd8ccb7, { roughness: 0.94 });
+    const plasterRoot = 'puplic/polyhaven/daylight-garden/painted_plaster_wall';
+    applyGardenMap(plasterMaterial, 'map', `${plasterRoot}/painted_plaster_wall_diff_1k.jpg`, [3.8, 1.15], true);
+    applyGardenMap(plasterMaterial, 'normalMap', `${plasterRoot}/painted_plaster_wall_nor_gl_1k.jpg`, [3.8, 1.15]);
+    applyGardenMap(plasterMaterial, 'roughnessMap', `${plasterRoot}/painted_plaster_wall_rough_1k.jpg`, [3.8, 1.15]);
+    plane(z, {
+      w: 17.7, h: 3.42, x: 0, y: 1.79, z: -6.485,
+      material: plasterMaterial, noSplat: false, name: 'daylight painted plaster wall',
     });
     plane(z, {
       w: 12, h: 5.2, x: 1.2, y: 3.56, z: 0, rx: Math.PI / 2,
       material: new THREE.MeshBasicMaterial({ color: 0xeaf7ee, transparent: true, opacity: 0.72, side: THREE.DoubleSide }),
       noSplat: true, name: 'daylight skylight',
     });
+
+    const gardenLife = { unicorns: [], flowers: [], rainbowMaterials: [], orbs: [] };
+    z.animated.daylightGarden = gardenLife;
+
+    // The room's thesis statement: a wide rainbow, authored as geometry rather
+    // than imported spectacle, so it remains proudly theatrical and strange.
+    const rainbow = new THREE.Group();
+    rainbow.position.set(1.5, 0.18, -6.22);
+    rainbow.scale.x = 1.46;
+    const rainbowColors = [0xff315f, 0xff8c24, 0xffdb3d, 0x44dd72, 0x39bfff, 0x7665ff, 0xd34cff];
+    for (let i = 0; i < rainbowColors.length; i++) {
+      const color = rainbowColors[i];
+      const rainbowMat = new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 0.28,
+        roughness: 0.34, metalness: 0.08,
+      });
+      const arc = new THREE.Mesh(new THREE.TorusGeometry(2.43 - i * 0.25, 0.135, 10, 72, Math.PI), rainbowMat);
+      arc.userData.noSplat = true;
+      arc.castShadow = true;
+      rainbow.add(arc);
+      gardenLife.rainbowMaterials.push(rainbowMat);
+    }
+    z.group.add(rainbow);
+
+    const unicornMaterials = {
+      pearl: new THREE.MeshPhysicalMaterial({
+        color: 0xfff4fb, roughness: 0.3, metalness: 0.04,
+        clearcoat: 0.65, clearcoatRoughness: 0.12,
+      }),
+      hoof: mat(0x7b4fa0, { roughness: 0.36, metalness: 0.22 }),
+      eye: new THREE.MeshBasicMaterial({ color: 0x22142f }),
+      horn: new THREE.MeshStandardMaterial({
+        color: 0xffe985, emissive: 0xffb62e, emissiveIntensity: 0.8,
+        roughness: 0.22, metalness: 0.55,
+      }),
+      mane: [0xff4fa3, 0xffc83d, 0x45dcff, 0x8b5cff].map((color) => mat(color, { roughness: 0.42 })),
+    };
+    const buildUnicorn = ({ x, y = 0, zz, scale = 1, ry = 0, collider = true, phase = 0 }) => {
+      const g = new THREE.Group();
+      g.position.set(x, y, zz);
+      g.rotation.y = ry;
+      g.scale.setScalar(scale);
+
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.52, 16, 12), unicornMaterials.pearl);
+      body.position.y = 0.82; body.scale.set(1.52, 0.7, 0.72);
+      const chest = new THREE.Mesh(new THREE.SphereGeometry(0.33, 14, 10), unicornMaterials.pearl);
+      chest.position.set(0.48, 1.02, 0); chest.scale.set(0.78, 1.25, 0.78);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.23, 0.78, 10), unicornMaterials.pearl);
+      neck.position.set(0.53, 1.34, 0); neck.rotation.z = -0.3;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10), unicornMaterials.pearl);
+      head.position.set(0.73, 1.73, 0); head.scale.set(1.18, 0.82, 0.82);
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8), unicornMaterials.pearl);
+      muzzle.position.set(0.99, 1.64, 0); muzzle.scale.set(1.2, 0.68, 0.72);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.075, 0.55, 12), unicornMaterials.horn);
+      horn.position.set(0.73, 2.16, 0); horn.rotation.z = -0.2;
+      g.add(body, chest, neck, head, muzzle, horn);
+
+      for (const side of [-1, 1]) {
+        const ear = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.28, 8), unicornMaterials.pearl);
+        ear.position.set(0.57, 1.99, side * 0.17);
+        ear.rotation.z = side * 0.08;
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.042, 8, 6), unicornMaterials.eye);
+        eye.position.set(0.92, 1.79, side * 0.245);
+        eye.scale.set(1, 1, 0.48);
+        g.add(ear, eye);
+      }
+      for (const [lx, lz] of [[-0.43, -0.22], [-0.43, 0.22], [0.38, -0.22], [0.38, 0.22]]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.72, 8), unicornMaterials.pearl);
+        leg.position.set(lx, 0.4, lz);
+        const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.12, 8), unicornMaterials.hoof);
+        hoof.position.set(lx, 0.06, lz);
+        g.add(leg, hoof);
+      }
+      const maneSegments = [];
+      for (let i = 0; i < 6; i++) {
+        const mane = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), unicornMaterials.mane[i % unicornMaterials.mane.length]);
+        mane.position.set(0.37 - i * 0.12, 1.82 - i * 0.16, 0);
+        mane.scale.set(0.62, 1.12, 1.2);
+        g.add(mane); maneSegments.push(mane);
+      }
+      const tail = new THREE.Group();
+      tail.position.set(-0.78, 0.93, 0);
+      for (let i = 0; i < 4; i++) {
+        const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), unicornMaterials.mane[(i + 1) % unicornMaterials.mane.length]);
+        tuft.position.set(-i * 0.15, -i * 0.1, Math.sin(i * 1.8) * 0.06);
+        tuft.scale.set(1.25, 0.75, 0.8);
+        tail.add(tuft);
+      }
+      g.add(tail);
+      g.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(g);
+      gardenLife.unicorns.push({ group: g, tail, maneSegments, baseY: y, phase });
+      if (collider) {
+        z.colliders.push({ minX: x - 0.82 * scale, maxX: x + 0.82 * scale, minZ: zz - 0.48 * scale, maxZ: zz + 0.48 * scale });
+      }
+      return g;
+    };
+
+    buildUnicorn({ x: -5.6, zz: -3.25, scale: 0.92, ry: -0.3, phase: 0.2 });
+    buildUnicorn({ x: 4.65, zz: 4.45, scale: 0.82, ry: Math.PI * 0.72, phase: 2.1 });
+    // This one has climbed onto the rainbow and now refuses curatorial help.
+    buildUnicorn({ x: 1.5, y: 2.48, zz: -5.92, scale: 0.47, ry: Math.PI * 0.08, collider: false, phase: 4.2 });
+
+    // Saturated flora, glow fruit and translucent ribbons keep the imported
+    // ground texture from pulling the room toward realism.
+    const stemMat = mat(0x2e8f59, { roughness: 0.82 });
+    const flowerColors = [0xff3c8e, 0xffd43b, 0x46d9ff, 0x9f55ff, 0xff653d];
+    const flowerSpots = [[-7, -4.5], [-4.3, 4.8], [-1.1, -4.7], [1.9, 4.8], [3.8, -4.5], [7.2, 3.2], [7.2, -1.5], [-1.1, 2.1], [3.1, 2.6]];
+    for (let i = 0; i < flowerSpots.length; i++) {
+      const [x, zz] = flowerSpots[i];
+      const flower = new THREE.Group();
+      flower.position.set(x, 0, zz);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.62, 7), stemMat);
+      stem.position.y = 0.31;
+      const center = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(0xffa82e, { roughness: 0.5 }));
+      center.position.y = 0.67;
+      flower.add(stem, center);
+      const petalMat = mat(flowerColors[i % flowerColors.length], { roughness: 0.46 });
+      for (let p = 0; p < 5; p++) {
+        const a = p / 5 * Math.PI * 2;
+        const petal = new THREE.Mesh(new THREE.SphereGeometry(0.11, 9, 7), petalMat);
+        petal.position.set(Math.cos(a) * 0.14, 0.67 + Math.sin(a) * 0.14, 0);
+        petal.scale.set(1.25, 0.72, 0.42);
+        petal.rotation.z = a;
+        flower.add(petal);
+      }
+      flower.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(flower);
+      gardenLife.flowers.push({ group: flower, phase: i * 0.71 });
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = i * 2.17;
+      const x = Math.sin(a) * 7.2;
+      const zz = Math.cos(a * 1.31) * 5.1;
+      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.08, 0.28, 8), mat(0xffe8c9));
+      stalk.position.set(x, 0.14, zz);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), mat(flowerColors[i % flowerColors.length], { roughness: 0.5 }));
+      cap.position.set(x, 0.34, zz); cap.scale.y = 0.48;
+      stalk.userData.noSplat = cap.userData.noSplat = true;
+      z.group.add(stalk, cap);
+    }
+    for (let i = 0; i < 7; i++) {
+      const color = flowerColors[i % flowerColors.length];
+      const orb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08 + (i % 2) * 0.025, 10, 8),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.4, roughness: 0.2 })
+      );
+      orb.position.set(-6.4 + i * 2.05, 1.0 + (i % 3) * 0.55, -5.65 + (i % 2) * 0.2);
+      orb.userData.noSplat = true;
+      z.group.add(orb);
+      gardenLife.orbs.push({ mesh: orb, baseY: orb.position.y, phase: i * 0.9 });
+    }
+    for (const [x, color, tilt] of [[-3.5, 0xff4fa3, -0.18], [0.2, 0x45dcff, 0.12], [5.7, 0xffd43b, -0.1]]) {
+      const ribbon = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.8, 0.28, 5, 1),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.48, side: THREE.DoubleSide, depthWrite: false })
+      );
+      ribbon.position.set(x, 2.85, 5.92);
+      ribbon.rotation.set(0.08, Math.PI, tilt);
+      ribbon.userData.noSplat = true;
+      z.group.add(ribbon);
+    }
 
     const chrome = mat(0xd7dde0, { metalness: 0.92, roughness: 0.12 });
     for (const [x, zz] of [[-2.6, -2.4], [1.2, 0], [5.0, 2.4]]) {
@@ -2517,19 +2814,87 @@ export class World {
       z.colliders.push({ minX: x - 0.34, maxX: x + 0.34, minZ: zz - 0.34, maxZ: zz + 0.34 });
     }
 
-    // Soft abstract bodies orbit the poles; this is sculpture, according to the waiver.
+    // Glam flesh-garden regulars: complete faces, impossible wigs and heavy cartoon boots.
     const skin = [0xd7a07e, 0x9b624b, 0x6b3f31, 0xe3b89b];
+    const wigs = [0xff5aa5, 0x65d9e8, 0xf4c542, 0x9a63ff];
+    const outfits = [0x6c173f, 0x123d45, 0x8f342c, 0x35205f];
     for (const [i, x, zz, scale] of [[0, -3.4, -1.7, 1.0], [1, 0.4, 0.7, 1.2], [2, 4.2, 1.7, 0.92], [3, 5.8, -2.8, 1.08]]) {
+      const figure = new THREE.Group();
+      figure.position.set(x, 0, zz);
+      figure.rotation.y = [0.35, -0.65, 0.8, -1.15][i];
+
+      const skinMat = mat(skin[i], { roughness: 0.72 });
+      const outfitMat = mat(outfits[i], { roughness: 0.42, metalness: 0.12 });
+      const wigMat = mat(wigs[i], { roughness: 0.48 });
+      const bootMat = mat(i % 2 ? 0xf0e650 : 0x17131d, { roughness: 0.3, metalness: 0.35 });
       const body = new THREE.Mesh(
         new THREE.SphereGeometry(0.55, 20, 14),
-        mat(skin[i], { roughness: 0.72 })
+        outfitMat
       );
-      body.position.set(x, 0.78 * scale, zz);
+      body.position.set(0, 1.12 * scale, 0);
       body.scale.set(0.82 * scale, 1.25 * scale, 0.72 * scale);
-      body.castShadow = true;
-      body.userData.noSplat = true;
       body.name = 'daylight figure';
-      z.group.add(body);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.29 * scale, 18, 14), skinMat);
+      head.position.set(0, 1.92 * scale, 0.01);
+      head.scale.set(0.9, 1.08, 0.86);
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.055 * scale, 0.14 * scale, 10), skinMat);
+      nose.position.set(0, 1.92 * scale, -0.275 * scale);
+      nose.rotation.x = -Math.PI / 2;
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xf7fbff });
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x17131d });
+      for (const sx of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06 * scale, 10, 8), eyeMat);
+        eye.position.set(sx * 0.105 * scale, 2.01 * scale, -0.235 * scale);
+        eye.scale.set(1, 1.25, 0.38);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.024 * scale, 8, 6), pupilMat);
+        pupil.position.set(sx * 0.105 * scale, 2.01 * scale, -0.287 * scale);
+        figure.add(eye, pupil);
+      }
+      const mouth = new THREE.Mesh(
+        new THREE.TorusGeometry(0.08 * scale, 0.018 * scale, 6, 14, Math.PI),
+        new THREE.MeshBasicMaterial({ color: i % 2 ? 0x4a1420 : 0xd51f52 })
+      );
+      mouth.position.set(0, 1.81 * scale, -0.27 * scale);
+      mouth.rotation.z = Math.PI;
+
+      // Tiered bouffant wig with side curls: big readable silhouette from across the room.
+      const wigCap = new THREE.Mesh(new THREE.SphereGeometry(0.34 * scale, 16, 12), wigMat);
+      wigCap.position.set(0, 2.18 * scale, 0.03);
+      wigCap.scale.set(1.12, 0.72, 1.02);
+      const wigTop = new THREE.Mesh(new THREE.SphereGeometry(0.24 * scale, 14, 10), wigMat);
+      wigTop.position.set(0, 2.47 * scale, 0.04);
+      wigTop.scale.set(0.9, 1.35, 0.82);
+      figure.add(body, head, nose, mouth, wigCap, wigTop);
+      for (const sx of [-1, 1]) {
+        const curl = new THREE.Mesh(new THREE.TorusGeometry(0.12 * scale, 0.055 * scale, 7, 12), wigMat);
+        curl.position.set(sx * 0.27 * scale, 2.15 * scale, 0);
+        curl.rotation.y = Math.PI / 2;
+        figure.add(curl);
+
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.105 * scale, 0.48 * scale, 5, 8), outfitMat);
+        leg.position.set(sx * 0.23 * scale, 0.52 * scale, 0);
+        const boot = new THREE.Mesh(new THREE.BoxGeometry(0.3 * scale, 0.34 * scale, 0.48 * scale), bootMat);
+        boot.position.set(sx * 0.23 * scale, 0.18 * scale, -0.09 * scale);
+        boot.rotation.z = sx * 0.05;
+        const sole = new THREE.Mesh(new THREE.BoxGeometry(0.35 * scale, 0.09 * scale, 0.57 * scale), chrome);
+        sole.position.set(sx * 0.23 * scale, 0.035 * scale, -0.1 * scale);
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.075 * scale, 0.48 * scale, 5, 8), skinMat);
+        arm.position.set(sx * 0.58 * scale, 1.25 * scale, 0);
+        arm.rotation.z = sx * (0.48 + i * 0.1);
+        figure.add(leg, boot, sole, arm);
+      }
+      const belt = new THREE.Mesh(new THREE.TorusGeometry(0.39 * scale, 0.045 * scale, 7, 18), chrome);
+      belt.position.set(0, 1.06 * scale, 0);
+      belt.rotation.x = Math.PI / 2;
+      figure.add(belt);
+      figure.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(figure);
+      const bodyRadius = 0.42 * scale;
+      z.colliders.push({
+        minX: x - bodyRadius, maxX: x + bodyRadius,
+        minZ: zz - bodyRadius, maxZ: zz + bodyRadius,
+      });
     }
 
     // The animals have no guest list and considerably better boundaries.
@@ -2565,6 +2930,7 @@ export class World {
 
     z.interactables.push({
       id: 'daylight-poles', type: 'flavor', label: 'Critique the daylight performance',
+      title: 'THE DAYLIGHT FLESH GARDEN',
       pos: new THREE.Vector3(1.2, 1.2, 0), radius: 3.2,
       lines: [
         'Noon pours through the roof. Nobody has located the off switch.',
@@ -2572,12 +2938,237 @@ export class World {
         'The deer critique the bass by continuing to be deer.',
       ],
     });
+    z.interactables.push({
+      id: 'daylight-rainbow', type: 'flavor', label: 'Interpret the enormous rainbow',
+      title: 'THE RAINBOW, APPARENTLY',
+      pos: new THREE.Vector3(1.5, 1.55, -5.65), radius: 3.1,
+      lines: [
+        'Seven arcs, one wall, no irony waiver. A unicorn has claimed the top as a residency.',
+        'The rainbow emits optimism at a frequency the market has not yet securitized.',
+        'Its wall text says “post-spectrum.” The colors have declined to comment.',
+      ],
+    });
+    z.interactables.push({
+      id: 'daylight-unicorn', type: 'flavor', label: 'Ask the unicorn whether artists think',
+      title: 'THE UNICORN THINK TANK',
+      pos: new THREE.Vector3(-5.6, 1.0, -3.25), radius: 2.0,
+      lines: [
+        'The unicorn thinks artists think. It is less certain about panels discussing whether artists think.',
+        'One hoof taps the lo-fi kick. The horn appears to be receiving peer review.',
+        'It has no statement, no edition size, and excellent boundaries. Revolutionary.',
+      ],
+    });
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
     z.waypoints = [
-      new THREE.Vector3(-5.5, 0, -3.5), new THREE.Vector3(-2.5, 0, 2.8),
-      new THREE.Vector3(1.5, 0, -3.8), new THREE.Vector3(4.4, 0, 3.6),
-      new THREE.Vector3(6.4, 0, -1.2), new THREE.Vector3(0, 0, 3.8),
+      new THREE.Vector3(-7.0, 0, -4.5), new THREE.Vector3(-6.4, 0, 3.2),
+      new THREE.Vector3(-3.9, 0, -4.75), new THREE.Vector3(-3.1, 0, 4.75),
+      new THREE.Vector3(-0.9, 0, -4.75), new THREE.Vector3(-0.7, 0, 4.75),
+      new THREE.Vector3(2.2, 0, -4.65), new THREE.Vector3(2.0, 0, 4.7),
+      new THREE.Vector3(6.4, 0, -4.35), new THREE.Vector3(6.3, 0, 4.45),
+      new THREE.Vector3(7.2, 0, -3.0), new THREE.Vector3(6.8, 0, 3.9),
     ];
+    const gardenCastIds = [
+      'garden-aura', 'garden-pixel', 'garden-maybe', 'garden-loop', 'garden-oracle',
+      'garden-sincere', 'garden-caption', 'garden-sleeper', 'garden-chaos', 'garden-witness',
+    ];
+    for (let i = 0; i < gardenCastIds.length; i++) {
+      z.anchors[gardenCastIds[i]] = z.waypoints[i].clone();
+    }
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  UP AND CUMMING ARTIST — daylight, pressure, huge paintings */
+  /* ---------------------------------------------------------- */
+  #buildUpAndCumming() {
+    const z = this.#newZone('upAndCumming');
+    const roomH = 5.6;
+    shell(z, {
+      w: 20, d: 16, h: roomH,
+      floorColor: 0xd7d8d4, wallColor: 0xf7f7f2, ceilColor: 0xf2f5f5,
+    });
+    z.spawn.set(-8.2, 0, 2.8);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xe9f2f3, density: 0.009 };
+
+    // A roof made of false promises and convincing daylight.
+    for (const x of [-6, -2, 2, 6]) {
+      const sky = plane(z, {
+        w: 3.2, h: 5.4, x, y: roomH - 0.08, z: 0, rx: Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ color: 0xe8fbff }), noSplat: true, name: 'skylight',
+      });
+      sky.userData.noSplat = true;
+    }
+    // Tall east-facing window rhythm; the wall remains solid for collision.
+    for (const zz of [-5.7, -1.9, 1.9, 5.7]) {
+      plane(z, {
+        w: 2.7, h: 3.9, x: 9.79, y: 3.05, z: zz, ry: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ color: 0xdff6fb }), noSplat: true, name: 'skylight',
+      });
+    }
+
+    const artLoader = new THREE.TextureLoader();
+    const works = [];
+    const hangWork = ({ url, title, subtitle, x, y, z: zz, ry, w, h, sold = false }) => {
+      const g = new THREE.Group();
+      g.position.set(x, y, zz);
+      g.rotation.y = ry;
+
+      const shadow = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.16, h + 0.16, 0.075),
+        mat(0xdddcd6, { roughness: 0.55 })
+      );
+      shadow.castShadow = true;
+      const artMat = new THREE.MeshStandardMaterial({ color: 0xf0f0ec, roughness: 0.82 });
+      const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), artMat);
+      art.position.z = 0.043;
+      art.name = 'ownPhoto';
+      art.userData.noSplat = true;
+      art.receiveShadow = true;
+      artLoader.load(encodeURI(url), (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        artMat.map = tex;
+        artMat.color.set(0xffffff);
+        artMat.needsUpdate = true;
+      });
+
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(Math.min(2.65, w * 0.72), 0.38),
+        new THREE.MeshBasicMaterial({
+          map: textTexture(`${title}  ·  ${subtitle}`, {
+            fg: '#181a1d', bg: '#fbfbf7', size: 27, w: 1200, h: 170, font: '600',
+          }),
+        })
+      );
+      label.position.set(0, -h / 2 - 0.3, 0.047);
+      label.userData.noSplat = true;
+      g.add(shadow, art, label);
+
+      if (sold) {
+        const dot = new THREE.Mesh(
+          new THREE.CircleGeometry(0.105, 28),
+          new THREE.MeshBasicMaterial({ color: 0xd4111b })
+        );
+        dot.position.set(Math.min(w * 0.43, 1.55), -h / 2 - 0.3, 0.054);
+        dot.userData.noSplat = true;
+        g.add(dot);
+      }
+
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      z.group.add(g);
+      works.push({ group: g, title, sold });
+    };
+
+    hangWork({
+      url: 'puplic/up-and-cumming-artist/01-muscle-memory.png',
+      title: 'MUSCLE MEMORY BEFORE THE MARKET', subtitle: 'digital painting, 2026',
+      x: -6.6, y: 2.82, z: -7.78, ry: 0, w: 2.65, h: 2.83,
+    });
+    hangWork({
+      url: 'puplic/up-and-cumming-artist/02-blue-dealer.png',
+      title: 'BLUE DEALER, OPEN INVENTORY', subtitle: 'digital painting, 2026',
+      x: -2.35, y: 2.82, z: -7.78, ry: 0, w: 4.0, h: 2.6, sold: true,
+    });
+    hangWork({
+      url: 'puplic/up-and-cumming-artist/03-red-dealer.png',
+      title: 'RED DEALER, CLOSED HEART', subtitle: 'digital painting, 2026',
+      x: 4.45, y: 2.82, z: -7.78, ry: 0, w: 4.85, h: 3.15,
+    });
+    hangWork({
+      url: 'puplic/up-and-cumming-artist/04-angel-offer.png',
+      title: 'ANGEL WITH A BLUE OFFER', subtitle: 'digital painting, 2026',
+      x: -4.55, y: 2.82, z: 7.78, ry: Math.PI, w: 5.2, h: 3.38, sold: true,
+    });
+    hangWork({
+      url: 'puplic/up-and-cumming-artist/05-devil-red-dot.png',
+      title: 'DEVIL HOLDING THE RED DOT', subtitle: 'digital painting, 2026',
+      x: 3.55, y: 2.82, z: 7.78, ry: Math.PI, w: 5.2, h: 3.38,
+    });
+    z.works = works;
+
+    // Exhibition title: restrained typography, deeply unrestrained spelling.
+    plane(z, {
+      w: 6.8, h: 0.62, x: 9.76, y: 4.85, z: 0, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('UP AND CUMMING ARTIST', { fg: '#14161c', bg: '#fbfbf7', size: 58, w: 1400, h: 160, font: '800' }),
+      }),
+      noSplat: true,
+    });
+
+    // One desk, because one desk is all Zebra needs to turn resistance into paperwork.
+    const deskMat = mat(0xeee9df, { roughness: 0.34, metalness: 0.03 });
+    box(z, { w: 2.7, h: 0.12, d: 1.05, x: 5.95, y: 0.9, z: 2.35, material: deskMat, name: 'desk' });
+    for (const dx of [-1.12, 1.12]) {
+      for (const dz of [-0.4, 0.4]) {
+        box(z, { w: 0.09, h: 0.9, d: 0.09, x: 5.95 + dx, z: 2.35 + dz, material: mat(0xbcb9b2, { metalness: 0.55, roughness: 0.3 }) });
+      }
+    }
+    const contract = plane(z, {
+      w: 0.72, h: 0.95, x: 5.75, y: 1.04, z: 2.34, rx: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('SALE\nAGREEMENT\n\n90 / 10', { fg: '#15171a', bg: '#f8f5eb', size: 34, w: 500, h: 660, font: '700' }),
+      }), noSplat: true, name: 'desk',
+    });
+    contract.rotation.z = -0.12;
+    contract.userData.noSplat = true;
+
+    // Coded birds: seven low-poly loops, each with its own orbit and wing phase.
+    z.animated.birds = [];
+    const birdInk = [0x15171a, 0x263b4a, 0x8e2b31];
+    for (let i = 0; i < 7; i++) {
+      const bird = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.1, 9, 7), mat(birdInk[i % birdInk.length], { roughness: 0.65 }));
+      body.scale.set(1.7, 0.8, 0.75);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.18, 6), mat(0xe8a23a));
+      beak.rotation.z = -Math.PI / 2;
+      beak.position.x = 0.22;
+      const wingMat = mat(birdInk[i % birdInk.length], { roughness: 0.7 });
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.025, 0.14), wingMat);
+      const wingR = wingL.clone();
+      wingL.position.set(-0.03, 0.04, -0.16);
+      wingR.position.set(-0.03, 0.04, 0.16);
+      bird.add(body, beak, wingL, wingR);
+      bird.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(bird);
+      z.animated.birds.push({
+        group: bird, wingL, wingR,
+        radiusX: 2.3 + i * 0.63,
+        radiusZ: 1.5 + (i % 3) * 0.9,
+        speed: 0.22 + i * 0.035,
+        phase: i * 0.91,
+        y: 3.72 + (i % 3) * 0.42,
+      });
+    }
+
+    z.group.add(new THREE.HemisphereLight(0xffffff, 0xb9c3bf, 2.35));
+    const sun = new THREE.DirectionalLight(0xfff4d6, 3.0);
+    sun.position.set(-7, 11, 5);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -11; sun.shadow.camera.right = 11;
+    sun.shadow.camera.top = 9; sun.shadow.camera.bottom = -9;
+    z.group.add(sun);
+
+    z.anchors.muscleMania300 = new THREE.Vector3(0.95, 0, 0.1);
+    z.anchors.zebraZebrason = new THREE.Vector3(-0.95, 0, 0.1);
+    z.anchorYaws = { muscleMania300: -Math.PI / 2, zebraZebrason: Math.PI / 2 };
+    z.waypoints = [
+      new THREE.Vector3(-7.2, 0, 4.8), new THREE.Vector3(-6.4, 0, -4.4),
+      new THREE.Vector3(-3.0, 0, 4.4), new THREE.Vector3(-2.6, 0, -3.6),
+      new THREE.Vector3(2.8, 0, 4.3), new THREE.Vector3(2.9, 0, -3.6),
+      new THREE.Vector3(6.7, 0, -3.8), new THREE.Vector3(6.8, 0, 4.6),
+    ];
+
+    z.interactables.push({
+      id: 'up-cumming-desk', type: 'flavor', label: 'Read the sale agreement',
+      title: 'THE DESK', pos: new THREE.Vector3(5.95, 1.0, 2.35), radius: 2.2,
+      lines: [
+        'The agreement says 90 / 10. Zebra has circled both numbers and claimed the larger one.',
+        'Muscle Mania 300 has signed the contract “NOT FOR SALE” in permanent marker.',
+        'A red dot waits in the top drawer like a loaded opinion.',
+      ],
+    });
+    door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
   }
 
   /* ============================================================
@@ -2721,6 +3312,21 @@ export class World {
     for (const g of z.animated.glows) {
       g.rotation.y += dt * (beat ? 0.12 + kick * 1.6 : 0.12);   // the ball spins up on the kick
     }
+    if (z.animated.birds) {
+      for (const b of z.animated.birds) {
+        const a = t * b.speed + b.phase;
+        const x = Math.cos(a) * b.radiusX;
+        const zz = Math.sin(a) * b.radiusZ;
+        b.group.position.set(x, b.y + Math.sin(a * 2.7) * 0.18, zz);
+        const dx = -Math.sin(a) * b.radiusX;
+        const dz = Math.cos(a) * b.radiusZ;
+        b.group.rotation.y = Math.atan2(dx, dz) + Math.PI / 2;
+        const flap = Math.sin(t * 8.5 + b.phase) * 0.72;
+        b.wingL.rotation.x = flap;
+        b.wingR.rotation.x = -flap;
+        b.group.rotation.z = Math.sin(a * 1.7) * 0.09;
+      }
+    }
     // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays
     if (z.animated.strobes) {
       for (let i = 0; i < z.animated.strobes.length; i++) {
@@ -2842,6 +3448,27 @@ export class World {
       const flicker = 0.78 + Math.sin(t * 18.5) * 0.08 + Math.sin(t * 43.1) * 0.05;
       n.mat.opacity = flicker;
       n.glow.intensity = n.base * (0.72 + flicker * 0.34) + kick * 1.5;
+    }
+    if (z.animated.daylightGarden) {
+      const garden = z.animated.daylightGarden;
+      for (const u of garden.unicorns) {
+        u.group.position.y = u.baseY + Math.sin(t * 1.35 + u.phase) * 0.025 + kick * 0.045;
+        u.group.rotation.z = Math.sin(t * 0.8 + u.phase) * 0.018;
+        u.tail.rotation.z = Math.sin(t * 2.1 + u.phase) * 0.24;
+        for (let i = 0; i < u.maneSegments.length; i++) {
+          u.maneSegments[i].rotation.x = Math.sin(t * 1.8 + u.phase + i * 0.55) * 0.08;
+        }
+      }
+      for (const flower of garden.flowers) {
+        flower.group.rotation.z = Math.sin(t * 1.05 + flower.phase) * 0.09 + kick * 0.025;
+      }
+      for (let i = 0; i < garden.rainbowMaterials.length; i++) {
+        garden.rainbowMaterials[i].emissiveIntensity = 0.25 + kick * 0.42 + Math.sin(t * 0.8 + i * 0.45) * 0.045;
+      }
+      for (const orb of garden.orbs) {
+        orb.mesh.position.y = orb.baseY + Math.sin(t * 1.25 + orb.phase) * 0.1;
+        orb.mesh.material.emissiveIntensity = 1.1 + kick * 1.4 + Math.sin(t * 1.9 + orb.phase) * 0.22;
+      }
     }
     return event;
   }
