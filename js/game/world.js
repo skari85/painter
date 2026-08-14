@@ -9,7 +9,7 @@
  *   THE GILDED FORK       one long table, every artworld big shot,
  *                         all of them drunk and messed up.
  *
- * Everything is procedural geometry + generated canvas textures.
+ * Everything uses procedural geometry with generated and locally stored textures.
  * Collision is XZ axis-aligned boxes (single-floor zones by design).
  * Paint splats are pooled decal planes, recycled ring-buffer style.
  */
@@ -572,6 +572,63 @@ export class World {
     z.spawn.set(0, 0, 3.2);
     z.spawnYaw = Math.PI;            // face -z toward the easel
     z.fog = { color: 0x18120e, density: 0.03 };
+
+    // The studio keeps its original shell and collision, but receives a close
+    // inset skin of lightweight CC0 Poly Haven maps. One source texture is
+    // loaded per slot and cloned across differently scaled surfaces so the
+    // browser shares image data without stretching the short walls.
+    const studioLoader = new THREE.TextureLoader();
+    const applyStudioMap = (targets, slot, url, srgb = false) => {
+      studioLoader.load(encodeURI(url), (source) => {
+        targets.forEach(({ material, repeat }) => {
+          const tex = source.clone();
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          tex.repeat.set(repeat[0], repeat[1]);
+          tex.anisotropy = 4;
+          if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+          tex.needsUpdate = true;
+          material[slot] = tex;
+          material.needsUpdate = true;
+        });
+        source.dispose();
+      });
+    };
+
+    const floorMaterial = mat(0x9a7659, { roughness: 0.92 });
+    floorMaterial.normalScale.set(0.42, 0.42);
+    const woodRoot = 'puplic/polyhaven/studio/old_wood_floor';
+    const floorTargets = [{ material: floorMaterial, repeat: [4, 3] }];
+    applyStudioMap(floorTargets, 'map', `${woodRoot}/old_wood_floor_diff_1k.jpg`, true);
+    applyStudioMap(floorTargets, 'normalMap', `${woodRoot}/old_wood_floor_nor_gl_1k.jpg`);
+    applyStudioMap(floorTargets, 'roughnessMap', `${woodRoot}/old_wood_floor_rough_1k.jpg`);
+    plane(z, {
+      w: 11.9, h: 8.9, y: 0.012, rx: -Math.PI / 2,
+      material: floorMaterial, name: 'garret worn wood floor',
+    });
+
+    const longWallMaterial = mat(0x6d5e54, { roughness: 0.96 });
+    const shortWallMaterial = longWallMaterial.clone();
+    const ceilingMaterial = mat(0x554b45, { roughness: 0.98 });
+    longWallMaterial.normalScale.set(0.34, 0.34);
+    shortWallMaterial.normalScale.set(0.34, 0.34);
+    ceilingMaterial.normalScale.set(0.24, 0.24);
+    const plasterRoot = 'puplic/polyhaven/studio/worn_plaster_wall';
+    const plasterTargets = [
+      { material: longWallMaterial, repeat: [5, 1.5] },
+      { material: shortWallMaterial, repeat: [3.75, 1.5] },
+      { material: ceilingMaterial, repeat: [5, 3.75] },
+    ];
+    applyStudioMap(plasterTargets, 'map', `${plasterRoot}/worn_plaster_wall_diff_1k.jpg`, true);
+    applyStudioMap(plasterTargets, 'normalMap', `${plasterRoot}/worn_plaster_wall_nor_gl_1k.jpg`);
+    applyStudioMap(plasterTargets, 'roughnessMap', `${plasterRoot}/worn_plaster_wall_rough_1k.jpg`);
+    plane(z, { w: 11.9, h: 3.48, y: 1.74, z: -4.485, material: longWallMaterial, name: 'garret worn plaster north' });
+    plane(z, { w: 11.9, h: 3.48, y: 1.74, z: 4.485, ry: Math.PI, material: longWallMaterial, name: 'garret worn plaster south' });
+    plane(z, { w: 8.9, h: 3.48, x: -5.985, y: 1.74, ry: Math.PI / 2, material: shortWallMaterial, name: 'garret worn plaster west' });
+    plane(z, { w: 8.9, h: 3.48, x: 5.985, y: 1.74, ry: -Math.PI / 2, material: shortWallMaterial, name: 'garret worn plaster east' });
+    plane(z, {
+      w: 11.9, h: 8.9, y: 3.485, rx: Math.PI / 2,
+      material: ceilingMaterial, noSplat: true, name: 'garret worn plaster ceiling',
+    });
 
     // easel: two legs + crossbar + canvas tray
     const wood = mat(0x7a5a36, { roughness: 0.7 });

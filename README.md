@@ -71,6 +71,14 @@ values from Poly Haven's asset API are recorded in
 `puplic/polyhaven/daylight-garden/CHECKSUMS.md5` so local copies can be checked
 without relying on filenames or file sizes alone.
 
+### The Garret studio
+
+The studio floor uses Poly Haven's [Old Wood Floor](https://polyhaven.com/a/old_wood_floor),
+while its walls and ceiling use [Worn Plaster Wall](https://polyhaven.com/a/worn_plaster_wall).
+Both are CC0 materials. Their 1K JPG diffuse, OpenGL normal, and roughness maps
+are stored under `puplic/polyhaven/studio/`; API-provided MD5 values are recorded
+in the adjacent `CHECKSUMS.md5` manifest.
+
 **The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
 face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
 (the speed fader is vinyl-style pitch shift), and ECHO + TIME knobs — drag
