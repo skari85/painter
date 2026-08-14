@@ -3061,11 +3061,106 @@ export class World {
       });
       sky.userData.noSplat = true;
     }
-    // Tall east-facing window rhythm; the wall remains solid for collision.
-    for (const zz of [-5.7, -1.9, 1.9, 5.7]) {
+
+    const ridiculousFace = (index) => canvasTexture(540, 780, (ctx, w, h) => {
+      const palettes = [
+        ['#dff6fb', '#ffd73e', '#22152f', '#fa4f70'],
+        ['#dff6fb', '#76e7bc', '#2b1743', '#ff8647'],
+        ['#dff6fb', '#ff8dc5', '#26173c', '#fff2a8'],
+        ['#dff6fb', '#ff9d3f', '#17204c', '#74f2e1'],
+      ];
+      const [ground, skin, ink, accent] = palettes[index];
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, 0, w, h);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      // A deliberately unstable head silhouette.
+      ctx.beginPath();
+      if (index === 0) {
+        ctx.moveTo(112, 620); ctx.bezierCurveTo(24, 420, 76, 128, 272, 96);
+        ctx.bezierCurveTo(470, 124, 512, 430, 420, 626); ctx.quadraticCurveTo(270, 718, 112, 620);
+      } else if (index === 1) {
+        ctx.moveTo(132, 670); ctx.bezierCurveTo(64, 540, 116, 90, 282, 70);
+        ctx.bezierCurveTo(430, 102, 446, 514, 390, 674); ctx.quadraticCurveTo(260, 724, 132, 670);
+      } else if (index === 2) {
+        ctx.moveTo(98, 628); ctx.bezierCurveTo(32, 346, 132, 112, 270, 100);
+        ctx.bezierCurveTo(420, 106, 514, 360, 438, 632); ctx.quadraticCurveTo(268, 734, 98, 628);
+      } else {
+        ctx.moveTo(74, 600); ctx.lineTo(110, 174); ctx.lineTo(266, 66);
+        ctx.lineTo(442, 174); ctx.lineTo(486, 600); ctx.lineTo(274, 706); ctx.closePath();
+      }
+      ctx.fillStyle = skin;
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 22;
+      ctx.stroke();
+
+      if (index === 0) {
+        // One eye, three pupils, antennae, and lipstick with no restraint.
+        ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(196, 102); ctx.quadraticCurveTo(152, 18, 126, 38); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(340, 104); ctx.quadraticCurveTo(402, 16, 430, 48); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(270, 318, 132, 92, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        for (const px of [216, 270, 324]) {
+          ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(px, 318, 22, 40, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(px - 6, 304, 6, 10, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.moveTo(126, 514); ctx.quadraticCurveTo(270, 420, 418, 514);
+        ctx.quadraticCurveTo(270, 672, 126, 514); ctx.fill(); ctx.stroke();
+      } else if (index === 1) {
+        // Mismatched eyes and a nose that has entered the adjacent postcode.
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(190, 270, 62, 78, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(340, 288, 88, 42, 0.16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.ellipse(204, 280, 18, 34, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(316, 282, 28, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = accent; ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(262, 326); ctx.lineTo(484, 430); ctx.lineTo(260, 452); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(104, 522); ctx.quadraticCurveTo(208, 442, 270, 526);
+        ctx.quadraticCurveTo(338, 438, 438, 524); ctx.quadraticCurveTo(338, 650, 270, 560);
+        ctx.quadraticCurveTo(194, 646, 104, 522); ctx.fillStyle = ink; ctx.fill();
+      } else if (index === 2) {
+        // Tiny crown, alarmed eyes, and an exhibition-opening scream.
+        ctx.fillStyle = accent; ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(168, 128); ctx.lineTo(184, 22); ctx.lineTo(254, 92);
+        ctx.lineTo(312, 14); ctx.lineTo(370, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(188, 284, 58, 98, -0.18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(350, 284, 58, 98, 0.18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.ellipse(202, 308, 16, 36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(334, 308, 16, 36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(270, 530, 112, 142, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        for (let i = 0; i < 6; i++) ctx.fillRect(202 + i * 25, 414, 18, 42);
+        ctx.fillStyle = '#f44c75'; ctx.beginPath(); ctx.ellipse(270, 596, 66, 38, 0, 0, Math.PI); ctx.fill();
+      } else {
+        // Four eyes, one tongue, and a bow tie negotiating its own commission.
+        const eyes = [[174, 250], [254, 226], [332, 226], [404, 256]];
+        for (const [ex, ey] of eyes) {
+          ctx.fillStyle = '#fffdf5'; ctx.beginPath(); ctx.ellipse(ex, ey, 46, 58, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(ex + 8, ey + 8, 15, 24, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.strokeStyle = ink; ctx.lineWidth = 24;
+        ctx.beginPath(); ctx.moveTo(136, 440); ctx.quadraticCurveTo(274, 540, 420, 430); ctx.stroke();
+        ctx.fillStyle = accent; ctx.beginPath(); ctx.moveTo(250, 500); ctx.quadraticCurveTo(270, 674, 334, 500); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.moveTo(270, 654); ctx.lineTo(120, 724); ctx.lineTo(118, 620); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(270, 654); ctx.lineTo(424, 724); ctx.lineTo(426, 620); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = accent; ctx.beginPath(); ctx.ellipse(270, 654, 42, 38, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+
+    // Four luminous wall portraits; the wall remains solid for collision.
+    for (const [index, zz] of [-5.7, -1.9, 1.9, 5.7].entries()) {
       plane(z, {
         w: 2.7, h: 3.9, x: 9.79, y: 3.05, z: zz, ry: -Math.PI / 2,
-        material: new THREE.MeshBasicMaterial({ color: 0xdff6fb }), noSplat: true, name: 'skylight',
+        material: new THREE.MeshBasicMaterial({ map: ridiculousFace(index) }),
+        noSplat: true, name: 'ridiculous wall portrait',
       });
     }
 
