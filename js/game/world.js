@@ -3070,20 +3070,36 @@ export class World {
     }
 
     const artLoader = new THREE.TextureLoader();
+    const frameWood = mat(0x765033, { roughness: 0.7, metalness: 0.01 });
     const works = [];
     const hangWork = ({ url, title, subtitle, x, y, z: zz, ry, w, h, sold = false }) => {
       const g = new THREE.Group();
       g.position.set(x, y, zz);
       g.rotation.y = ry;
 
-      const shadow = new THREE.Mesh(
-        new THREE.BoxGeometry(w + 0.16, h + 0.16, 0.075),
-        mat(0xdddcd6, { roughness: 0.55 })
+      // Slim wooden gallery rails replace the old pale backing border.
+      const frame = new THREE.Group();
+      const rail = 0.055;
+      const depth = 0.085;
+      const topRail = new THREE.Mesh(
+        new THREE.BoxGeometry(w + rail * 2, rail, depth),
+        frameWood
       );
-      shadow.castShadow = true;
+      topRail.position.y = h / 2 + rail / 2;
+      const bottomRail = topRail.clone();
+      bottomRail.position.y = -h / 2 - rail / 2;
+      const leftRail = new THREE.Mesh(
+        new THREE.BoxGeometry(rail, h, depth),
+        frameWood
+      );
+      leftRail.position.x = -w / 2 - rail / 2;
+      const rightRail = leftRail.clone();
+      rightRail.position.x = w / 2 + rail / 2;
+      frame.add(topRail, bottomRail, leftRail, rightRail);
+
       const artMat = new THREE.MeshStandardMaterial({ color: 0xf0f0ec, roughness: 0.82 });
       const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), artMat);
-      art.position.z = 0.043;
+      art.position.z = depth / 2 + 0.002;
       art.name = 'ownPhoto';
       art.userData.noSplat = true;
       art.receiveShadow = true;
@@ -3103,16 +3119,16 @@ export class World {
           }),
         })
       );
-      label.position.set(0, -h / 2 - 0.3, 0.047);
+      label.position.set(0, -h / 2 - 0.3, depth / 2 + 0.006);
       label.userData.noSplat = true;
-      g.add(shadow, art, label);
+      g.add(frame, art, label);
 
       if (sold) {
         const dot = new THREE.Mesh(
           new THREE.CircleGeometry(0.105, 28),
           new THREE.MeshBasicMaterial({ color: 0xd4111b })
         );
-        dot.position.set(Math.min(w * 0.43, 1.55), -h / 2 - 0.3, 0.054);
+        dot.position.set(Math.min(w * 0.43, 1.55), -h / 2 - 0.3, depth / 2 + 0.013);
         dot.userData.noSplat = true;
         g.add(dot);
       }
