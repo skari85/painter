@@ -317,6 +317,7 @@ class Game {
       ui.hideOptions();
       if (outcome === 'shatter') {
         this.audio.shatter();
+        if (r.npc.def.meltdownStyle === 'fire') this.audio.forestIgnite();
         ui.hitmarker(true);
         this.#dmgAbove(r.npc, 'SHATTERED', 'brutal');
       }
@@ -473,6 +474,7 @@ class Game {
     this.npcs.clear();
     this.world.clearSplats();
     this.world.clearDisplay();
+    this.world.resetForestChurches();
     this.pendingAppraisal = null;
     this.#dailyProgress = 0;
     this.#cowVisitedThisRun = false;
@@ -494,6 +496,7 @@ class Game {
 
     const z = this.world.setZone('garret');
     this.paint.attachTo(z.group);
+    this.hand.setForestLoadout(false);
     this.#applyZoneAtmosphere('garret');
     this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
 
@@ -824,6 +827,30 @@ class Game {
   #onSwing() {
     if (this.mode !== 'playing' || !this.input.locked) return;
     if (this.#swingCooldown > 0) return;
+
+    if (this.world.current === 'blackForest') {
+      this.#swingCooldown = SWING.cooldown;
+      this.hand.swing();
+      this.audio.lighterClick();
+      setTimeout(() => {
+        if (this.mode !== 'playing' || this.world.current !== 'blackForest') return;
+        const fwd = this.player.forwardDir(this.#fwd);
+        const result = this.world.igniteForestChurch(this.player.position, fwd);
+        if (result.status === 'ignited') {
+          const n = result.church.index + 1;
+          this.audio.forestIgnite();
+          this.state.addMeter('heat', 14, `Stave church ${n} ignited`);
+          this.state.addMeter('soul', -3, 'The fog remembers the choice');
+          this.state.shiftVirtue('valor', 2, '');
+          this.state.record(`Set stave church ${n} alight in Cockburn`, null);
+          this.ui.toast('FIRE SENSATION', `Stave church ${n} catches. Flame climbs the black timber; smoke disappears into the fog.`, 'bad');
+        } else if (result.status === 'needsGas') {
+          this.ui.toast('THE LIGHTER REFUSES', `Stave church ${result.church.index + 1} is dry. Press E nearby to douse it first.`);
+        }
+      }, 150);
+      return;
+    }
+
     this.#swingCooldown = SWING.cooldown;
     this.hand.swing();
     this.audio.swing();
@@ -987,6 +1014,21 @@ class Game {
         this.ui.toast(it.title ?? 'THE SCENE', pick(it.lines));
         this.audio.uiMove();
         break;
+      case 'church': {
+        const result = this.world.primeForestChurch(it.churchIndex);
+        const n = it.churchIndex + 1;
+        if (result.status === 'burning') {
+          this.ui.toast(`STAVE CHURCH ${n}`, 'Already burning. The timber answers in cracks and orange light.');
+          this.audio.churchCrackle(n % 4, 1);
+        } else if (result.fresh) {
+          this.audio.gasolinePour();
+          this.ui.toast('GASOLINE', `Stave church ${n} is soaked. Aim at it and click the lighter to ignite.`, 'bad');
+        } else {
+          this.audio.lighterClick();
+          this.ui.toast(`STAVE CHURCH ${n}`, 'Primed. Aim at the timber and click the lighter.');
+        }
+        break;
+      }
       case 'crownQuest': {
         if (!this.state.getFlag('crownFound')) {
           this.state.setFlag('crownFound');
@@ -1088,6 +1130,7 @@ class Game {
 
       const z = this.world.setZone(zoneKey);
       this.paint.attachTo(z.group);
+      this.hand.setForestLoadout(zoneKey === 'blackForest');
       this.#applyZoneAtmosphere(zoneKey);
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
@@ -1106,6 +1149,7 @@ class Game {
         daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
         upAndCumming: 'Five enormous works, two red dots, seven coded birds, one desk, and an argument strong enough to move inventory.',
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
+        blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
       }[zoneKey]);
 
       if (zoneKey === 'maxPro') this.debate.enter();
@@ -1244,6 +1288,12 @@ class Game {
       const worldEvent = this.world.update(dt, now, beatPhase);
       if (worldEvent?.type === 'boxingImpact') {
         this.audio.boxingImpact(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'boarSqueak') {
+        this.audio.boarSqueak(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'churchCrackle') {
+        this.audio.churchCrackle(worldEvent.variant, worldEvent.burningCount);
       }
 
       this.npcs.update(dt, now, this.player.position);

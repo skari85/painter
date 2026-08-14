@@ -550,6 +550,69 @@ export class AudioEngine {
     }, 35);
   }
 
+  /** The forest boars sound less like animals than wet kitchen sponges being
+      squeezed inside a rubber glove. That is deliberate. */
+  boarSqueak(variant = 0) {
+    if (!this.#ctx) return;
+    const base = 520 + (variant % 4) * 95;
+    this.#tone({
+      freq: base * 0.72,
+      freqEnd: base * 1.42,
+      type: 'square',
+      peak: 0.045,
+      attack: 0.012,
+      decay: 0.09 + (variant % 3) * 0.025,
+    });
+    this.#noise({
+      peak: 0.055,
+      attack: 0.004,
+      decay: 0.13,
+      filterFreq: 1180 + variant * 70,
+      filterEnd: 430,
+      q: 5.2,
+      type: 'bandpass',
+    });
+    setTimeout(() => this.#tone({
+      freq: base * 1.1,
+      freqEnd: base * 0.63,
+      type: 'triangle',
+      peak: 0.035,
+      attack: 0.006,
+      decay: 0.08,
+    }), 55);
+  }
+
+  forestIgnite() {
+    this.#noise({ peak: 0.22, attack: 0.025, decay: 1.15, filterFreq: 2900, filterEnd: 360, q: 0.7, type: 'bandpass' });
+    this.#tone({ freq: 94, freqEnd: 42, type: 'sawtooth', peak: 0.12, attack: 0.02, decay: 0.7 });
+  }
+
+  gasolinePour() {
+    this.#noise({ peak: 0.11, attack: 0.08, decay: 0.72, filterFreq: 1250, filterEnd: 310, q: 1.8, type: 'bandpass' });
+    this.#tone({ freq: 118, freqEnd: 72, type: 'sine', peak: 0.035, attack: 0.04, decay: 0.58 });
+  }
+
+  lighterClick() {
+    this.#noise({ peak: 0.08, attack: 0.001, decay: 0.035, filterFreq: 5200, filterEnd: 1900, q: 3.4, type: 'highpass' });
+    this.#tone({ freq: 1840, freqEnd: 960, type: 'square', peak: 0.025, attack: 0.001, decay: 0.04 });
+  }
+
+  churchCrackle(variant = 0, burningCount = 1) {
+    const level = Math.min(0.12, 0.035 + burningCount * 0.009);
+    this.#noise({
+      peak: level,
+      attack: 0.001,
+      decay: 0.045 + (variant % 3) * 0.028,
+      filterFreq: 1750 + variant * 610,
+      filterEnd: 420,
+      q: 1.2,
+      type: 'bandpass',
+    });
+    if (variant % 3 === 0) {
+      this.#tone({ freq: 210 + variant * 33, freqEnd: 74, type: 'triangle', peak: level * 0.42, attack: 0.002, decay: 0.09 });
+    }
+  }
+
   /** A mumble-voice syllable: buzzy glottal saw → throat → two vowel formants. */
   talkBlip(pitch = 1) {
     if (!this.#ctx) return;

@@ -1870,6 +1870,72 @@ export function buildCrowd(zoneKey, night, count) {
   return defs;
 }
 
+/** A fictionalized forest encounter. The dialogue stays with emotional themes
+ *  (fear, isolation, control) and does not claim biographical facts. */
+export const BLACK_FOREST_CAST = [{
+  id: 'varg', name: 'Varg Vikernes', shortRole: 'forest apparition', role: 'A fictional forest encounter',
+  face: 'puplic/visual assets/character_faces_alt/07-softhearted-metalhead.png',
+  ego: 64, weak: 'kind', resist: 'brutal', static: true, anchor: 'varg', canDisarm: false,
+  meltdownStyle: 'fire',
+  hint: 'He turns misery into authority and explanation into exemption. Understanding the wound does not make the adult decent.',
+  pace: 0.58, pitch: 0.62, accessory: null,
+  palette: { skin: 0xd7b59b, hair: 0x171719, top: 0x111216, bottom: 0x171719 },
+  openers: [
+    'Nothing improves. People merely learn more respectable names for the rot.',
+    'The fog edits memory. It leaves the humiliation and removes everyone who might contradict you.',
+    'Childhood fear becomes a room you keep rebuilding. Eventually you start locking other people inside it.',
+    'I have mistaken control for safety for so long that I no longer care who pays for the distinction.',
+  ],
+  countered: [
+    'Cruelty is familiar. I am better at it than you and considerably less ashamed.',
+    'You are speaking to the costume. The person underneath is not an improvement.',
+  ],
+  reactions: {
+    kind: [
+      'Do not make the child visible. The legend was built to keep him out of sight.',
+      'Being understood is useful. I can turn your understanding into permission if you let me.',
+      'Some encounters never end. I have made sure mine happen to other people too.',
+      'Do not confuse this admission with remorse. I am only tired.',
+    ],
+    witty: [
+      'A joke opens a window. I prefer rooms without exits.',
+      'You laugh because the alternative has teeth. I prefer the teeth.',
+    ],
+    brutal: [
+      'That voice already lived in the room. I kept it, sharpened it, and called it character.',
+      'Attack the mask and I get to pretend the mask was necessary. Convenient.',
+    ],
+  },
+  weakHit: [
+    'Stop naming the fear. Without mystery it is only self-pity with victims.',
+    'Compassion is not absolution. I hate that you know the difference.',
+  ],
+  disarmed: ['Understanding changes nothing. I would use it against you before morning.'],
+  dismiss: ['The trees have heard enough self-pity. I have mistaken repetition for depth again.'],
+  meltdown: 'THE LEGEND IS ARMOR. THE MISERY IS AN ALIBI. WITHOUT THEM, WHAT REMAINS IS ONLY WHAT I CHOSE.',
+  barks: [
+    'Memory is a church with no congregation, and I still demand the collection plate.',
+    'The boars sound ridiculous. I resent anything capable of accidental joy.',
+    'A myth is what self-pity calls itself when it wants followers.',
+    'I am not sad in an interesting way. I have simply been sad for a very long time.',
+  ],
+  playerJabs: {
+    kind: [
+      'I can acknowledge the frightened child without excusing what the adult chose.',
+      'You deserved safety then. Other people deserve safety from you now. Both can be true.',
+      'The encounter hurt you. Re-enacting it as the powerful person is still your choice.',
+    ],
+    witty: [
+      'Ten churches and the fog still cannot find a place to file all this symbolism.',
+      'The boars have reviewed the legend. Their official response is a sponge squeak.',
+    ],
+    brutal: [
+      'Trauma explains the armor; it does not make the person wearing it good.',
+      'You turned depression into a throne, cruelty into a personality, and called sitting still a philosophy.',
+    ],
+  },
+}];
+
 /** The full roster for a given night, per zone. */
 export function castForNight(night) {
   const m = MAINS;
@@ -1889,6 +1955,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        blackForest: BLACK_FOREST_CAST,
       };
     case 2:
 
@@ -1907,6 +1974,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        blackForest: BLACK_FOREST_CAST,
       };
     default:
 
@@ -1922,6 +1990,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        blackForest: BLACK_FOREST_CAST,
       };
 
   }

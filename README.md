@@ -55,6 +55,21 @@ Warm songs from `puplic/songs/` play on the title screen, in the garret, and
 over the endings — the market spaces get coded procedural room scores. (The folder
 is spelled `puplic`; left as found.)
 
+### Church Burning Fire Sensation Cockburn
+
+The scene map now reaches a fog-heavy procedural Norwegian forest containing
+exactly ten stave churches, 34 roaming wild boars, and a fictionalized Varg
+Vikernes ego encounter about childhood fear, isolation, and responsibility.
+The apparition is depressive, self-pitying, manipulative, cruel, and explicitly
+not redeemed by being understood; the dialogue separates explanation from excuse.
+Inside this room the first-person brush/canvas silhouette becomes a lit metal
+lighter and red gasoline can. The boars make synthesized wet sponge squeaks;
+the room score is an original lo-fi black-metal/dark-ambient sequence generated
+at runtime. No copyrighted recording is bundled. Shattering the encounter's ego
+triggers a stylized flame dissolve and disappearance. Each church can also be
+burned independently: press `E` nearby to douse it, then aim and click the lighter.
+Its fire, smoke, charring, orange light, and procedural crackle persist for the run.
+
 ### The Daylight Flesh Garden
 
 The garden has its own 108 BPM procedural experimental jazz-electronica room

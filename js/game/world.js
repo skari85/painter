@@ -1,5 +1,5 @@
 /**
- * world.js — the four rooms of the scene.
+ * world.js — the expanding rooms of the scene.
  *
  *   THE GARRET            warm, wrecked, yours. Easel, mattress, shrine.
  *   GALLERIA BIANCA       cold white cube. Pedestals, wine, judgment.
@@ -15,11 +15,12 @@
  */
 
 import * as THREE from 'three';
-import { mulberry32, rand, pick } from '../core/utils.js';
+import { clamp, mulberry32, rand, pick } from '../core/utils.js';
 import { MAXPRO } from '../core/config.js';
 
 
 const WALL_H = 3.6;
+const CHAR_COLOR = new THREE.Color(0x080706);
 
 
 /** The artist's own paintings — compressed JPEGs, hung around the garret. */
@@ -504,6 +505,7 @@ export class World {
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
     this.#buildVacantEditions();
+    this.#buildBlackForest();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -931,6 +933,7 @@ export class World {
     door(z, { x: 8.8, z: 4.4, ry: -Math.PI / 2, label: 'UP AND CUMMING ARTIST →', to: 'upAndCumming' });
     door(z, { x: 0, z: 6.62, ry: Math.PI, label: 'THE GILDED FORK →', to: 'gildedFork' });
     door(z, { x: 6.8, z: 6.62, ry: Math.PI, label: 'MAX PRO KUNST 2000 →', to: 'maxPro' });
+    door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -3638,6 +3641,352 @@ export class World {
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  THE BLACK FOREST                                          */
+  /* ---------------------------------------------------------- */
+  #buildBlackForest() {
+    const z = this.#newZone('blackForest');
+    z.spawn.set(0, 0, 20.2);
+    z.spawnYaw = 0;
+    z.fog = { color: 0x101817, density: 0.085 };
+
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x273329, roughness: 1 });
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(25, 64), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.015;
+    ground.name = 'black forest floor';
+    z.group.add(ground);
+    new THREE.TextureLoader().load(encodeURI('puplic/polyhaven/daylight-garden/forest_ground_04/forest_ground_04_diff_1k.jpg'), (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(9, 9);
+      groundMat.map = tex;
+      groundMat.color.set(0x586258);
+      groundMat.needsUpdate = true;
+    });
+
+    // Invisible thicket at the perimeter keeps the player inside the clearing.
+    z.colliders.push(
+      { minX: -26, maxX: 26, minZ: -26, maxZ: -24 },
+      { minX: -26, maxX: 26, minZ: 24, maxZ: 26 },
+      { minX: -26, maxX: -24, minZ: -26, maxZ: 26 },
+      { minX: 24, maxX: 26, minZ: -26, maxZ: 26 },
+    );
+
+    const rng = mulberry32(0xB04A5);
+    const trunkGeo = new THREE.CylinderGeometry(0.16, 0.24, 5.2, 7);
+    const crownGeo = new THREE.ConeGeometry(1.25, 4.8, 8);
+    const trunks = new THREE.InstancedMesh(trunkGeo, mat(0x201b17, { roughness: 1 }), 132);
+    const crowns = new THREE.InstancedMesh(crownGeo, mat(0x13241d, { roughness: 1 }), 132);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < 132; i++) {
+      const a = rng() * Math.PI * 2;
+      const radius = i < 84 ? 17.5 + rng() * 6.2 : 8 + rng() * 15.5;
+      let x = Math.cos(a) * radius;
+      let zz = Math.sin(a) * radius;
+      // Keep the arrival path and the central conversation readable.
+      if (Math.abs(x) < 2.6 && zz > 10) x += x < 0 ? -3.2 : 3.2;
+      const scale = 0.72 + rng() * 0.76;
+      dummy.position.set(x, 2.6 * scale, zz);
+      dummy.rotation.set(0, rng() * Math.PI * 2, (rng() - 0.5) * 0.06);
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      trunks.setMatrixAt(i, dummy.matrix);
+      dummy.position.y = (5.2 + 2.0) * scale;
+      dummy.rotation.y += rng();
+      dummy.updateMatrix();
+      crowns.setMatrixAt(i, dummy.matrix);
+    }
+    trunks.castShadow = crowns.castShadow = true;
+    trunks.receiveShadow = true;
+    z.group.add(trunks, crowns);
+
+    const churchWood = mat(0x211914, { roughness: 0.94 });
+    const roofWood = mat(0x0e1110, { roughness: 0.86 });
+    const churchPositions = [];
+    const churchStates = [];
+    const makeChurch = (index, x, zz, yaw) => {
+      const church = new THREE.Group();
+      church.position.set(x, 0, zz);
+      church.rotation.y = yaw;
+      const nave = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.05, 3.2), churchWood);
+      nave.position.y = 1.025;
+      const naveRoof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.7, 4), roofWood);
+      naveRoof.position.y = 2.85;
+      naveRoof.rotation.y = Math.PI / 4;
+      naveRoof.scale.z = 1.32;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(1.18, 3.7, 1.2), churchWood);
+      tower.position.set(0, 2.45, -0.82);
+      const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.15, 2.35, 4), roofWood);
+      towerRoof.position.set(0, 5.45, -0.82);
+      towerRoof.rotation.y = Math.PI / 4;
+      const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.66, 0.38), churchWood);
+      lantern.position.set(0, 6.82, -0.82);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.7, 4), roofWood);
+      spire.position.set(0, 7.95, -0.82);
+      spire.rotation.y = Math.PI / 4;
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.62, 0.07), roofWood);
+      crossV.position.set(0, 9.05, -0.82);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.07, 0.07), roofWood);
+      crossH.position.set(0, 9.1, -0.82);
+      church.add(nave, naveRoof, tower, towerRoof, lantern, spire, crossV, crossH);
+      church.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      z.group.add(church);
+      churchPositions.push(new THREE.Vector3(x, 0, zz));
+      z.colliders.push({ minX: x - 1.65, maxX: x + 1.65, minZ: zz - 1.9, maxZ: zz + 1.9 });
+      const item = {
+        id: `forest-church-${index + 1}`, type: 'church', label: `Douse stave church ${index + 1} of 10 with gasoline`,
+        title: `STAVE CHURCH ${index + 1} / 10`, pos: new THREE.Vector3(x, 1.2, zz), radius: 2.35,
+        lines: [
+          'Black timber, stacked roofs, dragon-dark silhouette. The fog has filled every seat.',
+          'It is unmistakably a traditional Norwegian stave church, built here at the scale of a memory.',
+          'No flame touches it. The lighter throws one small gold reflection across the old wood.',
+        ],
+        churchIndex: index,
+      };
+      z.interactables.push(item);
+      churchStates.push({
+        index, group: church, pos: new THREE.Vector3(x, 0, zz), item,
+        primed: false, burning: false, fireT: 0, fx: null, burnMeshes: [],
+      });
+    };
+
+    // Exactly ten stave churches, arranged like a broken clock around the clearing.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + 0.18;
+      const radius = 13.1 + (i % 2) * 2.3;
+      makeChurch(i, Math.cos(a) * radius, Math.sin(a) * radius - 1.2, -a + Math.PI / 2);
+    }
+    z.anchors.churches = churchPositions;
+    z.animated.forestChurches = churchStates;
+    z.animated.churchCrackleT = 0.4;
+
+    // The apparition waits in the one place the ring of buildings cannot hide.
+    z.anchors.varg = new THREE.Vector3(0, 0, -2.3);
+    z.anchorYaws = { varg: 0 };
+    z.waypoints = [
+      new THREE.Vector3(-5, 0, 4), new THREE.Vector3(5, 0, 5),
+      new THREE.Vector3(-6, 0, -5), new THREE.Vector3(6, 0, -6),
+      new THREE.Vector3(0, 0, 8), new THREE.Vector3(0, 0, -10),
+    ];
+
+    // A lot of boars. They roam in overlapping crooked ellipses and never
+    // collide with the player; the forest is already crowded enough.
+    const boars = [];
+    const boarBodyMat = mat(0x302820, { roughness: 1 });
+    const boarDarkMat = mat(0x171514, { roughness: 1 });
+    for (let i = 0; i < 34; i++) {
+      const boar = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.48, 4, 8), boarBodyMat);
+      body.rotation.z = Math.PI / 2;
+      body.position.y = 0.42;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8), boarBodyMat);
+      head.position.set(0, 0.43, 0.43);
+      const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.28, 9), boarDarkMat);
+      snout.rotation.x = Math.PI / 2;
+      snout.position.set(0, 0.39, 0.69);
+      const tuskMat = mat(0xc9b98f, { roughness: 0.8 });
+      for (const side of [-1, 1]) {
+        const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.15, 7), tuskMat);
+        tusk.rotation.x = Math.PI / 2;
+        tusk.position.set(side * 0.12, 0.35, 0.82);
+        boar.add(tusk);
+      }
+      for (const [lx, lz] of [[-0.18, -0.23], [0.18, -0.23], [-0.18, 0.2], [0.18, 0.2]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.3, 0.075), boarDarkMat);
+        leg.position.set(lx, 0.16, lz);
+        boar.add(leg);
+      }
+      boar.add(body, head, snout);
+      const a = rng() * Math.PI * 2;
+      const r = 4 + rng() * 16;
+      const centerX = Math.cos(a) * r;
+      const centerZ = Math.sin(a) * r;
+      boar.position.set(centerX, 0, centerZ);
+      const scale = 0.7 + rng() * 0.58;
+      boar.scale.setScalar(scale);
+      z.group.add(boar);
+      boars.push({
+        group: boar, centerX, centerZ, phase: rng() * Math.PI * 2,
+        speed: 0.12 + rng() * 0.22, radiusX: 0.9 + rng() * 3.1,
+        radiusZ: 0.8 + rng() * 2.7, bob: rng() * Math.PI * 2,
+      });
+    }
+    z.animated.forestBoars = boars;
+    z.animated.boarSqueakT = 0.9;
+
+    // Low fog banks supplement the scene fog so nearby fog has readable motion.
+    const fogTex = canvasTexture(192, 96, (ctx, w, h) => {
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2);
+      grad.addColorStop(0, 'rgba(190,205,197,0.34)');
+      grad.addColorStop(0.55, 'rgba(145,165,157,0.16)');
+      grad.addColorStop(1, 'rgba(100,120,114,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+    z.animated.forestFog = [];
+    for (let i = 0; i < 28; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: fogTex, transparent: true, opacity: 0.34, depthWrite: false }));
+      sprite.position.set(-21 + rng() * 42, 0.65 + rng() * 1.25, -21 + rng() * 42);
+      sprite.scale.set(6 + rng() * 8, 2.2 + rng() * 2.5, 1);
+      z.group.add(sprite);
+      z.animated.forestFog.push({ sprite, speed: 0.08 + rng() * 0.16, phase: rng() * Math.PI * 2 });
+    }
+
+    z.group.add(new THREE.HemisphereLight(0x506965, 0x080b09, 0.72));
+    const moon = new THREE.DirectionalLight(0x9bb9b4, 1.3);
+    moon.position.set(-9, 14, 7);
+    moon.castShadow = true;
+    z.group.add(moon);
+
+    door(z, { x: 0, z: 23.2, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.interactables.push({
+      id: 'forest-count', type: 'flavor', label: 'Read the moss-covered marker',
+      title: 'CHURCH BURNING FIRE SENSATION COCKBURN', pos: new THREE.Vector3(2.1, 0.7, 20.3), radius: 2.0,
+      lines: ['TEN CHURCHES. THIRTY-FOUR BOARS. ONE CONVERSATION THE FOG CANNOT FINISH.'],
+    });
+  }
+
+  primeForestChurch(index) {
+    const church = this.zones.get('blackForest')?.animated.forestChurches?.[index];
+    if (!church) return { status: 'missing' };
+    if (church.burning) return { status: 'burning', church };
+    if (church.primed) return { status: 'primed', church };
+    church.primed = true;
+    church.item.label = `Primed — click the lighter on stave church ${index + 1}`;
+
+    // A dull petrol sheen gives the dousing readable feedback in the fog.
+    if (church.sheen) {
+      church.sheen.visible = true;
+    } else {
+      const sheen = new THREE.Mesh(
+        new THREE.CircleGeometry(1.55, 24),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x15191b, roughness: 0.08, metalness: 0.08,
+          clearcoat: 0.9, transparent: true, opacity: 0.72,
+        })
+      );
+      sheen.rotation.x = -Math.PI / 2;
+      sheen.position.y = 0.025;
+      sheen.userData.noSplat = true;
+      church.group.add(sheen);
+      church.sheen = sheen;
+    }
+    return { status: 'primed', church, fresh: true };
+  }
+
+  igniteForestChurch(playerPos, forward, range = 4.1) {
+    const churches = this.zones.get('blackForest')?.animated.forestChurches ?? [];
+    let best = null;
+    let bestScore = Infinity;
+    for (const church of churches) {
+      const to = church.pos.clone().sub(playerPos);
+      to.y = 0;
+      const d = to.length();
+      if (d > range || d < 0.01) continue;
+      const facing = to.normalize().dot(forward);
+      const score = d - facing * 0.8;
+      if (facing > 0.12 && score < bestScore) {
+        best = church;
+        bestScore = score;
+      }
+    }
+    if (!best) return { status: 'none' };
+    if (best.burning) return { status: 'burning', church: best };
+    if (!best.primed) return { status: 'needsGas', church: best };
+
+    if (!best.fx) this.#buildChurchFire(best);
+    best.burning = true;
+    best.fireT = 0;
+    best.fx.group.visible = true;
+    best.fx.light.intensity = 5.5;
+    best.item.label = `Stave church ${best.index + 1} is burning`;
+    if (best.sheen) best.sheen.visible = false;
+
+    best.group.traverse((o) => {
+      if (!o.isMesh || o.userData.churchFx || o === best.sheen) return;
+      if (!o.userData.burnMaterial) {
+        o.material = o.material.clone();
+        o.userData.burnMaterial = true;
+        o.userData.originalColor = o.material.color?.clone() ?? null;
+        best.burnMeshes.push(o);
+      }
+    });
+    return { status: 'ignited', church: best };
+  }
+
+  #buildChurchFire(church) {
+    const fx = new THREE.Group();
+    fx.visible = false;
+    fx.userData.churchFx = true;
+    const flames = [];
+    const smoke = [];
+    const rng = mulberry32(0xF1AE + church.index * 491);
+    const flameColors = [0xffd85c, 0xff8b2c, 0xe83b19];
+
+    for (let i = 0; i < 28; i++) {
+      const material = new THREE.MeshBasicMaterial({
+        color: flameColors[i % flameColors.length], transparent: true,
+        opacity: 0.86, depthWrite: false, blending: THREE.AdditiveBlending,
+      });
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13 + rng() * 0.18, 0.75 + rng() * 1.05, 8), material);
+      const high = i >= 17;
+      flame.position.set(
+        (rng() - 0.5) * (high ? 1.6 : 2.7),
+        high ? 2.25 + rng() * 4.5 : 0.35 + rng() * 2.35,
+        (rng() - 0.5) * (high ? 1.45 : 3.45),
+      );
+      flame.userData.churchFx = true;
+      flame.userData.phase = rng() * Math.PI * 2;
+      flame.userData.baseY = flame.position.y;
+      fx.add(flame);
+      flames.push(flame);
+    }
+
+    const smokeTex = this.zones.get('blackForest').churchSmokeTex ?? canvasTexture(128, 128, (ctx, w, h) => {
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 3, w / 2, h / 2, w / 2);
+      grad.addColorStop(0, 'rgba(22,24,23,0.72)');
+      grad.addColorStop(0.55, 'rgba(39,43,41,0.42)');
+      grad.addColorStop(1, 'rgba(50,56,53,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+    this.zones.get('blackForest').churchSmokeTex = smokeTex;
+    for (let i = 0; i < 12; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, opacity: 0, depthWrite: false }));
+      sprite.position.set((rng() - 0.5) * 1.4, 2.4 + rng() * 2, (rng() - 0.5) * 1.2);
+      sprite.scale.setScalar(1.2 + rng() * 1.5);
+      sprite.userData.churchFx = true;
+      fx.add(sprite);
+      smoke.push({ sprite, phase: rng(), speed: 0.1 + rng() * 0.09, drift: (rng() - 0.5) * 0.7 });
+    }
+    const light = new THREE.PointLight(0xff5c25, 0, 13, 1.6);
+    light.position.set(0, 3.1, 0);
+    light.userData.churchFx = true;
+    fx.add(light);
+    church.group.add(fx);
+    church.fx = { group: fx, flames, smoke, light };
+  }
+
+  resetForestChurches() {
+    const z = this.zones.get('blackForest');
+    for (const church of z?.animated.forestChurches ?? []) {
+      church.primed = false;
+      church.burning = false;
+      church.fireT = 0;
+      church.item.label = `Douse stave church ${church.index + 1} of 10 with gasoline`;
+      if (church.sheen) church.sheen.visible = false;
+      if (church.fx) {
+        church.fx.group.visible = false;
+        church.fx.light.intensity = 0;
+      }
+      for (const mesh of church.burnMeshes) {
+        if (mesh.userData.originalColor && mesh.material.color) mesh.material.color.copy(mesh.userData.originalColor);
+      }
+    }
+    if (z) z.animated.churchCrackleT = 0.4;
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -3941,6 +4290,67 @@ export class World {
       for (const orb of garden.orbs) {
         orb.mesh.position.y = orb.baseY + Math.sin(t * 1.25 + orb.phase) * 0.1;
         orb.mesh.material.emissiveIntensity = 1.1 + kick * 1.4 + Math.sin(t * 1.9 + orb.phase) * 0.22;
+      }
+    }
+    if (z.animated.forestBoars) {
+      for (const b of z.animated.forestBoars) {
+        const a = t * b.speed + b.phase;
+        const x = b.centerX + Math.cos(a) * b.radiusX;
+        const zz = b.centerZ + Math.sin(a * 0.83) * b.radiusZ;
+        const dx = -Math.sin(a) * b.radiusX * b.speed;
+        const dz = Math.cos(a * 0.83) * b.radiusZ * b.speed * 0.83;
+        b.group.position.set(x, Math.abs(Math.sin(t * 4.2 + b.bob)) * 0.025, zz);
+        b.group.rotation.y = Math.atan2(dx, dz);
+        b.group.rotation.z = Math.sin(t * 3.1 + b.bob) * 0.018;
+      }
+      z.animated.boarSqueakT -= dt;
+      if (z.animated.boarSqueakT <= 0) {
+        const variant = Math.floor((t * 7.3) % 4);
+        z.animated.boarSqueakT = 0.48 + ((variant * 0.31) % 1.2);
+        event = { type: 'boarSqueak', variant };
+      }
+    }
+    if (z.animated.forestChurches) {
+      let burningCount = 0;
+      for (const church of z.animated.forestChurches) {
+        if (!church.burning || !church.fx) continue;
+        burningCount++;
+        church.fireT += dt;
+        const grow = clamp(church.fireT / 1.15, 0.05, 1);
+        church.fx.light.intensity = grow * (7.4 + Math.sin(t * 19 + church.index) * 1.25);
+        for (const flame of church.fx.flames) {
+          const flicker = 0.72 + Math.sin(t * 14.5 + flame.userData.phase) * 0.2
+            + Math.sin(t * 31 + flame.userData.phase * 1.7) * 0.08;
+          flame.scale.set(grow * flicker, grow * (0.76 + flicker * 0.48), grow * flicker);
+          flame.position.y = flame.userData.baseY + Math.sin(t * 11 + flame.userData.phase) * 0.1;
+          flame.material.opacity = 0.68 + flicker * 0.2;
+          flame.rotation.y += dt * 1.4;
+        }
+        for (const puff of church.fx.smoke) {
+          const p = (church.fireT * puff.speed + puff.phase) % 1;
+          puff.sprite.position.y = 2.6 + p * 7.5;
+          puff.sprite.position.x = puff.drift * p + Math.sin(t * 0.52 + puff.phase * 8) * 0.28;
+          puff.sprite.material.opacity = grow * Math.sin(p * Math.PI) * 0.38;
+          const size = 1.25 + p * 3.8;
+          puff.sprite.scale.set(size, size, 1);
+        }
+        for (const mesh of church.burnMeshes) {
+          if (mesh.material.color) mesh.material.color.lerp(CHAR_COLOR, dt * 0.008);
+        }
+      }
+      if (burningCount) {
+        z.animated.churchCrackleT -= dt;
+        if (z.animated.churchCrackleT <= 0) {
+          z.animated.churchCrackleT = rand(0.18, 0.52) / Math.min(2.2, 0.8 + burningCount * 0.18);
+          event = { type: 'churchCrackle', variant: Math.floor((t * 13 + burningCount) % 4), burningCount };
+        }
+      }
+    }
+    if (z.animated.forestFog) {
+      for (const bank of z.animated.forestFog) {
+        bank.sprite.position.x += dt * bank.speed;
+        bank.sprite.position.y += Math.sin(t * 0.31 + bank.phase) * dt * 0.035;
+        if (bank.sprite.position.x > 23) bank.sprite.position.x = -23;
       }
     }
     return event;

@@ -391,9 +391,10 @@ export class NPC {
     this.#meltdownT = 0;
     this.#exit = null;
     this.#splats = 0;
+    this.#fireFx = null;
   }
 
-  #target; #idleFor; #walkPhase; #staggerT; #meltdownT; #exit; #splats; #cutoutBaseY;
+  #target; #idleFor; #walkPhase; #staggerT; #meltdownT; #exit; #splats; #cutoutBaseY; #fireFx;
   #staggerDir = new THREE.Vector3();
 
 
@@ -443,6 +444,34 @@ export class NPC {
     this.#meltdownT = 0;
     this.#exit = exitPos.clone();
     this.setEgoVisible(false);
+    if (this.def.meltdownStyle === 'fire') this.#igniteStylized();
+  }
+
+  #igniteStylized() {
+    const fx = new THREE.Group();
+    const flames = [];
+    const colors = [0xffd35a, 0xff7a28, 0xe52c19];
+    for (let i = 0; i < 13; i++) {
+      const material = new THREE.MeshBasicMaterial({
+        color: colors[i % colors.length], transparent: true, opacity: 0.88,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+      });
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.08 + (i % 3) * 0.025, 0.42 + (i % 4) * 0.12, 8), material);
+      const a = (i / 13) * Math.PI * 2;
+      flame.position.set(Math.cos(a) * (0.12 + (i % 2) * 0.08), 0.35 + (i % 5) * 0.26, Math.sin(a) * 0.13);
+      flame.rotation.z = Math.sin(a) * 0.18;
+      flame.userData.fireFx = true;
+      flame.userData.phase = i * 0.71;
+      flames.push(flame);
+      fx.add(flame);
+    }
+    const glow = new THREE.PointLight(0xff5a24, 0, 5.5, 2);
+    glow.position.y = 0.9;
+    glow.userData.fireFx = true;
+    fx.add(glow);
+    fx.scale.setScalar(0.01);
+    this.group.add(fx);
+    this.#fireFx = { group: fx, flames, glow };
   }
 
   update(dt, t, ctx) {
@@ -465,6 +494,31 @@ export class NPC {
       case 'meltdown': {
         this.#meltdownT += dt;
         const mt = this.#meltdownT;
+        if (this.def.meltdownStyle === 'fire' && this.#fireFx) {
+          const grow = clamp(mt / 0.7, 0.01, 1);
+          this.#fireFx.group.scale.set(0.72 + grow * 0.5, grow, 0.72 + grow * 0.5);
+          this.#fireFx.glow.intensity = 1.4 + grow * 5.4 + Math.sin(mt * 25) * 0.7;
+          for (const flame of this.#fireFx.flames) {
+            flame.scale.y = 0.74 + Math.sin(mt * 17 + flame.userData.phase) * 0.22;
+            flame.rotation.y += dt * (1.5 + flame.userData.phase * 0.04);
+          }
+          this.group.rotation.z = Math.sin(mt * 42) * Math.max(0, 0.055 - mt * 0.012);
+          if (mt > 1.45) {
+            const fade = clamp(1 - (mt - 1.45) / 1.25, 0, 1);
+            this.group.traverse((o) => {
+              if (!o.material || o.userData.fireFx) return;
+              o.material.transparent = true;
+              o.material.opacity = fade;
+            });
+            this.group.scale.set(1 - (1 - fade) * 0.22, 1 + (1 - fade) * 0.18, 1 - (1 - fade) * 0.22);
+            for (const flame of this.#fireFx.flames) flame.material.opacity = fade * 0.9;
+          }
+          if (mt >= 2.75) {
+            this.dead = true;
+            this.group.visible = false;
+          }
+          break;
+        }
         if (mt < 0.7) {
           // vibrate with existential intensity
           this.group.rotation.z = Math.sin(mt * 55) * 0.1;

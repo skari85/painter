@@ -84,6 +84,7 @@ export const ZONES = {
   daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
   upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
+  blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
 };
 
 /**
@@ -108,6 +109,21 @@ export const ROOM_SCORES = {
     wave: 'square', bassWave: 'sawtooth', cutoff: 360, pad: [0, 1, 6, 10],
     bass: [0, null, 0, 1, null, 6, 0, -5], lead: [null, null, null, 3, null, null, 1, null, null, 4, null, null, null, 2, null, 5],
     kick: [0, 3, 8, 11], snare: [6, 14], hats: [1, 5, 9, 13], swing: 0.03, texture: 0.22,
+  },
+  blackForest: {
+    // Original lo-fi black-metal / dark-ambient room score: cold semitone
+    // harmony, tremolo-like lead repetition, blast texture, and forest hiss.
+    bpm: 156, level: 0.23, root: 36.71, scale: [0, 1, 5, 6, 10, 12, 13],
+    wave: 'sawtooth', bassWave: 'triangle', cutoff: 1120, pad: [0, 1, 6, 10],
+    bass: [0, 0, 6, 6, 1, 1, -5, -5], lead: [4, 1, 4, 1, 5, 2, 5, 2, 6, 3, 6, 3, 4, 1, 5, 2],
+    kick: [0, 2, 4, 6, 8, 10, 12, 14], snare: [1, 3, 5, 7, 9, 11, 13, 15], hats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], swing: 0, texture: 0.68,
+    kickLevel: 0.18, snareLevel: 0.038, hatLevel: 0.014,
+    bassLevel: 0.078, bassDecay: 0.74, leadLevel: 0.016,
+    lofi: {
+      hissLevel: 0.016, hissHighpass: 150, hissLowpass: 4200,
+      wowRate: 0.17, wowDepth: 72, detune: 14,
+      leadAttack: 0.008, leadDecay: 0.42, cutoffScale: 0.94,
+    },
   },
   leatherLatex: {
     bpm: 126, level: 0.34, root: 55, scale: [0, 3, 5, 7, 10, 12, 15],
