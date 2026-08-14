@@ -1000,7 +1000,7 @@ class Game {
         break;
       case 'flavor':
         if (it.id === 'dildoball-cow') { this.#addressTheCow(it); break; }
-        this.ui.toast('THE DESK', pick(it.lines));
+        this.ui.toast(it.title ?? 'THE SCENE', pick(it.lines));
         this.audio.uiMove();
         break;
       case 'crownQuest': {
@@ -1137,7 +1137,8 @@ class Game {
         gildedFork: 'One long table. Every big shot. All of them drunk and messed up.',
         maxPro: 'Forty metres of wall. One painting. Somewhere in it, an argument.',
         dildoBall: 'The bass is wearing a crown. The court is in session. Wobble accordingly.',
-        daylightClub: 'Noon pours through the roof. The performers orbit chrome while deer critique the bass.',
+        daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
+        upAndCumming: 'Five enormous works, two red dots, seven coded birds, one desk, and an argument strong enough to move inventory.',
       }[zoneKey]);
 
       if (zoneKey === 'maxPro') this.debate.enter();
@@ -1287,8 +1288,10 @@ class Game {
       } else {
         this.chatter.update(dt, this.npcs.inCurrentZone, {
           zoneName: ZONES[this.world.current]?.name ?? 'the scene',
+          zoneKey: this.world.current,
           night: this.state.night,
           busy: () => this.mode !== 'playing',
+          active: () => this.world.current === 'daylightClub',
         });
       }
 

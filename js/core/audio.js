@@ -242,26 +242,40 @@ export class AudioEngine {
     bus.gain.setTargetAtTime(profile.level, t, 0.65);
     bus.connect(filter);
 
-    // A quiet harmonic bed makes travel crossfades musical rather than abrupt.
-    const padGain = this.#ctx.createGain();
-    padGain.gain.value = key === 'vault' ? 0.025 : 0.018;
-    const padFilter = this.#ctx.createBiquadFilter();
-    padFilter.type = 'lowpass';
-    padFilter.frequency.value = Math.max(180, profile.cutoff * 0.55);
-    const padOscs = profile.pad.map((semi, i) => {
-      const osc = this.#ctx.createOscillator();
-      osc.type = i % 2 ? profile.wave : 'sine';
-      osc.frequency.value = profile.root * 2 * Math.pow(2, semi / 12);
-      osc.detune.value = rand(-9, 9);
-      osc.connect(padFilter);
-      osc.start(t);
-      return osc;
-    });
-    padFilter.connect(padGain).connect(bus);
+    const lofi = profile.lofi
+      ? (typeof profile.lofi === 'object' ? profile.lofi : {})
+      : null;
+    let lofiNodes = null;
+    if (lofi) {
+      // A tiny filtered noise floor and slow cutoff drift suggest worn tape
+      // without bringing back the persistent harmonic room drones.
+      const hiss = this.#ctx.createBufferSource();
+      hiss.buffer = this.#noiseBuffer;
+      hiss.loop = true;
+      const hissHighpass = this.#ctx.createBiquadFilter();
+      hissHighpass.type = 'highpass';
+      hissHighpass.frequency.value = lofi.hissHighpass ?? 620;
+      const hissLowpass = this.#ctx.createBiquadFilter();
+      hissLowpass.type = 'lowpass';
+      hissLowpass.frequency.value = lofi.hissLowpass ?? 5600;
+      const hissGain = this.#ctx.createGain();
+      hissGain.gain.value = lofi.hissLevel ?? 0.009;
+      hiss.connect(hissHighpass).connect(hissLowpass).connect(hissGain).connect(bus);
+      hiss.start(t, rand(0, Math.max(0.01, this.#noiseBuffer.duration - 0.01)));
+
+      const wow = this.#ctx.createOscillator();
+      wow.type = 'sine';
+      wow.frequency.value = lofi.wowRate ?? 0.21;
+      const wowDepth = this.#ctx.createGain();
+      wowDepth.gain.value = lofi.wowDepth ?? 44;
+      wow.connect(wowDepth).connect(filter.frequency);
+      wow.start(t);
+      lofiNodes = { hiss, hissHighpass, hissLowpass, hissGain, wow, wowDepth };
+    }
 
     const stepDur = 60 / profile.bpm / 4;
     this.#roomScore = {
-      key, profile, bus, filter, padOscs,
+      key, profile, lofi, bus, filter, lofiNodes,
       stepDur, startTime: t, nextTime: t + 0.06,
       timer: setInterval(() => this.#roomScoreTick(), 40),
     };
@@ -277,8 +291,19 @@ export class AudioEngine {
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
     s.bus.gain.setTargetAtTime(0.0001, t, 0.28);
-    s.padOscs.forEach((osc) => { try { osc.stop(t + 1.5); } catch { /* gone */ } });
-    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 1800);
+    if (s.lofiNodes) {
+      try { s.lofiNodes.hiss.stop(t + 1.5); } catch { /* already composted */ }
+      try { s.lofiNodes.wow.stop(t + 1.5); } catch { /* already composted */ }
+    }
+    setTimeout(() => {
+      if (s.lofiNodes) {
+        for (const node of Object.values(s.lofiNodes)) {
+          try { node.disconnect(); } catch { /* garnish */ }
+        }
+      }
+      try { s.bus.disconnect(); } catch { /* garnish */ }
+      try { s.filter.disconnect(); } catch { /* garnish */ }
+    }, 1800);
   }
 
   #roomScoreTick() {
@@ -292,19 +317,24 @@ export class AudioEngine {
     }
   }
 
-  #scoreTone(t, freq, { bus, type = 'sine', peak = 0.1, decay = 0.2, cutoff = 1200, slide = 1 }) {
+  #scoreTone(t, freq, {
+    bus, type = 'sine', peak = 0.1, attack = 0.006, decay = 0.2,
+    cutoff = 1200, slide = 1, detune = 0,
+  }) {
     const osc = this.#ctx.createOscillator();
     osc.type = type;
     osc.frequency.setValueAtTime(Math.max(freq, 1), t);
-    if (slide !== 1) osc.frequency.exponentialRampToValueAtTime(Math.max(freq * slide, 1), t + decay);
+    osc.detune.setValueAtTime(detune, t);
+    const releaseTime = t + Math.max(decay, attack + 0.01);
+    if (slide !== 1) osc.frequency.exponentialRampToValueAtTime(Math.max(freq * slide, 1), releaseTime);
     const filter = this.#ctx.createBiquadFilter();
     filter.type = 'lowpass'; filter.frequency.value = cutoff; filter.Q.value = 2.5;
     const gain = this.#ctx.createGain();
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(peak, t + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+    gain.gain.exponentialRampToValueAtTime(peak, t + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, releaseTime);
     osc.connect(filter).connect(gain).connect(bus);
-    osc.start(t); osc.stop(t + decay + 0.04);
+    osc.start(t); osc.stop(releaseTime + 0.04);
   }
 
   #scoreNoise(t, { bus, peak, decay, freq, type = 'highpass' }) {
@@ -320,22 +350,119 @@ export class AudioEngine {
     src.start(t, rand(0, 0.8)); src.stop(t + decay + 0.03);
   }
 
+  /** Soft, close-voiced electric-piano stabs for profiles with a jazz layer. */
+  #scoreJazzChord(t, s, jazz, eventIndex) {
+    const chord = jazz.chords[eventIndex % jazz.chords.length];
+    const base = s.profile.root * (jazz.octave ?? 2);
+    const decay = s.stepDur * (jazz.decaySteps ?? 7);
+    chord.forEach((semi, voice) => {
+      const freq = base * Math.pow(2, semi / 12);
+      this.#scoreTone(t + voice * (jazz.spread ?? 0.012), freq, {
+        bus: s.bus,
+        type: voice % 2 ? 'sine' : 'triangle',
+        peak: (jazz.level ?? 0.014) * (voice === 0 ? 1.12 : 1),
+        attack: (jazz.attack ?? 0.05) + voice * 0.006,
+        decay,
+        cutoff: jazz.cutoff ?? 1800,
+        detune: (voice - (chord.length - 1) / 2) * 2.2,
+      });
+    });
+  }
+
+  /**
+   * A deliberately synthetic, wordless moan. A glottal carrier passes through
+   * two moving vowel formants while a slow swell, pitch sag and vibrato make it
+   * feel performed rather than sampled.
+   */
+  #scoreVocalMoan(t, s, vocal, eventIndex) {
+    const dur = s.stepDur * vocal.durationSteps[eventIndex % vocal.durationSteps.length];
+    const semi = vocal.notes[eventIndex % vocal.notes.length];
+    const f0 = s.profile.root * Math.pow(2, semi / 12) * (vocal.octave ?? 2);
+    const vowel = vocal.vowels[eventIndex % vocal.vowels.length];
+    const [f1Start, f2Start, f1End, f2End] = vowel;
+
+    const carrier = this.#ctx.createOscillator();
+    carrier.type = 'sawtooth';
+    carrier.frequency.setValueAtTime(f0 * 0.97, t);
+    carrier.frequency.exponentialRampToValueAtTime(f0, t + dur * 0.28);
+    carrier.frequency.exponentialRampToValueAtTime(f0 * (vocal.glide ?? 0.91), t + dur);
+
+    const body = this.#ctx.createOscillator();
+    body.type = 'sine';
+    body.frequency.setValueAtTime(f0 * 0.5, t);
+    body.frequency.exponentialRampToValueAtTime(f0 * 0.47, t + dur);
+    const bodyGain = this.#ctx.createGain();
+    bodyGain.gain.value = 0.32;
+
+    const vibrato = this.#ctx.createOscillator();
+    vibrato.type = 'sine';
+    vibrato.frequency.value = vocal.vibratoRate ?? 5.1;
+    const vibratoDepth = this.#ctx.createGain();
+    vibratoDepth.gain.setValueAtTime(2, t);
+    vibratoDepth.gain.linearRampToValueAtTime(vocal.vibratoDepth ?? 18, t + dur * 0.45);
+    vibratoDepth.gain.linearRampToValueAtTime(7, t + dur);
+    vibrato.connect(vibratoDepth).connect(carrier.detune);
+
+    const throat = this.#ctx.createBiquadFilter();
+    throat.type = 'lowpass';
+    throat.frequency.value = 2800;
+    throat.Q.value = 0.7;
+    carrier.connect(throat);
+    body.connect(bodyGain).connect(throat);
+
+    const mouth = this.#ctx.createGain();
+    const peak = vocal.level ?? 0.032;
+    mouth.gain.setValueAtTime(0.0001, t);
+    mouth.gain.exponentialRampToValueAtTime(peak * 0.72, t + dur * 0.16);
+    mouth.gain.exponentialRampToValueAtTime(peak, t + dur * 0.46);
+    mouth.gain.exponentialRampToValueAtTime(peak * 0.58, t + dur * 0.76);
+    mouth.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    [
+      [f1Start, f1End, 7.5, 1],
+      [f2Start, f2End, 9, 0.72],
+    ].forEach(([start, end, q, level]) => {
+      const formant = this.#ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.setValueAtTime(start, t);
+      formant.frequency.exponentialRampToValueAtTime(end, t + dur * 0.82);
+      formant.Q.value = q;
+      const formantGain = this.#ctx.createGain();
+      formantGain.gain.value = level;
+      throat.connect(formant).connect(formantGain).connect(mouth);
+    });
+
+    mouth.connect(s.bus);
+    carrier.start(t); body.start(t); vibrato.start(t);
+    carrier.stop(t + dur + 0.04);
+    body.stop(t + dur + 0.04);
+    vibrato.stop(t + dur + 0.04);
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
+    const lofi = s.lofi;
     const pos = step % 16;
     const swung = pos % 2 ? t + s.stepDur * p.swing : t;
 
     if (p.kick.includes(pos)) {
-      this.#scoreTone(swung, 145, { bus: s.bus, peak: 0.56, decay: 0.22, cutoff: 500, slide: 0.24 });
+      this.#scoreTone(swung, 145, { bus: s.bus, peak: p.kickLevel ?? 0.56, decay: 0.22, cutoff: 500, slide: 0.24 });
     }
-    if (p.snare.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: 0.12, decay: 0.12, freq: 1100, type: 'bandpass' });
-    if (p.hats.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: 0.045, decay: 0.045, freq: 6500 });
+    if (p.snare.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: p.snareLevel ?? 0.12, decay: 0.12, freq: 1100, type: 'bandpass' });
+    if (p.hats.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: p.hatLevel ?? 0.045, decay: 0.045, freq: 6500 });
 
     if (pos % 2 === 0) {
       const semi = p.bass[pos / 2];
       if (semi !== null && semi !== undefined) {
         const freq = p.root * Math.pow(2, semi / 12);
-        this.#scoreTone(swung, freq, { bus: s.bus, type: p.bassWave, peak: 0.16, decay: s.stepDur * 1.7, cutoff: Math.min(p.cutoff, 520), slide: s.key === 'vault' ? 0.92 : 1 });
+        this.#scoreTone(swung, freq, {
+          bus: s.bus,
+          type: p.bassWave,
+          peak: p.bassLevel ?? 0.16,
+          decay: s.stepDur * (p.bassDecay ?? 1.7),
+          cutoff: Math.min(p.cutoff, 520),
+          slide: s.key === 'vault' ? 0.92 : 1,
+        });
       }
     }
 
@@ -344,11 +471,27 @@ export class AudioEngine {
       const semi = p.scale[scaleIndex % p.scale.length];
       const octave = s.key === 'maxPro' ? 4 : 3;
       const freq = p.root * Math.pow(2, semi / 12) * octave;
-      this.#scoreTone(swung, freq, { bus: s.bus, type: p.wave, peak: 0.035, decay: s.stepDur * (s.key === 'dildoBall' ? 3 : 1.35), cutoff: p.cutoff * 1.4, slide: s.key === 'maxPro' ? 1.06 : 1 });
+      this.#scoreTone(swung, freq, {
+        bus: s.bus,
+        type: p.wave,
+        peak: p.leadLevel ?? 0.035,
+        attack: lofi ? (lofi.leadAttack ?? 0.022) : 0.006,
+        decay: s.stepDur * (s.key === 'dildoBall' ? 3 : lofi ? (lofi.leadDecay ?? 1.75) : 1.35),
+        cutoff: p.cutoff * (lofi ? (lofi.cutoffScale ?? 1.2) : 1.4),
+        slide: s.key === 'maxPro' ? 1.06 : 1,
+        detune: lofi ? rand(-(lofi.detune ?? 7), lofi.detune ?? 7) : 0,
+      });
     }
 
     if (p.texture > 0 && pos === 15 && Math.random() < p.texture) {
       this.#scoreNoise(swung, { bus: s.bus, peak: 0.055, decay: s.stepDur * 4, freq: 2600, type: 'bandpass' });
+    }
+
+    if (p.jazz?.steps.includes(step)) {
+      this.#scoreJazzChord(swung, s, p.jazz, p.jazz.steps.indexOf(step));
+    }
+    if (p.vocal?.steps.includes(step)) {
+      this.#scoreVocalMoan(swung, s, p.vocal, p.vocal.steps.indexOf(step));
     }
   }
 
@@ -1000,7 +1143,6 @@ export class AudioEngine {
 
   setMood(name) {
     if (!this.#ctx) return;
-    const mood = MOODS[name] ?? MOODS.off;
     const t = this.#ctx.currentTime;
 
     if (this.#moodNodes) {
@@ -1010,25 +1152,8 @@ export class AudioEngine {
       oscs.forEach((o) => o.stop(t + 2.5));
       this.#moodNodes = null;
     }
-    if (!mood.freqs.length) return;
-
-    const gain = this.#ctx.createGain();
-    gain.gain.value = 0.0001;
-    gain.gain.setTargetAtTime(mood.gain, t, 1.2);
-    const filter = this.#ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = mood.cutoff;
-    const oscs = mood.freqs.map((f) => {
-      const o = this.#ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = f;
-      o.detune.value = rand(-6, 6);
-      o.connect(filter);
-      o.start(t);
-      return o;
-    });
-    filter.connect(gain).connect(this.#master);
-    this.#moodNodes = { gain, oscs };
+    // Room identity now comes from sequenced beats, bass and lead notes only.
+    // Keep the API so travel code remains unchanged, but never start a drone.
+    void name;
   }
 }
-

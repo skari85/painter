@@ -841,6 +841,7 @@ const MAP_ZONES = [
   { key: 'maxPro', name: 'MAX PRO KUNST 2000', desc: 'Football broadcast. Berlin club. Office boxing. No result.' },
   { key: 'dildoBall', name: 'THE DILDO BALL', desc: 'The collector’s other back room. The court is in session. The heads do not judge.' },
   { key: 'daylightClub', name: 'THE DAYLIGHT FLESH GARDEN', desc: 'An adults-only sculpture club at noon. Chrome poles, generous bodies, moss, and animals with no guest list.' },
+  { key: 'upAndCumming', name: 'UP AND CUMMING ARTIST', desc: 'Huge paintings in hard daylight. Muscle Mania 300 refuses every sale. Zebra Zebrason refuses his refusal.' },
 ];
 
 

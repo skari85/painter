@@ -1447,6 +1447,144 @@ export const DILDO_BALL_CAST = [
 
 
 /* ============================================================
+   THE DAYLIGHT FLESH GARDEN — a chromatic thinking public.
+
+   They are ambient rather than story-gated: the room should feel populated
+   on every night, and every body gets its own color, doubt, and theory about
+   whether post-contemporary artists still think (or merely render thinking).
+   ============================================================ */
+
+const DAYLIGHT_PEOPLE = [
+  {
+    id: 'garden-aura', name: 'Aura Compost', role: 'post-contemporary gardener',
+    face: 'puplic/visual assets/character_faces_alt/03-goth-gardener.png', pitch: 0.86,
+    palette: { skin: 0x6f402e, hair: 0x7dff62, top: 0xff4fa3, bottom: 0x42206f },
+    barks: [
+      'I think the artist is thinking through mulch. The mulch has declined comment.',
+      'Post-contemporary means the present already composted us.',
+      'The unicorn is not symbolic. Symbolism is its side hustle.',
+      'I planted one critical position. It grew into three invoices.',
+    ],
+  },
+  {
+    id: 'garden-pixel', name: 'Pixel Moss', role: 'soft-rave theorist',
+    face: 'puplic/visual assets/character_faces_alt/06-eccentric-dj.png', pitch: 1.18,
+    palette: { skin: 0xb96f4f, hair: 0x45e8ff, top: 0xffed54, bottom: 0x006f91 },
+    barks: [
+      'The kick drum is thinking. I am providing administrative support.',
+      'Their practice interrogates the body, but gently, after lunch.',
+      'If the work has no object, why did I carry this tote bag?',
+      'Lo-fi is just memory wearing compression socks.',
+    ],
+  },
+  {
+    id: 'garden-maybe', name: 'Dr. Maybe', role: 'professor of provisional thought',
+    face: 'puplic/visual assets/character_faces_alt/05-punk-librarian.png', pitch: 0.76,
+    palette: { skin: 0xe4b18d, hair: 0x7c35ff, top: 0x20d6a5, bottom: 0xff6757 },
+    barks: [
+      'Are artists thinking? Certainly. About dinner, mostly. This protects the work.',
+      'The post-contemporary begins where the wall text runs out of battery.',
+      'I reject certainty except when describing my own rejection of certainty.',
+      'This rainbow has seven colors and at least nine institutional partners.',
+    ],
+  },
+  {
+    id: 'garden-loop', name: 'Loop Tender', role: 'artist between refreshes',
+    face: 'puplic/visual assets/character_faces_alt/10-neon-cyclist.png', pitch: 1.28,
+    palette: { skin: 0x9b5f42, hair: 0xff8a22, top: 0x2764ff, bottom: 0xb8ff35 },
+    barks: [
+      'I had a thought, refreshed it, and now it belongs to the platform.',
+      'Post-contemporary painting is loading. Please admire the spinner.',
+      'The artist thinks in public so the private can invoice them later.',
+      'I came for discourse and stayed because the moss has good bass response.',
+    ],
+  },
+  {
+    id: 'garden-oracle', name: 'Concrete Oracle', role: 'unlicensed art prophet',
+    face: 'puplic/visual assets/character_faces_alt/13-nature-mystic.png', pitch: 0.68,
+    palette: { skin: 0x4d2d24, hair: 0xffd84a, top: 0xef3f65, bottom: 0x2dcfc1 },
+    barks: [
+      'The artist is thinking about not thinking. Very labor intensive.',
+      'Tomorrow’s masterpiece is today’s awkward group chat.',
+      'I asked the deer for a reading. It appraised my shoes.',
+      'The rainbow predicts funding with scattered periods of sincerity.',
+    ],
+  },
+  {
+    id: 'garden-sincere', name: 'Sincere Error', role: 'recovering conceptualist',
+    face: 'puplic/visual assets/character_faces_alt/01-indie-musician.png', pitch: 0.94,
+    palette: { skin: 0xd9926f, hair: 0x2a173d, top: 0xff6fcf, bottom: 0x13a86b },
+    barks: [
+      'I accidentally liked the work before understanding it. Please keep this confidential.',
+      'Thinking is not the same as an artist statement. I checked twice.',
+      'Maybe the body is not a site. Maybe it is tired and wants fruit.',
+      'The unicorn looked back. That was the strongest critique all day.',
+    ],
+  },
+  {
+    id: 'garden-caption', name: 'Caption Pending', role: 'curator without a deadline',
+    face: 'puplic/visual assets/character_faces_alt/14-sarcastic-office-worker.png', pitch: 1.04,
+    palette: { skin: 0x81513f, hair: 0xf3f0dc, top: 0x922dff, bottom: 0xff4c35 },
+    barks: [
+      'The post-contemporary artist thinks after publication, during corrections.',
+      'I curated the gap between intention and catering.',
+      'The work refuses closure. The venue closes at six.',
+      'I can explain the rainbow, but it would become beige immediately.',
+    ],
+  },
+  {
+    id: 'garden-sleeper', name: 'Sleepy Thesis', role: 'poet in low-power mode',
+    face: 'puplic/visual assets/character_faces_alt/16-sleepy-poet.png', pitch: 0.62,
+    palette: { skin: 0xc98668, hair: 0x265cff, top: 0xffbd2e, bottom: 0xe43f93 },
+    barks: [
+      'I am thinking at twenty percent opacity.',
+      'The artist’s silence is radical. Mine is just low blood sugar.',
+      'A soft beat under a hard theory. Finally, furniture for the mind.',
+      'Do unicorns dream of institutional critique, or is that our burden?',
+    ],
+  },
+  {
+    id: 'garden-chaos', name: 'Chaos Intern', role: 'assistant to the discourse',
+    face: 'puplic/visual assets/character_faces_alt/12-chaotic-cook.png', pitch: 1.34,
+    palette: { skin: 0xf0c3a2, hair: 0xff3a45, top: 0x3ee05f, bottom: 0x5443ff },
+    barks: [
+      'I alphabetized the feelings. The feelings unionized.',
+      'Nobody knows what post-contemporary means, so I ordered more flowers.',
+      'The artist is thinking. I saw the calendar invite.',
+      'Please do not feed the theory after midnight. It becomes a panel.',
+    ],
+  },
+  {
+    id: 'garden-witness', name: 'The Color Witness', role: 'public, technically',
+    face: 'puplic/visual assets/character_faces_alt/04-roller-skater.png', pitch: 1.12,
+    palette: { skin: 0x5b3329, hair: 0xff62d0, top: 0x17cbe5, bottom: 0xffe14a },
+    barks: [
+      'I witnessed a genuine thought near the pink flowers. Nobody sponsored it.',
+      'Color is what theory does when it stops checking its email.',
+      'Maybe artists think. Maybe thinking is simply how the body dances alone.',
+      'This whole garden is too much. At last, an accurate amount.',
+    ],
+  },
+];
+
+export const DAYLIGHT_GARDEN_CAST = DAYLIGHT_PEOPLE.map((p, i) => ({
+  ...p,
+  anchor: p.id,
+  labelScale: 0.78,
+  shortRole: p.role,
+  ego: 42 + i * 3,
+  weak: ['kind', 'witty', 'brutal'][i % 3],
+  resist: ['brutal', 'kind', 'witty'][i % 3],
+  hint: 'A colorful public thinker. Their theory may be a feeling wearing a lanyard.',
+  pace: 0.58 + (i % 4) * 0.11,
+  accessory: i % 3 === 0 ? 'phone' : (i % 3 === 1 ? 'wine' : 'clipboard'),
+  ambient: true,
+  openers: null, countered: null, reactions: null, weakHit: null,
+  disarmed: null, dismiss: null, meltdown: null, playerJabs: null,
+}));
+
+
+/* ============================================================
    AMBIENT CROWD — procedurally-assembled artworld fauna
    ============================================================ */
 
@@ -1551,6 +1689,85 @@ const CROWD_TYPES = [
   },
 ];
 
+export const UP_AND_CUMMING_CAST = [
+  {
+    id: 'muscleMania300', name: 'Muscle Mania 300', shortRole: 'artist · not for sale', role: 'Artist — Absolute Refusal Division',
+    face: 'puplic/up-and-cumming-artist/muscle-mania-300.png', cutout: true, cutoutNoBack: true, cutoutHeight: 2.42,
+    static: true, anchor: 'muscleMania300', ego: 300, weak: 'witty', resist: 'brutal',
+    hint: 'He can bench-press the desk. He cannot bench-press a joke about edition sizes.',
+    pace: 0.55, pitch: 0.68, accessory: null,
+    palette: { skin: 0xd49a78, hair: 0x17120e, top: 0xd49a78, bottom: 0x201a18 },
+    openers: [
+      'NOT FOR SALE. The work gets separation anxiety. So do I. We are a practice.',
+      'Zebra sold the blue one while I was blinking. I no longer blink near collectors.',
+      'My price is no. My discount is NO. My studio inventory is a hostage rescue.',
+      'Every red dot is a tiny wound wearing good typography.',
+    ],
+    countered: [
+      'You cannot out-muscle my refusal. I train refusal six days a week.',
+      'Brutality is just sales pressure without the loafers. I know its form.',
+    ],
+    reactions: {
+      kind: ['You understand. The paintings need a stable home. Mine.', 'Thank you. Please stand between Zebra and the wall.'],
+      witty: ['Do not call it a limited edition of zero. That is funny and dangerously marketable.', 'I laughed. Zebra heard. Now the laugh has a price.'],
+      brutal: ['My pecs absorbed that. The paintings remain unavailable.', 'I have wrestled larger opinions in smaller boots.'],
+    },
+    weakHit: ['Stop making refusal sound collectible.', 'No jokes. Zebra can monetize jokes from across the room.'],
+    disarmed: ['Fine. I might sell one—to myself. At cost. With visitation rights.'],
+    dismiss: ['This studio visit is over. The work and I need protein.', 'No more questions. Questions become invoices here.'],
+    meltdown: 'THE RED DOT TOUCHED THE WALL. EVACUATE THE PAINTINGS. I WILL CARRY ALL FIVE.',
+    barks: [
+      'NOT FOR SALE!',
+      'Take that dot off Blue Dealer!',
+      'The work stays with its father!',
+      'I made them huge so nobody could carry them out!',
+    ],
+    playerJabs: {
+      kind: ['Protecting the work is love. Smothering it is still smothering it.'],
+      witty: ['You made five enormous hostage notes and called them paintings. Respectfully: iconic.'],
+      brutal: ['You are not protecting the work. You are arm-wrestling its future and calling the bruise integrity.'],
+    },
+  },
+  {
+    id: 'zebraZebrason', name: 'Zebra Zebrason', shortRole: 'gallerist · always closing', role: 'Gallerist — Pressure Sales in Stripes',
+    face: 'puplic/up-and-cumming-artist/zebra-zebrason.png', cutout: true, cutoutNoBack: true, cutoutHeight: 2.05,
+    static: true, anchor: 'zebraZebrason', ego: 170, weak: 'brutal', resist: 'kind',
+    hint: 'Charm has been fully depreciated. A direct hit is the only language left off the invoice.',
+    pace: 0.9, pitch: 1.08, accessory: null,
+    palette: { skin: 0xc88a68, hair: 0x19130f, top: 0xf0eee7, bottom: 0x17171b },
+    openers: [
+      'Muscle, darling, attachment is not a strategy. Sign here. Harder. I brought three pens.',
+      'I have six collectors in the taxi and one in the ventilation system. We are SELLING.',
+      'Blue Dealer is sold. Angel is pending. Devil has two offers and a complicated tax status.',
+      'Artists make work. Gallerists make the work leave the building. Nature is healing.',
+    ],
+    countered: [
+      'Kindness does not close. Pressure closes. Champagne closes. I close.',
+      'Sweetness is lovely. Put it in writing and assign me seventy percent.',
+    ],
+    reactions: {
+      kind: ['Lovely sentiment. No signature. Next.', 'Empathy is not a recognized payment method.'],
+      witty: ['Ha! Put that on the press release. I own the press release.', 'Funny sells. Again, slower, while I record.'],
+      brutal: ['That was almost stronger than Muscle. Almost.', 'Fine. A boundary. I have heard of these in podcasts.'],
+    },
+    weakHit: ['Do not use the word parasite in front of the client list.', 'Lower your voice. The commission split can hear you.'],
+    disarmed: ['No sale today. A soft launch of not selling. Very exclusive.'],
+    dismiss: ['I have to push him again. The quarter ends in nine minutes.', 'This conversation lacks urgency and therefore value.'],
+    meltdown: 'THE INVENTORY IS STAYING? THEN WHAT AM I WEARING ZEBRA FOR? THIS WAS A CLOSING OUTFIT.',
+    barks: [
+      'SIGN THE AGREEMENT!',
+      'The collector is emotionally liquid!',
+      'Nothing leaves the studio until something leaves the studio!',
+      'I put the red dot there for momentum!',
+    ],
+    playerJabs: {
+      kind: ['You can represent the artist without turning the studio into an extraction site.'],
+      witty: ['Your suit already has bars. The ethics are trying to escape.'],
+      brutal: ['You do not sell feelings. You mug them, invoice the bruise, and call it placement.'],
+    },
+  },
+];
+
 /** Build a crowd of ambient weirdos for a zone. */
 export function buildCrowd(zoneKey, night, count) {
   const defs = [];
@@ -1600,6 +1817,8 @@ export function castForNight(night) {
         gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
         maxPro: MAX_PRO_CAST,
         dildoBall: DILDO_BALL_CAST,
+        daylightClub: DAYLIGHT_GARDEN_CAST,
+        upAndCumming: UP_AND_CUMMING_CAST,
       };
     case 2:
 
@@ -1615,6 +1834,8 @@ export function castForNight(night) {
         gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
         maxPro: MAX_PRO_CAST,
         dildoBall: DILDO_BALL_CAST,
+        daylightClub: DAYLIGHT_GARDEN_CAST,
+        upAndCumming: UP_AND_CUMMING_CAST,
       };
     default:
 
@@ -1627,6 +1848,8 @@ export function castForNight(night) {
         gildedFork: [m.forkHost, m.fork1, m.fork2, m.fork3, m.fork4, m.fork5, m.fork6, m.fork7, m.fork8],
         maxPro: MAX_PRO_CAST,
         dildoBall: DILDO_BALL_CAST,
+        daylightClub: DAYLIGHT_GARDEN_CAST,
+        upAndCumming: UP_AND_CUMMING_CAST,
       };
 
   }
