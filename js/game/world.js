@@ -503,6 +503,7 @@ export class World {
     this.#buildDildoBall();
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
+    this.#buildVacantEditions();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -540,6 +541,7 @@ export class World {
       dildoBall:    { x: -6.35, z: 4.75,  ry: Math.PI },
       daylightClub: { x: 8.4,   z: 5.25,  ry: Math.PI },
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
+      vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
     };
 
     for (const [key, p] of Object.entries(placements)) {
@@ -3345,6 +3347,232 @@ export class World {
     door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  VACANT EDITIONS — an over-serious tactile product library */
+  /* ---------------------------------------------------------- */
+  #buildVacantEditions() {
+    const z = this.#newZone('vacantEditions');
+    const roomH = 4.8;
+    shell(z, {
+      w: 18, d: 14, h: roomH,
+      floorColor: 0xb5afa6, wallColor: 0xe7e2d8, ceilColor: 0x25252b,
+    });
+    z.spawn.set(-6.55, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xdad3c8, density: 0.011 };
+
+    // A smoked-rubber runway turns the room into a material library rather
+    // than another white cube, while brass seams divide the edition bays.
+    plane(z, {
+      w: 16.8, h: 2.35, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
+      material: new THREE.MeshPhysicalMaterial({
+        color: 0x24232a, roughness: 0.24, metalness: 0.08,
+        clearcoat: 0.42, clearcoatRoughness: 0.18,
+      }),
+      name: 'vacant runway', noSplat: true,
+    });
+    for (const x of [-6.2, -2.1, 2.1, 6.2]) {
+      box(z, {
+        w: 0.035, h: 0.018, d: 12.2, x, y: 0.013, z: 0,
+        material: mat(0xc59c54, { metalness: 0.72, roughness: 0.22 }), solid: false, noSplat: true,
+      });
+    }
+
+    const fleckTexture = (kind) => canvasTexture(256, 256, (ctx, w, h) => {
+      const rng = mulberry32(kind === 'terrazzo' ? 9182 : kind === 'cork' ? 4417 : 7731);
+      if (kind === 'terrazzo') {
+        ctx.fillStyle = '#ded6c8'; ctx.fillRect(0, 0, w, h);
+        const chips = ['#20212a', '#ad593c', '#668f88', '#e5b95b', '#f1eee7'];
+        for (let i = 0; i < 230; i++) {
+          const s = 2 + rng() * 10;
+          ctx.fillStyle = chips[Math.floor(rng() * chips.length)];
+          ctx.save(); ctx.translate(rng() * w, rng() * h); ctx.rotate(rng() * Math.PI);
+          ctx.fillRect(-s / 2, -s / 3, s, s * 0.66); ctx.restore();
+        }
+      } else if (kind === 'cork') {
+        ctx.fillStyle = '#a97645'; ctx.fillRect(0, 0, w, h);
+        for (let i = 0; i < 280; i++) {
+          ctx.strokeStyle = rng() > 0.45 ? '#69452d' : '#d0a36c';
+          ctx.lineWidth = 1 + rng() * 3;
+          const px = rng() * w; const py = rng() * h;
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 3 + rng() * 18, py + (rng() - 0.5) * 8); ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = '#d9ddea'; ctx.fillRect(0, 0, w, h);
+        for (let yy = 18; yy < h; yy += 34) {
+          for (let xx = 18; xx < w; xx += 34) {
+            const px = xx + ((yy / 34) % 2) * 17;
+            ctx.fillStyle = 'rgba(255,255,255,0.72)';
+            ctx.beginPath(); ctx.ellipse(px, yy, 12, 12, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(67,75,105,0.46)'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = 'rgba(126,139,184,0.2)';
+            ctx.beginPath(); ctx.ellipse(px - 3, yy + 3, 7, 7, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+    });
+
+    const terrazzoMap = fleckTexture('terrazzo');
+    const corkMap = fleckTexture('cork');
+    const bubbleMap = fleckTexture('bubble');
+    const materials = {
+      velvet: new THREE.MeshStandardMaterial({ color: 0x6e1636, roughness: 1, metalness: 0 }),
+      chrome: new THREE.MeshPhysicalMaterial({ color: 0xdce7ed, roughness: 0.07, metalness: 0.96, clearcoat: 1, clearcoatRoughness: 0.03 }),
+      cork: new THREE.MeshStandardMaterial({ color: 0xffffff, map: corkMap, roughness: 0.96 }),
+      terrazzo: new THREE.MeshStandardMaterial({ color: 0xffffff, map: terrazzoMap, roughness: 0.72 }),
+      bubble: new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: bubbleMap, roughness: 0.18, metalness: 0.02, clearcoat: 0.85, clearcoatRoughness: 0.08 }),
+      moss: new THREE.MeshStandardMaterial({ color: 0x52713d, roughness: 1 }),
+      granite: new THREE.MeshStandardMaterial({ color: 0x77767b, roughness: 1, bumpMap: terrazzoMap, bumpScale: 0.11 }),
+      pearl: new THREE.MeshPhysicalMaterial({ color: 0xe4b8e8, roughness: 0.18, metalness: 0.12, clearcoat: 1, clearcoatRoughness: 0.06, iridescence: 0.7, iridescenceIOR: 1.45 }),
+    };
+
+    const editions = [
+      { key: 'velvet', name: 'VELVET NAP', sub: 'flocked silicone · 1/3', x: -6.0, z: -4.75, style: 'ribbed', color: 0x6e1636,
+        line: 'The velvet nap changes direction when stroked. Vincent calls the dark stripe “viewer participation.” Eddie calls it lint.' },
+      { key: 'chrome', name: 'MIRROR CHROME', sub: 'polished alloy · AP', x: -2.0, z: -4.75, style: 'smooth', color: 0xdce7ed,
+        line: 'The chrome dildo reflects your face, the track lights, and several choices you thought were private.' },
+      { key: 'cork', name: 'CORK BREATHER', sub: 'sealed cork · 2/8', x: 2.0, z: -4.75, style: 'knobbed', color: 0xa97645,
+        line: 'The cork edition is warm, porous-looking, and sealed under twelve coats of professional reassurance.' },
+      { key: 'terrazzo', name: 'AGGREGATE DESIRE', sub: 'cast terrazzo · 4/7', x: 6.0, z: -4.75, style: 'faceted', color: 0xded6c8,
+        line: 'Each terrazzo chip has been distributed by hand. Eddie rejected three compositions for excessive pebble hierarchy.' },
+      { key: 'bubble', name: 'POP PROOF', sub: 'bubble membrane · unique', x: -6.0, z: 4.75, style: 'knobbed', color: 0xcad5ed,
+        line: 'Every bubble remains unpopped. The certificate describes popping one as “an irreversible edition event.”' },
+      { key: 'moss', name: 'AFTERCARE', sub: 'living moss · 3/5', x: -2.0, z: 4.75, style: 'mossy', color: 0x52713d,
+        line: 'The moss dildo needs mist, indirect sun, and reassurance that institutional acquisition will not change it.' },
+      { key: 'granite', name: 'FRICTION STUDY', sub: 'sandblasted stone · 1/6', x: 2.0, z: 4.75, style: 'ridged', color: 0x77767b,
+        line: 'The sandblasted edition is strictly conceptual in use. A nearby waiver uses the phrase “tactile ambition.”' },
+      { key: 'pearl', name: 'MOTHER OF PEARL', sub: 'iridescent silicone · 7/9', x: 6.0, z: 4.75, style: 'smooth', color: 0xe4b8e8,
+        line: 'The pearlescent skin changes from pink to blue as you move. The object considers this a personality.' },
+    ];
+
+    z.animated.editions = [];
+    const plinthMat = mat(0xece8df, { roughness: 0.48, metalness: 0.04 });
+    const railMat = mat(0x8a765e, { roughness: 0.32, metalness: 0.4 });
+    for (let i = 0; i < editions.length; i++) {
+      const e = editions[i];
+      box(z, { w: 1.32, h: 0.72, d: 1.32, x: e.x, z: e.z, material: plinthMat, name: `${e.name} plinth` });
+      box(z, { w: 1.4, h: 0.045, d: 1.4, x: e.x, y: 0.72, z: e.z, material: railMat, solid: false, noSplat: true });
+
+      const sculpture = new THREE.Group();
+      sculpture.position.set(e.x, 0.78, e.z);
+      const surface = materials[e.key];
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.31, 0.13, 28), surface);
+      cup.position.y = 0.065;
+      const bodyGeom = e.style === 'faceted'
+        ? new THREE.CapsuleGeometry(0.18, 0.66, 3, 7)
+        : new THREE.CapsuleGeometry(0.18, 0.66, 8, 22);
+      const body = new THREE.Mesh(bodyGeom, surface);
+      body.position.y = 0.62;
+      body.scale.set(1 + (i % 3) * 0.06, 0.92 + (i % 2) * 0.13, 1 + (i % 3) * 0.06);
+      sculpture.add(cup, body);
+
+      if (e.style === 'ribbed' || e.style === 'ridged') {
+        const count = e.style === 'ribbed' ? 5 : 8;
+        for (let ring = 0; ring < count; ring++) {
+          const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.185, e.style === 'ribbed' ? 0.025 : 0.014, 8, 28), surface);
+          ridge.rotation.x = Math.PI / 2;
+          ridge.position.y = 0.34 + ring * (0.085 - (e.style === 'ridged' ? 0.02 : 0));
+          sculpture.add(ridge);
+        }
+      }
+      if (e.style === 'knobbed' || e.style === 'mossy') {
+        const rng = mulberry32(8100 + i);
+        const count = e.style === 'mossy' ? 34 : 18;
+        for (let n = 0; n < count; n++) {
+          const a = rng() * Math.PI * 2;
+          const yy = 0.26 + rng() * 0.68;
+          const bump = new THREE.Mesh(
+            new THREE.SphereGeometry(e.style === 'mossy' ? 0.035 + rng() * 0.035 : 0.038, 7, 5),
+            surface
+          );
+          bump.position.set(Math.cos(a) * 0.17, yy, Math.sin(a) * 0.17);
+          sculpture.add(bump);
+        }
+      }
+      sculpture.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(sculpture);
+      z.animated.editions.push({ group: sculpture, phase: i * 0.77, baseY: 0.78, direction: i % 2 ? 1 : -1 });
+
+      const facesSouth = e.z < 0;
+      plane(z, {
+        w: 1.72, h: 0.34, x: e.x, y: 0.43, z: e.z + (facesSouth ? 0.666 : -0.666), ry: facesSouth ? 0 : Math.PI,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture(`${e.name}\n${e.sub}`, { fg: '#1e2026', bg: '#f7f2e8', size: 29, w: 900, h: 190, font: '700' }),
+        }),
+        noSplat: true,
+      });
+      z.interactables.push({
+        id: `vacant-${e.key}`, type: 'flavor', label: `Inspect ${e.name}`,
+        title: e.name, pos: new THREE.Vector3(e.x, 1.0, e.z), radius: 1.8,
+        lines: [e.line],
+      });
+    }
+
+    // The pair talk across a low central platform, presented as two living
+    // photographic editions rather than pretending the source images are 3D.
+    box(z, { w: 4.5, h: 0.12, d: 2.2, x: 0, z: 0, material: mat(0x6e655c, { roughness: 0.5 }), name: 'live edition platform' });
+    plane(z, {
+      w: 3.8, h: 0.42, x: 0, y: 0.135, z: 1.11, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('LIVE EDITIONS A + B  ·  CONVERSATION ON LOOP', { fg: '#e9c56d', bg: '#222229', size: 31, w: 1200, h: 150, font: '800' }),
+      }), noSplat: true,
+    });
+
+    plane(z, {
+      w: 7.6, h: 0.72, x: 0, y: 4.15, z: -6.78,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('V A C A N T   E D I T I O N S', { fg: '#191a20', bg: '#e7e2d8', size: 62, w: 1500, h: 180, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 5.4, h: 0.42, x: 0, y: 3.56, z: -6.775,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('SURFACE / FRICTION / FINISH / EDITION', { fg: '#74604b', bg: '#e7e2d8', size: 34, w: 1200, h: 150, font: '700' }),
+      }), noSplat: true,
+    });
+
+    // Track lighting: a neutral wash plus individual warm pools on the works.
+    z.group.add(new THREE.HemisphereLight(0xf4f7ff, 0x554d48, 1.55));
+    for (const x of [-6, -2, 2, 6]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 11.2), mat(0x15161b, { metalness: 0.56, roughness: 0.3 }));
+      rail.position.set(x, roomH - 0.18, 0);
+      rail.userData.noSplat = true;
+      z.group.add(rail);
+      for (const zz of [-4.7, 0, 4.7]) {
+        const spot = new THREE.SpotLight(0xffe6bb, zz === 0 ? 15 : 12, 8, Math.PI * 0.22, 0.74, 1.4);
+        spot.position.set(x, roomH - 0.28, zz * 0.65);
+        spot.target.position.set(zz === 0 ? Math.sign(x) * 0.7 : x, zz === 0 ? 1.1 : 0.9, zz);
+        spot.castShadow = zz !== 0;
+        z.group.add(spot, spot.target);
+      }
+    }
+
+    z.anchors.vacantVincent = new THREE.Vector3(-0.9, 0.12, -0.72);
+    z.anchors.editionEddie = new THREE.Vector3(0.9, 0.12, 0.72);
+    z.anchorYaws = { vacantVincent: 0.9, editionEddie: -2.24 };
+    z.waypoints = [
+      new THREE.Vector3(-6.2, 0, -2.5), new THREE.Vector3(-6.2, 0, 2.5),
+      new THREE.Vector3(-3.0, 0, -2.5), new THREE.Vector3(-3.0, 0, 2.5),
+      new THREE.Vector3(3.0, 0, -2.5), new THREE.Vector3(3.0, 0, 2.5),
+      new THREE.Vector3(6.2, 0, -2.5), new THREE.Vector3(6.2, 0, 2.5),
+    ];
+
+    z.interactables.push({
+      id: 'vacant-material-index', type: 'flavor', label: 'Read the material index',
+      title: 'MATERIAL INDEX', pos: new THREE.Vector3(0, 1.2, -6.5), radius: 2.2,
+      lines: [
+        'Eight dildos, eight surfaces, eight maintenance plans. “Vacant” refers to availability, not restraint.',
+        'The checklist asks: glossy or matte, porous or sealed, ribbed or legally smooth, unique or aggressively editioned.',
+      ],
+    });
+
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -3499,6 +3727,12 @@ export class World {
         b.wingL.rotation.x = flap;
         b.wingR.rotation.x = -flap;
         b.group.rotation.z = Math.sin(a * 1.7) * 0.09;
+      }
+    }
+    if (z.animated.editions) {
+      for (const e of z.animated.editions) {
+        e.group.rotation.y += dt * 0.075 * e.direction;
+        e.group.position.y = e.baseY + Math.sin(t * 0.72 + e.phase) * 0.012;
       }
     }
     // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays
