@@ -138,9 +138,15 @@ function ductTapedCucumberTexture() {
     }
 
     ctx.fillStyle = '#5d7d4d';
-    for (const px of [-60, -14, 42, 90]) {
+    // Keep these as explicit finite curves rather than arc() calls. A few
+    // browsers surface an IndexSizeError from the canvas arc fast-path here
+    // even though the calculated radii are positive.
+    for (const [px, radius] of [[-60, 15], [-14, 23], [42, 15], [90, 9]]) {
       ctx.beginPath();
-      ctx.arc(px, 20, 9 + Math.abs(px % 18), 0, Math.PI * 2);
+      ctx.moveTo(px, 20 - radius);
+      ctx.bezierCurveTo(px + radius, 20 - radius, px + radius, 20 + radius, px, 20 + radius);
+      ctx.bezierCurveTo(px - radius, 20 + radius, px - radius, 20 - radius, px, 20 - radius);
+      ctx.closePath();
       ctx.fill();
     }
 
