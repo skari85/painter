@@ -683,9 +683,11 @@ export class NPCManager extends Emitter {
     this.#updateForkFight(dt);
     this.#updateUpAndCummingFight(dt);
 
-    // ambient barks — subtitles from whoever is near enough to overhear
+    // ambient barks — subtitles from whoever is near enough to overhear. The
+    // Up and Cumming argument owns the room while it is rolling, so a random
+    // crowd bark cannot step on the authored exchange.
     this.#barkT -= dt;
-    if (this.#barkT <= 0) {
+    if (this.#barkT <= 0 && !this.#upFight) {
       this.#barkT = this.world.current === 'daylightClub' ? rand(24, 34) : rand(7, 15);
       const near = this.inCurrentZone.filter(
         (n) => n.state !== 'meltdown' && n.state !== 'leaving' &&
@@ -762,24 +764,26 @@ export class NPCManager extends Emitter {
     if (this.#upFight) {
       const f = this.#upFight;
       f.t += dt;
-      if (f.t > 0.55 && !f.zebraPush) {
-        f.zebraPush = true;
-        muscle.stagger(f.dir);
-        this.audio?.boxingImpact?.(0);
-        this.emit('bark', { name: zebra.def.name, text: 'SIGN. THE. SALE. AGREEMENT.', pitch: zebra.def.pitch });
-      } else if (f.t > 1.7 && !f.musclePush) {
-        f.musclePush = true;
-        zebra.stagger(f.dir.clone().negate());
-        this.audio?.boxingImpact?.(2);
-        this.emit('bark', { name: muscle.def.name, text: 'THE WORK IS NOT LEAVING THIS ROOM!', pitch: muscle.def.pitch });
-      } else if (f.t > 3.25) {
+      while (f.nextBeat < f.beats.length && f.t >= f.beats[f.nextBeat].at) {
+        const beat = f.beats[f.nextBeat++];
+        const speaker = beat.speaker === 'zebra' ? zebra : muscle;
+        if (beat.push === 'muscle') {
+          muscle.stagger(f.dir);
+          this.audio?.boxingImpact?.(0);
+        } else if (beat.push === 'zebra') {
+          zebra.stagger(f.dir.clone().negate());
+          this.audio?.boxingImpact?.(2);
+        }
+        this.emit('bark', { name: speaker.def.name, text: beat.text, pitch: speaker.def.pitch });
+      }
+      if (f.t > 9.4) {
         const zone = this.world.zone('upAndCumming');
         muscle.place(zone.anchors.muscleMania300.clone(), zone.anchorYaws.muscleMania300);
         zebra.place(zone.anchors.zebraZebrason.clone(), zone.anchorYaws.zebraZebrason);
         muscle.homeYaw = zone.anchorYaws.muscleMania300;
         zebra.homeYaw = zone.anchorYaws.zebraZebrason;
         this.#upFight = null;
-        this.#upFightT = rand(5.5, 8.5);
+        this.#upFightT = rand(7.5, 11.5);
       }
       return;
     }
@@ -789,7 +793,31 @@ export class NPCManager extends Emitter {
     const dir = muscle.group.position.clone().sub(zebra.group.position).setY(0).normalize();
     muscle.group.rotation.y = Math.atan2(-dir.x, -dir.z);
     zebra.group.rotation.y = Math.atan2(dir.x, dir.z);
-    this.#upFight = { t: 0, dir, zebraPush: false, musclePush: false };
-    this.emit('bark', { name: zebra.def.name, text: 'Two red dots before lunch. I am trying to save your career!', pitch: zebra.def.pitch });
+    this.#upFight = {
+      t: 0,
+      nextBeat: 0,
+      dir,
+      // A full miniature argument: pressure, refusal, sales euphemisms,
+      // then the gallerist insists that the party — and the quarter — roll on.
+      beats: [
+        { at: 0.00, speaker: 'zebra', text: 'Two red dots before lunch. I am trying to save your career!' },
+        { at: 0.55, speaker: 'zebra', push: 'muscle', text: 'SIGN. THE. SALE. AGREEMENT.' },
+        { at: 1.10, speaker: 'muscle', text: 'The work is not leaving this room. It has excellent boundaries.' },
+        { at: 1.70, speaker: 'muscle', push: 'zebra', text: 'I said no. My arms are just the punctuation.' },
+        { at: 2.30, speaker: 'zebra', text: 'Oh hey, the party has to roll on, baby! A red dot is a starting gun.' },
+        { at: 2.90, speaker: 'muscle', text: 'Let it roll past me. The paintings are staying for breakfast.' },
+        { at: 3.50, speaker: 'zebra', text: 'Collectors are already rolling in. They brought wallets and emotional weather.' },
+        { at: 4.10, speaker: 'muscle', text: 'They can roll right back out. I trained the canvases to resist gravity.' },
+        { at: 4.70, speaker: 'zebra', text: 'This is a rolling preview, darling. Preview becomes placement. Placement becomes commission.' },
+        { at: 5.35, speaker: 'muscle', text: 'That is not a preview. That is a heist wearing a lanyard.' },
+        { at: 5.95, speaker: 'zebra', text: 'I call it momentum. Momentum is just pressure with a champagne problem.' },
+        { at: 6.55, speaker: 'muscle', text: 'I call it refusal. Refusal is pressure with better protein.' },
+        { at: 7.15, speaker: 'zebra', text: 'One signature and the whole room gets a little more legendary.' },
+        { at: 7.75, speaker: 'muscle', text: 'One signature and the whole room gets a little less mine.' },
+        { at: 8.35, speaker: 'zebra', text: 'Fine. I will roll the contract under the door and call it an installation.' },
+        { at: 8.90, speaker: 'muscle', text: 'I will roll the door back. The paintings and I are having a private view.' },
+      ],
+    };
+    this.#barkT = Math.max(this.#barkT, 10);
   }
 }
