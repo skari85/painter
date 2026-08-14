@@ -118,6 +118,11 @@ export class ChatterEngine extends Emitter {
   update(dt, near, ctx) {
     if (ctx.busy()) return;                  // never talk over a duel or a menu
 
+    // Muscle Mania and Zebra Zebrason have a long physical argument authored
+    // by NPCManager. Generic two-line chatter would interrupt its pauses and
+    // make the room sound as rushed as Zebra's sales pitch.
+    if (ctx.zoneKey === 'upAndCumming') return;
+
     // The Flesh Garden is explicitly a thinking public. Its authored pairs do
     // not depend on the ghostwriter, so the room still talks when offline.
     if (ctx.zoneKey === 'daylightClub') {

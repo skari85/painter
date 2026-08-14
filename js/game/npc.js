@@ -776,7 +776,8 @@ export class NPCManager extends Emitter {
         }
         this.emit('bark', { name: speaker.def.name, text: beat.text, pitch: speaker.def.pitch });
       }
-      if (f.t > 9.4) {
+      const finalBeat = f.beats[f.beats.length - 1];
+      if (f.nextBeat >= f.beats.length && f.t > finalBeat.at + 5.2) {
         const zone = this.world.zone('upAndCumming');
         muscle.place(zone.anchors.muscleMania300.clone(), zone.anchorYaws.muscleMania300);
         zebra.place(zone.anchors.zebraZebrason.clone(), zone.anchorYaws.zebraZebrason);
@@ -784,6 +785,7 @@ export class NPCManager extends Emitter {
         zebra.homeYaw = zone.anchorYaws.zebraZebrason;
         this.#upFight = null;
         this.#upFightT = rand(7.5, 11.5);
+        this.#barkT = rand(8, 14);
       }
       return;
     }
@@ -801,21 +803,21 @@ export class NPCManager extends Emitter {
       // then the gallerist insists that the party — and the quarter — roll on.
       beats: [
         { at: 0.00, speaker: 'zebra', text: 'Two red dots before lunch. I am trying to save your career!' },
-        { at: 0.55, speaker: 'zebra', push: 'muscle', text: 'SIGN. THE. SALE. AGREEMENT.' },
-        { at: 1.10, speaker: 'muscle', text: 'The work is not leaving this room. It has excellent boundaries.' },
-        { at: 1.70, speaker: 'muscle', push: 'zebra', text: 'I said no. My arms are just the punctuation.' },
-        { at: 2.30, speaker: 'zebra', text: 'Oh hey, the party has to roll on, baby! A red dot is a starting gun.' },
-        { at: 2.90, speaker: 'muscle', text: 'Let it roll past me. The paintings are staying for breakfast.' },
-        { at: 3.50, speaker: 'zebra', text: 'Collectors are already rolling in. They brought wallets and emotional weather.' },
-        { at: 4.10, speaker: 'muscle', text: 'They can roll right back out. I trained the canvases to resist gravity.' },
-        { at: 4.70, speaker: 'zebra', text: 'This is a rolling preview, darling. Preview becomes placement. Placement becomes commission.' },
-        { at: 5.35, speaker: 'muscle', text: 'That is not a preview. That is a heist wearing a lanyard.' },
-        { at: 5.95, speaker: 'zebra', text: 'I call it momentum. Momentum is just pressure with a champagne problem.' },
-        { at: 6.55, speaker: 'muscle', text: 'I call it refusal. Refusal is pressure with better protein.' },
-        { at: 7.15, speaker: 'zebra', text: 'One signature and the whole room gets a little more legendary.' },
-        { at: 7.75, speaker: 'muscle', text: 'One signature and the whole room gets a little less mine.' },
-        { at: 8.35, speaker: 'zebra', text: 'Fine. I will roll the contract under the door and call it an installation.' },
-        { at: 8.90, speaker: 'muscle', text: 'I will roll the door back. The paintings and I are having a private view.' },
+        { at: 3.20, speaker: 'zebra', push: 'muscle', text: 'SIGN. THE. SALE. AGREEMENT.' },
+        { at: 6.90, speaker: 'muscle', text: 'The work is not leaving this room. It has excellent boundaries.' },
+        { at: 10.50, speaker: 'muscle', push: 'zebra', text: 'I said no. My arms are just the punctuation.' },
+        { at: 14.60, speaker: 'zebra', text: 'Oh hey, the party has to roll on, baby! A red dot is a starting gun.' },
+        { at: 18.00, speaker: 'muscle', text: 'Let it roll past me. The paintings are staying for breakfast.' },
+        { at: 21.40, speaker: 'zebra', text: 'Collectors are already rolling in. They brought wallets and emotional weather.' },
+        { at: 24.80, speaker: 'muscle', text: 'They can roll right back out. I trained the canvases to resist gravity.' },
+        { at: 28.20, speaker: 'zebra', text: 'This is a rolling preview, darling. Preview becomes placement. Placement becomes commission.' },
+        { at: 31.60, speaker: 'muscle', text: 'That is not a preview. That is a heist wearing a lanyard.' },
+        { at: 35.00, speaker: 'zebra', text: 'I call it momentum. Momentum is just pressure with a champagne problem.' },
+        { at: 38.40, speaker: 'muscle', text: 'I call it refusal. Refusal is pressure with better protein.' },
+        { at: 41.80, speaker: 'zebra', text: 'One signature and the whole room gets a little more legendary.' },
+        { at: 45.20, speaker: 'muscle', text: 'One signature and the whole room gets a little less mine.' },
+        { at: 48.60, speaker: 'zebra', text: 'Fine. I will roll the contract under the door and call it an installation.' },
+        { at: 52.00, speaker: 'muscle', text: 'I will roll the door back. The paintings and I are having a private view.' },
       ],
     };
     this.#barkT = Math.max(this.#barkT, 10);
