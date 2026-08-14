@@ -198,6 +198,10 @@ class Game {
     click('howto-close', () => this.ui.hide('howto'));
     click('btn-settings', () => this.ui.show('settings'));
     click('settings-close', () => { this.ui.hide('settings'); saveSettings(this.settings); });
+    click('btn-privacy', () => this.ui.show('privacy'));
+    click('privacy-close', () => this.ui.hide('privacy'));
+    click('btn-terms', () => this.ui.show('terms'));
+    click('terms-close', () => this.ui.hide('terms'));
     click('pause-resume', () => this.#resume());
     click('pause-settings', () => this.ui.show('settings'));
     click('pause-quit', () => this.#quitToTitle());

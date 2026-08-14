@@ -283,6 +283,19 @@ kbd {
   font-size: 12.5px;
   color: var(--ink-faint);
 }
+.title-links {
+  display: flex; gap: var(--s3); justify-content: center; flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+.title-links a, .title-links button {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: 12.5px; color: var(--ink-faint);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: transparent;
+  transition: color var(--dur-fast) var(--ease-out), text-decoration-color var(--dur-fast) var(--ease-out);
+}
+.title-links a:hover, .title-links button:hover {
+  color: var(--ink-dim); text-decoration-color: currentColor;
+}
 
 .endings-strip {
   display: flex; gap: var(--s1); justify-content: center; margin-top: var(--s4);
