@@ -3535,6 +3535,71 @@ export class World {
       }), noSplat: true,
     });
 
+    // The wall masterpiece: banana, cock, and structural faith in duct tape.
+    {
+      const artwork = new THREE.Group();
+      artwork.position.set(8.78, 2.5, -2.55);
+      artwork.rotation.y = -Math.PI / 2;
+      const frameSize = 3.42;
+      const aluminum = mat(0xaeb2b6, { roughness: 0.24, metalness: 0.82 });
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(frameSize + 0.16, frameSize + 0.16, 0.09), aluminum);
+      frame.castShadow = true;
+      const artMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.72 });
+      const image = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), artMat);
+      image.position.z = 0.052;
+      image.userData.noSplat = true;
+      new THREE.TextureLoader().load(encodeURI('puplic/penis banana.jpg'), (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        artMat.map = tex;
+        artMat.color.set(0xffffff);
+        artMat.needsUpdate = true;
+      });
+
+      // Four literal pieces of tape make the hanging system part of the work.
+      const tapeMat = new THREE.MeshStandardMaterial({ color: 0xc9c9c4, roughness: 0.62, metalness: 0.18 });
+      for (const [tx, ty, rz] of [
+        [-1.48, 1.48, -0.72], [1.48, 1.48, 0.72],
+        [-1.48, -1.48, 0.72], [1.48, -1.48, -0.72],
+      ]) {
+        const tab = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.17), tapeMat);
+        tab.position.set(tx, ty, 0.058);
+        tab.rotation.z = rz;
+        tab.userData.noSplat = true;
+        artwork.add(tab);
+      }
+
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.25, 0.46),
+        new THREE.MeshBasicMaterial({
+          map: textTexture('BANANA COCK, HELD TOGETHER  ·  duct tape and digital drawing, 2026  ·  UNIQUE', {
+            fg: '#1e2026', bg: '#f7f2e8', size: 28, w: 1400, h: 190, font: '700',
+          }),
+        })
+      );
+      label.position.set(0, -2.02, 0.052);
+      label.userData.noSplat = true;
+      artwork.add(frame, image, label);
+      artwork.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      z.group.add(artwork);
+
+      const bananaSpot = new THREE.SpotLight(0xffd7a0, 22, 9, Math.PI * 0.25, 0.72, 1.35);
+      bananaSpot.position.set(5.4, 4.45, -2.55);
+      bananaSpot.target.position.set(8.7, 2.35, -2.55);
+      bananaSpot.castShadow = true;
+      z.group.add(bananaSpot, bananaSpot.target);
+
+      z.interactables.push({
+        id: 'vacant-banana-cock', type: 'flavor', label: 'Inspect the duct-taped banana cock',
+        title: 'BANANA COCK, HELD TOGETHER', pos: new THREE.Vector3(8.1, 2.2, -2.55), radius: 2.5,
+        lines: [
+          'A banana cock meets a silver cross of duct tape. Conservation has classified the adhesive as emotionally permanent.',
+          'The black field makes the tape look structural, ceremonial, and slightly worried about what it is holding together.',
+          'Vincent calls the peach texture “post-fruit skin.” Eddie has already requested a stronger roll of tape.',
+        ],
+      });
+    }
+
     // Track lighting: a neutral wash plus individual warm pools on the works.
     z.group.add(new THREE.HemisphereLight(0xf4f7ff, 0x554d48, 1.55));
     for (const x of [-6, -2, 2, 6]) {
