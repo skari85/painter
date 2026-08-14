@@ -221,7 +221,7 @@ const ACCESSORY = {
   },
 };
 
-function buildBody(def) {
+export function buildBody(def) {
   const p = def.palette;
   const g = new THREE.Group();
   const mats = {

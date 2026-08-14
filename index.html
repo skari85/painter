@@ -245,6 +245,18 @@
     </div>
   </section>
 
+  <section id="ghost-note" class="hidden" role="dialog" aria-modal="true" aria-label="A trace left by another player">
+    <div class="modal-card">
+      <h2 class="modal-title">SOMEONE ELSE WAS HERE</h2>
+      <p id="ghost-note-text" class="modal-note">No note left here.</p>
+      <input id="ghost-note-input" type="text" maxlength="140" placeholder="Leave something for the next one…" autocomplete="off" spellcheck="false" />
+      <div class="modal-actions">
+        <button class="btn" id="ghost-note-skip">Say nothing</button>
+        <button class="btn primary" id="ghost-note-confirm">Leave it</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ MENUS ============ -->
   <section id="title-screen" role="main" aria-label="Title screen">
     <div class="title-inner">

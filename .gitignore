@@ -9,6 +9,9 @@ MOCK UP# macOS metadata
 # node (if tooling is added later)
 node_modules/
 
+# local Cloudflare Worker dev state (wrangler dev --local)
+worker/.wrangler/
+
 # local secrets — never commit API keys
 *.env
 *.env.*

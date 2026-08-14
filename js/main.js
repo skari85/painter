@@ -29,6 +29,8 @@ import { PlayerController } from './game/player.js';
 import { HandRig } from './game/hand.js';
 import { PaintSystem } from './game/paint.js';
 import { NPCManager } from './game/npc.js';
+import { GhostManager } from './game/ghosts.js';
+import { GhostRecorder } from './game/ghostRecorder.js';
 import { castForNight, MAINS } from './game/characters.js';
 import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
 import { ArtiEngine, COLLECTOR_CALL } from './game/arti.js';
@@ -117,6 +119,8 @@ class Game {
     this.hand = new HandRig(this.camera);
     this.paint = new PaintSystem();
     this.npcs = new NPCManager(this.world, this.audio);
+    this.ghosts = new GhostManager(this.world);
+    this.ghostRecorder = new GhostRecorder();
     this.dialogue = new DialogueEngine(this.state);
     this.quests = new QuestDirector(this.state);
     this.arti = new ArtiEngine();
@@ -130,6 +134,8 @@ class Game {
     this.ui.bindState(this.state);
     this.ui.renderEndingsStrip(loadEndings());
     this.world.setZone('garret');
+    this.ghostRecorder.onZoneChange('garret');
+    this.ghosts.loadZone('garret');
     this.ui.setHotkeys('playing');
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
@@ -496,6 +502,8 @@ class Game {
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
 
     const z = this.world.setZone('garret');
+    this.ghostRecorder.onZoneChange('garret');
+    this.ghosts.loadZone('garret');
     this.paint.attachTo(z.group);
     this.#applyZoneAtmosphere('garret');
     this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
@@ -942,6 +950,11 @@ class Game {
       return;
     }
 
+    if (t.kind === 'ghost') {
+      this.#readGhostNote(t.ghost);
+      return;
+    }
+
     const it = t.item;
     switch (it.type) {
       case 'door': {
@@ -1084,12 +1097,30 @@ class Game {
     this.dialogue.start(npc);
   }
 
+  #readGhostNote(ghost) {
+    this.mode = 'ghostNote';
+    this.ui.setHotkeys('ghostNote');
+    this.player.setFrozen(true);
+    this.input.exitLock();
+    this.#interactTarget = null;
+    this.ui.interactPrompt(null);
+    this.ui.openGhostNote(ghost.note, (text) => {
+      this.ghostRecorder.setNote(text);
+      this.mode = 'playing';
+      this.ui.setHotkeys('playing');
+      this.player.setFrozen(false);
+      this.input.requestLock();
+    });
+  }
+
 
   #travelTo(zoneKey) {
     this.audio.uiConfirm();
     this.ui.transition(() => {
 
       const z = this.world.setZone(zoneKey);
+      this.ghostRecorder.onZoneChange(zoneKey);
+      this.ghosts.loadZone(zoneKey);
       this.paint.attachTo(z.group);
       this.#applyZoneAtmosphere(zoneKey);
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
@@ -1224,7 +1255,7 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti', 'ghostNote'].includes(this.mode);
 
 
 
@@ -1235,6 +1266,7 @@ class Game {
       this.#mintCooldown = Math.max(0, this.#mintCooldown - dt);
 
       const moving = this.player.update(dt, this.world.colliders());
+      this.ghostRecorder.tick(dt, this.player);
 
       // the room's pulse: everything in the frame answers the kick
       const beatPhase = this.world.current === 'dildoBall'
@@ -1248,6 +1280,7 @@ class Game {
       }
 
       this.npcs.update(dt, now, this.player.position);
+      this.ghosts.update(dt);
       if (this.world.current === 'maxPro') {
         // the argument is scripted; the ghostwriter is not invited to MAX PRO
         this.debate.update(dt, { busy: () => this.mode !== 'playing' });
@@ -1296,6 +1329,13 @@ class Game {
         : `Talk — ${npc.def.name}`;
       this.#interactTarget = { kind: 'npc', npc };
       this.ui.interactPrompt(label);
+      return;
+    }
+
+    const ghost = this.ghosts.nearest(this.player.position, fwd, PLAYER.interactRange);
+    if (ghost) {
+      this.#interactTarget = { kind: 'ghost', ghost };
+      this.ui.interactPrompt('Read — left here');
       return;
     }
 
