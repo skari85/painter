@@ -3319,6 +3319,100 @@ export class World {
       });
     }
 
+    // An anabolic weather system: one swollen cloud continuously rains
+    // ampoules and capsules behind the artist/gallerist argument.
+    {
+      const rng = mulberry32(300); // Muscle Mania's extremely specific forecast.
+      const cloud = new THREE.Group();
+      const cloudX = 0.15;
+      const cloudZ = 2.85;
+      const cloudY = 4.62;
+      cloud.position.set(cloudX, cloudY, cloudZ);
+      const cloudMat = new THREE.MeshStandardMaterial({
+        color: 0xc9c8d5, roughness: 0.84, metalness: 0.02,
+        emissive: 0x33284c, emissiveIntensity: 0.16,
+      });
+      for (let i = 0; i < 10; i++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.46 + rng() * 0.34, 14, 10), cloudMat);
+        puff.position.set(-1.55 + i * 0.34 + (rng() - 0.5) * 0.2, (rng() - 0.5) * 0.42, (rng() - 0.5) * 0.78);
+        puff.scale.y = 0.62 + rng() * 0.32;
+        puff.castShadow = true;
+        puff.userData.noSplat = true;
+        cloud.add(puff);
+      }
+      const cloudLight = new THREE.PointLight(0xb68cff, 3.2, 6.5, 1.8);
+      cloudLight.position.set(0, -0.4, 0);
+      cloudLight.userData.base = 3.2;
+      cloud.add(cloudLight);
+      z.group.add(cloud);
+      z.animated.steroidCloud = { group: cloud, light: cloudLight, baseY: cloudY };
+
+      const forecast = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.7, 0.34),
+        new THREE.MeshBasicMaterial({
+          map: textTexture('100% CHANCE OF GAINS', { fg: '#7f43ba', bg: '#f7f5ef', size: 42, w: 1000, h: 150, font: '800' }),
+        })
+      );
+      forecast.position.set(cloudX - 0.02, cloudY - 0.72, cloudZ - 0.02);
+      forecast.rotation.y = -Math.PI / 2;
+      forecast.userData.noSplat = true;
+      z.group.add(forecast);
+
+      const glass = new THREE.MeshPhysicalMaterial({
+        color: 0xcbeaff, roughness: 0.1, metalness: 0.03,
+        transparent: true, opacity: 0.7, transmission: 0.25,
+        clearcoat: 0.7, clearcoatRoughness: 0.04,
+      });
+      const capMats = [
+        mat(0xe84b63, { roughness: 0.42 }),
+        mat(0x7f43ba, { roughness: 0.42 }),
+        mat(0x29a8c7, { roughness: 0.42 }),
+        mat(0xf0b72c, { roughness: 0.42 }),
+      ];
+      z.animated.steroidRain = [];
+      for (let i = 0; i < 30; i++) {
+        const drop = new THREE.Group();
+        if (i % 4 === 0) {
+          // Oversized capsules tumble between the ampoules.
+          const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.12, 5, 10), capMats[i % capMats.length]);
+          capsule.rotation.z = Math.PI / 2;
+          drop.add(capsule);
+        } else {
+          const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.052, 0.22, 10), glass);
+          const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.037, 0.041, 0.105, 9), capMats[i % capMats.length]);
+          liquid.position.y = -0.045;
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.055, 10), capMats[(i + 1) % capMats.length]);
+          cap.position.y = 0.137;
+          drop.add(vial, liquid, cap);
+        }
+        const baseX = cloudX - 1.45 + rng() * 2.9;
+        const baseZ = cloudZ - 0.95 + rng() * 1.9;
+        const bottom = 0.22 + rng() * 0.28;
+        const top = cloudY - 0.7 + rng() * 0.35;
+        drop.position.set(baseX, bottom + rng() * (top - bottom), baseZ);
+        drop.scale.setScalar(0.8 + rng() * 0.65);
+        drop.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.noSplat = true; } });
+        z.group.add(drop);
+        z.animated.steroidRain.push({
+          group: drop, baseX, baseZ, bottom, top,
+          speed: 0.38 + rng() * 0.72,
+          drift: 0.08 + rng() * 0.2,
+          phase: rng() * Math.PI * 2,
+          spin: (rng() - 0.5) * 2.7,
+        });
+      }
+
+      z.interactables.push({
+        id: 'up-steroid-cloud', type: 'flavor', label: 'Check the anabolic forecast',
+        title: 'ANABOLIC WEATHER', pos: new THREE.Vector3(cloudX, 1.2, cloudZ), radius: 2.8,
+        lines: [
+          'Thirty ampoules fall forever. Muscle Mania calls it precipitation. Zebra calls it sponsored content.',
+          'The cloud smells faintly of lavender, locker rooms, and a medical disclaimer printed too small to read.',
+          'Today’s forecast: heavy gains, scattered mood swings, and a one hundred percent chance of enlarged sculpture.',
+        ],
+      });
+    }
+
     z.group.add(new THREE.HemisphereLight(0xffffff, 0xb9c3bf, 2.35));
     const sun = new THREE.DirectionalLight(0xfff4d6, 3.0);
     sun.position.set(-7, 11, 5);
@@ -4141,6 +4235,22 @@ export class World {
         b.wingL.rotation.x = flap;
         b.wingR.rotation.x = -flap;
         b.group.rotation.z = Math.sin(a * 1.7) * 0.09;
+      }
+    }
+    if (z.animated.steroidCloud) {
+      const c = z.animated.steroidCloud;
+      c.group.position.y = c.baseY + Math.sin(t * 0.68) * 0.08;
+      c.group.rotation.y = Math.sin(t * 0.22) * 0.06;
+      c.light.intensity = c.light.userData.base * (0.82 + Math.sin(t * 2.1) * 0.18 + kick * 0.3);
+    }
+    if (z.animated.steroidRain) {
+      for (const r of z.animated.steroidRain) {
+        r.group.position.y -= dt * r.speed;
+        if (r.group.position.y < r.bottom) r.group.position.y = r.top;
+        r.group.position.x = r.baseX + Math.sin(t * 0.72 + r.phase) * r.drift;
+        r.group.position.z = r.baseZ + Math.cos(t * 0.57 + r.phase) * r.drift * 0.7;
+        r.group.rotation.x += dt * r.spin;
+        r.group.rotation.z += dt * r.spin * 0.63;
       }
     }
     if (z.animated.editions) {
