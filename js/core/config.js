@@ -84,6 +84,7 @@ export const ZONES = {
   daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
   upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
+  hairSalon: { name: 'U WISH U HAD HAIR BUT U DONT', mood: 'galleria' },
   blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
   publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },
 };
@@ -222,6 +223,21 @@ export const ROOM_SCORES = {
       hissLevel: 0.006, hissHighpass: 900, hissLowpass: 4700,
       wowRate: 0.16, wowDepth: 28, detune: 5,
       leadAttack: 0.035, leadDecay: 1.5, cutoffScale: 0.9,
+    },
+  },
+  hairSalon: {
+    // Glossy clipper-house electro: polished chrome percussion, soft salon
+    // hum, and a bassline as smooth and uninterrupted as the clientele.
+    bpm: 112, level: 0.23, root: 55, scale: [0, 2, 5, 7, 9, 12, 14],
+    wave: 'triangle', bassWave: 'sine', cutoff: 2100, pad: [0, 5, 7, 9],
+    bass: [0, null, 7, null, 5, null, 9, 2], lead: [null, 4, null, 2, null, 5, null, 1, null, 3, null, 6, 2, null, 4, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.06, texture: 0.18,
+    kickLevel: 0.32, snareLevel: 0.06, hatLevel: 0.024,
+    bassLevel: 0.09, bassDecay: 1.5, leadLevel: 0.022,
+    lofi: {
+      hissLevel: 0.007, hissHighpass: 1000, hissLowpass: 6500,
+      wowRate: 0.25, wowDepth: 12, detune: 3,
+      leadAttack: 0.02, leadDecay: 1.4, cutoffScale: 1.2,
     },
   },
   publicRestroom: {

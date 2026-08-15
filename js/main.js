@@ -1154,6 +1154,7 @@ class Game {
         daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
         upAndCumming: 'Five enormous works, two red dots, seven coded birds, and an original woozy trap remix: sliding sub, haunted bells, and a synthetic rapper with no actual words.',
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
+        hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
       }[zoneKey]);

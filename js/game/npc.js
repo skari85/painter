@@ -308,12 +308,15 @@ function buildBody(def) {
         new THREE.MeshStandardMaterial({ color: def.face ? 0xffffff : p.skin, map: faceTexture(def), roughness: 0.75 })
       );
       face.position.y = 0.24;
-      const hair = new THREE.Mesh(
-        new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-        mats.hair
-      );
-      hair.position.y = 0.27;
-      head.add(skull, face, hair);
+      head.add(skull, face);
+      if (!def.bald) {
+        const hair = new THREE.Mesh(
+          new THREE.SphereGeometry(0.145, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+          mats.hair
+        );
+        hair.position.y = 0.27;
+        head.add(hair);
+      }
     }
     g.add(legL, legR, torso, armL, armR);
   }

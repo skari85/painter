@@ -1837,6 +1837,115 @@ export const VACANT_EDITIONS_CAST = [
   },
 ];
 
+/** Every appointment is fully bald. No portrait textures are used here: the
+ *  procedural heads stay visibly smooth from every angle. */
+export const HAIR_SALON_CAST = [
+  {
+    id: 'gretaGleam', name: 'Greta Gleam', shortRole: 'salon director', role: 'Salon Director — Follicle-Free Luxury',
+    bald: true, static: true, anchor: 'gretaGleam', ego: 74, weak: 'witty', resist: 'brutal',
+    hint: 'She has built an entire premium service around confidently combing nothing.',
+    pace: 0.72, pitch: 0.92, accessory: 'phone',
+    palette: { skin: 0xdca884, hair: 0xdca884, top: 0xf2d6de, bottom: 0x242229 },
+    openers: ['Welcome. Are we taking nothing off the top, or nothing off the sides?', 'Every scalp is a canvas. Ours happen to arrive completely finished.'],
+    countered: ['Cruelty is not a treatment. It is an unlicensed walk-in service.'],
+    reactions: {
+      kind: ['Thank you. Baldness deserves aftercare, even when there is technically nothing after.'],
+      witty: ['Excellent. Dry humor, zero split ends.'],
+      brutal: ['That remark needs conditioner and professional supervision.'],
+    },
+    weakHit: ['Do not call the blow-dry “ambient heating.” The pricing structure depends on mystery.'],
+    disarmed: ['Fine. We sell confidence by the centimetre and measure absolutely nothing.'],
+    dismiss: ['I have six nonexistent fringes to supervise.'],
+    meltdown: 'THE APPOINTMENT BOOK IS FULL AND THE HAIR INVENTORY IS STILL ZERO.',
+    barks: ['No hair, no problem, full price.', 'The shine consultation starts in five minutes.'],
+    playerJabs: {
+      kind: ['You made a salon where nobody needs to hide their head. That part is genuinely good.'],
+      witty: ['Your waiting list is the longest thing in here.'],
+      brutal: ['You invoice empty follicles and call the silence a signature treatment.'],
+    },
+  },
+  {
+    id: 'bjornBare', name: 'Bjørn Bare', shortRole: 'precision barber', role: 'Precision Barber — Zero-Length Specialist',
+    bald: true, static: true, anchor: 'bjornBare', ego: 62, weak: 'kind', resist: 'brutal',
+    hint: 'He has been polishing the same perfectly bald head for forty minutes and would like that care acknowledged.',
+    pace: 0.66, pitch: 0.76, accessory: null,
+    palette: { skin: 0xb97755, hair: 0xb97755, top: 0x20242a, bottom: 0x111217 },
+    openers: ['Hold still. I am checking the symmetry of your absence.', 'The number zero guard is not a setting. It is a philosophy.'],
+    countered: ['I have heard sharper things from a safety razor.'],
+    reactions: { kind: ['Care is still care. Thank you for noticing.'], witty: ['Clean line. Cleaner scalp.'], brutal: ['Too much pressure. You will irritate the metaphor.'] },
+    weakHit: ['Yes, I miss cutting hair. No, I will not ruin the brand by admitting it twice.'],
+    disarmed: ['All right. I polish because it makes people sit taller when they leave.'],
+    dismiss: ['The dome is drying. Conversation adds streaks.'],
+    meltdown: 'I TRAINED FOR LAYERS. THERE ARE NO LAYERS.',
+    barks: ['Perfectly even. Still zero.', 'I can fade the memory of hair.'],
+    playerJabs: { kind: ['The work is invisible, but the attention is not.'], witty: ['That is the cleanest haircut I have never seen.'], brutal: ['You are aggressively trimming a vacuum.'] },
+  },
+  {
+    id: 'monaDome', name: 'Mona Dome', shortRole: 'weekly customer', role: 'Customer — Standing Shine Appointment',
+    bald: true, static: true, anchor: 'monaDome', ego: 58, weak: 'witty', resist: 'kind',
+    hint: 'She books the same haircut every Friday and refuses to acknowledge that it never grows back.',
+    pace: 0.8, pitch: 1.12, accessory: null,
+    palette: { skin: 0x8d563f, hair: 0x8d563f, top: 0x7b2448, bottom: 0x201820 },
+    openers: ['Just the usual, please. Take off everything that arrived since Friday.', 'I asked for volume. Greta turned up the music. Technically delivered.'],
+    countered: ['Kindness will not give me bangs, but I accept the complimentary beverage.'],
+    reactions: { kind: ['A smooth head and a gentle word. Luxury.'], witty: ['That joke has more bounce than my blowout.'], brutal: ['I did not come here to be emotionally exfoliated.'] },
+    weakHit: ['Fine. I come for the head massage. The haircut is administrative theatre.'],
+    disarmed: ['The mirror is honest. I am bald. I still look expensive.'],
+    dismiss: ['My shine has set. Please respect the finish.'],
+    meltdown: 'I HAVE BEEN GROWING OUT THE SAME NOTHING FOR THREE YEARS.',
+    barks: ['Do you think curtain bangs would suit me?', 'Book me again for Friday.'],
+    playerJabs: { kind: ['You do not need hair to deserve a ritual.'], witty: ['The good news is your ends are incredibly healthy.'], brutal: ['Your haircut exists entirely in the appointment reminder.'] },
+  },
+  {
+    id: 'sisselShine', name: 'Sissel Shine', shortRole: 'colorist', role: 'Colorist — Invisible Highlights',
+    bald: true, static: true, anchor: 'sisselShine', ego: 66, weak: 'brutal', resist: 'witty',
+    hint: 'She sells invisible highlights by describing them with frightening confidence.',
+    pace: 0.88, pitch: 1.04, accessory: null,
+    palette: { skin: 0xe2bc9e, hair: 0xe2bc9e, top: 0xe9bb4d, bottom: 0x26242b },
+    openers: ['The highlights are subtle because photons cannot find them.', 'We are lifting you three levels, emotionally.'],
+    countered: ['A joke cannot expose color that exists beyond the visible spectrum.'],
+    reactions: { kind: ['Soft light is very flattering on absolutely nothing.'], witty: ['Cute. The toner remains conceptually violet.'], brutal: ['Fine. It is moisturizer in a foil. Are you happy?'] },
+    weakHit: ['Stop saying empty foil. It is a color experience with negative pigment.'],
+    disarmed: ['There is no dye. There was never dye. The scalp glow is real, though.'],
+    dismiss: ['Your tone is processing badly.'],
+    meltdown: 'THE HIGHLIGHTS ARE INVISIBLE BECAUSE THERE IS NOTHING TO HIGHLIGHT.',
+    barks: ['I see warm undertones.', 'The toner is developing conceptually.'],
+    playerJabs: { kind: ['The warm light does make everyone glow.'], witty: ['Invisible highlights: finally, a color that cannot fade.'], brutal: ['You are charging for foil hats with no sequel.'] },
+  },
+  {
+    id: 'gunnarGloss', name: 'Gunnar Gloss', shortRole: 'wash technician', role: 'Wash Technician — Shampoo Without Hair',
+    bald: true, static: true, anchor: 'gunnarGloss', ego: 60, weak: 'kind', resist: 'witty',
+    hint: 'He takes the scalp massage seriously enough to make the empty shampoo bottle feel guilty.',
+    pace: 0.62, pitch: 0.7, accessory: null,
+    palette: { skin: 0x6f432f, hair: 0x6f432f, top: 0x386b65, bottom: 0x171b1d },
+    openers: ['Water temperature all right? There will be no tangles.', 'This shampoo is for body. Your body, specifically.'],
+    countered: ['Sarcasm does not rinse clean.'],
+    reactions: { kind: ['People relax when someone cares for their head. Hair was never the important part.'], witty: ['Lather, rinse, repeat. We skipped lather and kept the invoice.'], brutal: ['The basin has a gentler bedside manner.'] },
+    weakHit: ['Yes, the conditioner is hand lotion. Procurement made a choice.'],
+    disarmed: ['I know nobody needs a wash. Sometimes needing is not why people come.'],
+    dismiss: ['Please recline. Your nonexistent ends are dripping.'],
+    meltdown: 'THE DRAIN HAS NEVER CAUGHT A SINGLE HAIR AND I CLEAN IT EVERY NIGHT.',
+    barks: ['No tangles today.', 'Would you like the scalp treatment?'],
+    playerJabs: { kind: ['A careful head massage can still be worth the chair.'], witty: ['That drain has the easiest job in the building.'], brutal: ['You shampoo confidence and rinse out the receipt.'] },
+  },
+  {
+    id: 'nilsNoFringe', name: 'Nils No-Fringe', shortRole: 'salon intern', role: 'Intern — Sweeping a Hairless Floor',
+    bald: true, static: true, anchor: 'nilsNoFringe', ego: 48, weak: 'witty', resist: 'brutal',
+    hint: 'He has been ordered to sweep up hair in a room where hair is strictly absent.',
+    pace: 1.0, pitch: 1.18, accessory: null,
+    palette: { skin: 0xc98f70, hair: 0xc98f70, top: 0xb8e1da, bottom: 0x30313a },
+    openers: ['I have swept this floor twelve times. The dust is starting to feel targeted.', 'They said collect the clippings. I think this is a test.'],
+    countered: ['I already work for exposure. Insults are outside the internship agreement.'],
+    reactions: { kind: ['Thank you. Nobody else admits the broom is ceremonial.'], witty: ['That is the first thing here with an actual edge.'], brutal: ['Please do not tell Greta the floor is already clean. I need the hours.'] },
+    weakHit: ['If there is no hair, why is my shift eight hours?'],
+    disarmed: ['I am sweeping time. At least time keeps falling.'],
+    dismiss: ['I saw a speck. This could be my big break.'],
+    meltdown: 'THERE ARE NO CLIPPINGS. THERE HAVE NEVER BEEN CLIPPINGS. THE BIN IS A PROP.',
+    barks: ['Still nothing in the dustpan.', 'Maybe chair four shed an eyebrow.'],
+    playerJabs: { kind: ['A clean floor is work, even without the clippings.'], witty: ['You are the only intern with a zero-hair portfolio.'], brutal: ['The broom has more career growth than you.'] },
+  },
+];
+
 /** Build a crowd of ambient weirdos for a zone. */
 export function buildCrowd(zoneKey, night, count) {
   const defs = [];
@@ -1955,6 +2064,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        hairSalon: HAIR_SALON_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
     case 2:
@@ -1974,6 +2084,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        hairSalon: HAIR_SALON_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
     default:
@@ -1990,6 +2101,7 @@ export function castForNight(night) {
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
+        hairSalon: HAIR_SALON_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
 

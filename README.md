@@ -119,6 +119,16 @@ Zamba** score contains only procedural urine streams, splashes, droplets, and
 layered fart synthesis, with short tiled-room reflections. There are no sampled
 recordings, conventional drums, voices, melodies, or footsteps in the room.
 
+### U Wish U Had Hair But U Dont
+
+The **Up and Cumming Artist** room now connects to a full-service chrome and
+pink hair salon named **U WISH U HAD HAIR BUT U DONT**. It has six mirrored
+cutting stations, hydraulic salon chairs, three wash basins, a reception desk,
+an out-of-stock hair cabinet, a treatment menu, and its own glossy procedural
+electro score. All six authored stylists and customers use genuinely bald
+procedural heads—the hair mesh is omitted rather than merely recolored—and the
+room never draws from the generic, potentially hairy crowd.
+
 **The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
 face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
 (the speed fader is vinyl-style pitch shift), and ECHO + TIME knobs — drag

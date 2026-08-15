@@ -8,6 +8,7 @@
  *   ROOMS                 in the back — one house, two material moods.
  *   THE GILDED FORK       one long table, every artworld big shot,
  *                         all of them drunk and messed up.
+ *   U WISH U HAD HAIR     chrome salon stations for an entirely bald cast.
  *   PUBLIC RESTROOM       tiled stalls, plumbing, bodily techno zamba.
  *
  * Everything uses procedural geometry with generated and locally stored textures.
@@ -506,6 +507,7 @@ export class World {
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
     this.#buildVacantEditions();
+    this.#buildHairSalon();
     this.#buildPublicRestroom();
     this.#buildBlackForest();
     this.#buildRecordPlayers();
@@ -3445,6 +3447,7 @@ export class World {
       ],
     });
     door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    door(z, { x: -9.8, z: 5.35, ry: Math.PI / 2, label: 'U WISH U HAD HAIR BUT U DONT →', to: 'hairSalon' });
   }
 
   /* ---------------------------------------------------------- */
@@ -3734,6 +3737,237 @@ export class World {
         'The checklist asks: glossy or matte, porous or sealed, ribbed or legally smooth, unique or aggressively editioned.',
       ],
     });
+
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  U WISH U HAD HAIR BUT U DONT — a strictly bald hair salon */
+  /* ---------------------------------------------------------- */
+  #buildHairSalon() {
+    const z = this.#newZone('hairSalon');
+    const roomH = 4.7;
+    shell(z, {
+      w: 18, d: 12, h: roomH,
+      floorColor: 0xd7cfca, wallColor: 0xf2e2e7, ceilColor: 0x342f38,
+    });
+    z.spawn.set(-6.45, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xe7cfd8, density: 0.012 };
+
+    const chrome = new THREE.MeshPhysicalMaterial({
+      color: 0xdce5e8, metalness: 0.94, roughness: 0.08,
+      clearcoat: 1, clearcoatRoughness: 0.03,
+    });
+    const blackVinyl = new THREE.MeshPhysicalMaterial({
+      color: 0x17161b, metalness: 0.05, roughness: 0.24,
+      clearcoat: 0.68, clearcoatRoughness: 0.16,
+    });
+    const blush = mat(0xd987a3, { roughness: 0.55 });
+    const warmWhite = mat(0xf4ece7, { roughness: 0.56 });
+
+    // Large terrazzo-like checker tiles make the whole room read as a salon
+    // before any furniture loads, without adding one mesh per tile.
+    const floorMap = canvasTexture(512, 512, (ctx, w, h) => {
+      const size = w / 8;
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          ctx.fillStyle = (xx + yy) % 2 ? '#eee7e2' : '#cfc4c1';
+          ctx.fillRect(xx * size, yy * size, size, size);
+        }
+      }
+      ctx.strokeStyle = 'rgba(98,78,87,0.18)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i <= 8; i++) {
+        ctx.beginPath(); ctx.moveTo(i * size, 0); ctx.lineTo(i * size, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * size); ctx.lineTo(w, i * size); ctx.stroke();
+      }
+    });
+    floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
+    floorMap.repeat.set(2.25, 1.5);
+    plane(z, {
+      w: 17.6, h: 11.6, y: 0.012, rx: -Math.PI / 2,
+      material: new THREE.MeshStandardMaterial({ color: 0xffffff, map: floorMap, roughness: 0.68 }),
+      name: 'salon tile', noSplat: true,
+    });
+
+    // The name is deliberately too large and too certain for a room with no
+    // hair in it. It sits above six identical chrome-framed mirrors.
+    plane(z, {
+      w: 12.8, h: 0.58, x: 0, y: 4.15, z: -5.785,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('U WISH U HAD HAIR BUT U DONT', {
+          fg: '#fff5f8', bg: '#b82e64', size: 68, w: 1800, h: 180, font: '900',
+        }),
+      }),
+      name: 'salon name', noSplat: true,
+    });
+    plane(z, {
+      w: 8.4, h: 0.3, x: 0, y: 3.72, z: -5.78,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('CUT  /  COLOR  /  SHINE  /  ACCEPTANCE', {
+          fg: '#7b2448', bg: '#f2e2e7', size: 36, w: 1300, h: 130, font: '800',
+        }),
+      }),
+      noSplat: true,
+    });
+
+    const stationXs = [-6, -3.6, -1.2, 1.2, 3.6, 6];
+    for (let i = 0; i < stationXs.length; i++) {
+      const x = stationXs[i];
+
+      // A pale blue metallic plane gives a strong mirror impression while
+      // staying cheap enough to keep six stations lit at once.
+      plane(z, {
+        w: 1.72, h: 2.55, x, y: 2.15, z: -5.77,
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xcbdde1, metalness: 0.88, roughness: 0.09,
+          clearcoat: 1, clearcoatRoughness: 0.02,
+        }),
+        name: `salon mirror ${i + 1}`, noSplat: true,
+      });
+      box(z, { w: 1.9, h: 0.075, d: 0.08, x, y: 0.82, z: -5.72, material: chrome, solid: false, noSplat: true });
+      box(z, { w: 1.9, h: 0.075, d: 0.08, x, y: 3.42, z: -5.72, material: chrome, solid: false, noSplat: true });
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.075, h: 2.67, d: 0.08, x: x + side * 0.95, y: 0.82, z: -5.72, material: chrome, solid: false, noSplat: true });
+      }
+
+      // Empty counters emphasize that there are no brushes full of hair and
+      // no loose clippings anywhere in the building.
+      box(z, { w: 1.95, h: 0.12, d: 0.56, x, y: 0.74, z: -5.25, material: warmWhite, solid: false, noSplat: true });
+      const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.3, 10), i % 2 ? blush : chrome);
+      bottle.position.set(x + 0.56, 1.01, -5.24);
+      bottle.userData.noSplat = true;
+      z.group.add(bottle);
+
+      // Barber chair: broad vinyl seat, tall back, chrome pump and circular
+      // foot. It is deliberately usable-looking despite the impossible menu.
+      const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.54, 0.08, 24), chrome);
+      foot.position.set(x, 0.04, -3.72);
+      const pump = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.58, 14), chrome);
+      pump.position.set(x, 0.36, -3.72);
+      z.group.add(foot, pump);
+      box(z, { w: 0.92, h: 0.18, d: 0.82, x, y: 0.65, z: -3.72, material: blackVinyl, name: 'salon chair' });
+      box(z, { w: 0.88, h: 0.92, d: 0.16, x, y: 0.82, z: -4.06, material: blackVinyl, solid: false, noSplat: true });
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.12, h: 0.08, d: 0.72, x: x + side * 0.53, y: 0.98, z: -3.7, material: chrome, solid: false, noSplat: true });
+      }
+    }
+
+    // Three washing stations line the opposite wall. The black torus reads as
+    // the rolled lip of a shampoo basin; not one drain contains a hair.
+    for (const x of [-4.1, 0, 4.1]) {
+      box(z, { w: 2.35, h: 0.78, d: 1.05, x, y: 0, z: 4.78, material: warmWhite, name: 'wash station' });
+      const basin = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.115, 12, 28), blackVinyl);
+      basin.position.set(x, 0.88, 4.56);
+      basin.rotation.x = Math.PI / 2;
+      basin.userData.noSplat = true;
+      const drain = new THREE.Mesh(new THREE.CircleGeometry(0.085, 18), chrome);
+      drain.position.set(x, 0.77, 4.56);
+      drain.rotation.x = -Math.PI / 2;
+      drain.userData.noSplat = true;
+      z.group.add(basin, drain);
+      box(z, { w: 0.86, h: 0.16, d: 0.9, x, y: 0.42, z: 3.92, material: blackVinyl, solid: false, noSplat: true });
+    }
+
+    // Reception and the entirely empty hair inventory.
+    box(z, { w: 2.8, h: 1.08, d: 0.82, x: 6.85, y: 0, z: 2.1, material: blush, name: 'salon reception' });
+    plane(z, {
+      w: 2.35, h: 0.43, x: 6.85, y: 0.66, z: 1.685, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('CHECK IN / GIVE UP', { fg: '#fff7f4', bg: '#b82e64', size: 40, w: 900, h: 180, font: '900' }),
+      }),
+      noSplat: true,
+    });
+    box(z, { w: 0.36, h: 2.85, d: 3.2, x: 8.48, y: 0.34, z: -1.3, material: chrome, name: 'product cabinet' });
+    for (const yy of [0.95, 1.7, 2.45]) {
+      box(z, { w: 0.62, h: 0.07, d: 2.7, x: 8.13, y: yy, z: -1.3, material: warmWhite, solid: false, noSplat: true });
+    }
+    plane(z, {
+      w: 2.55, h: 0.45, x: 8.075, y: 3.45, z: -1.3, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('HAIR — OUT OF STOCK', { fg: '#fff5f8', bg: '#7b2448', size: 37, w: 900, h: 180, font: '900' }),
+      }),
+      noSplat: true,
+    });
+    for (const [yy, zz] of [[1.12, -2.1], [1.12, -0.5], [1.87, -1.3], [2.62, -2.05], [2.62, -0.55]]) {
+      const emptyDome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        mat(0xd4a17f, { roughness: 0.72 })
+      );
+      emptyDome.position.set(8.03, yy, zz);
+      emptyDome.userData.noSplat = true;
+      z.group.add(emptyDome);
+    }
+
+    // Pink-white ceiling bars and warmer mirror lights keep every bald head
+    // legible and throw polished highlights across the chairs and counters.
+    z.group.add(new THREE.HemisphereLight(0xfff3f6, 0x604954, 1.55));
+    for (const x of [-6, -3, 0, 3, 6]) {
+      box(z, {
+        w: 0.16, h: 0.08, d: 8.8, x, y: roomH - 0.18, z: 0,
+        material: new THREE.MeshBasicMaterial({ color: x % 6 ? 0xffc4d8 : 0xfff7ee }),
+        solid: false, noSplat: true,
+      });
+      const light = new THREE.PointLight(x % 6 ? 0xffb0cc : 0xffead7, 8.5, 7.5, 1.6);
+      light.position.set(x, roomH - 0.34, -2.1);
+      z.group.add(light);
+    }
+    const receptionSpot = new THREE.SpotLight(0xffaac8, 18, 9, Math.PI * 0.3, 0.65, 1.25);
+    receptionSpot.position.set(5.8, 4.25, 2.25);
+    receptionSpot.target.position.set(6.85, 0.6, 2.1);
+    z.group.add(receptionSpot, receptionSpot.target);
+
+    z.anchors.gretaGleam = new THREE.Vector3(5.55, 0, 1.55);
+    z.anchors.bjornBare = new THREE.Vector3(-5.95, 0, -2.35);
+    z.anchors.monaDome = new THREE.Vector3(-3.55, 0, -2.35);
+    z.anchors.sisselShine = new THREE.Vector3(-1.15, 0, -2.35);
+    z.anchors.gunnarGloss = new THREE.Vector3(0, 0, 3.45);
+    z.anchors.nilsNoFringe = new THREE.Vector3(4.55, 0, 2.55);
+    z.anchorYaws = {
+      gretaGleam: -Math.PI / 2, bjornBare: Math.PI, monaDome: Math.PI,
+      sisselShine: Math.PI, gunnarGloss: 0, nilsNoFringe: 2.4,
+    };
+    z.waypoints = [
+      new THREE.Vector3(-6.4, 0, 1.8), new THREE.Vector3(-4.1, 0, 1.7),
+      new THREE.Vector3(-1.8, 0, 1.8), new THREE.Vector3(1.4, 0, 1.8),
+      new THREE.Vector3(3.8, 0, 1.6), new THREE.Vector3(6.2, 0, -0.2),
+    ];
+
+    z.interactables.push(
+      {
+        id: 'salon-mirror', type: 'flavor', label: 'Inspect the mirrors',
+        title: 'SIX-WAY CONFIRMATION', pos: new THREE.Vector3(0, 1.6, -4.7), radius: 2.4,
+        lines: [
+          'Six mirrors confirm the same result from six professional angles: nobody here has hair.',
+          'The lighting is forgiving. The evidence is not.',
+        ],
+      },
+      {
+        id: 'salon-menu', type: 'flavor', label: 'Read the treatment menu',
+        title: 'FULL SERVICE MENU', pos: new THREE.Vector3(6.85, 1.0, 2.1), radius: 2.2,
+        lines: [
+          'INVISIBLE TRIM — 90. CONCEPTUAL COLOR — 140. SCALP POLISH — market price.',
+          'The cancellation policy is longer than every haircut in the building combined.',
+        ],
+      },
+      {
+        id: 'salon-inventory', type: 'flavor', label: 'Check the hair inventory',
+        title: 'HAIR — OUT OF STOCK', pos: new THREE.Vector3(8.05, 1.6, -1.3), radius: 2.15,
+        lines: [
+          'Five smooth display heads wait on empty shelves. Even the wig stands are bald.',
+          'A stock card reads: ORDERED — NEVER. RECEIVED — NONE. SHRINKAGE — EMOTIONAL.',
+        ],
+      },
+      {
+        id: 'salon-wash', type: 'flavor', label: 'Inspect the wash basins',
+        title: 'THE CLEANEST DRAINS IN TOWN', pos: new THREE.Vector3(0, 0.9, 4.25), radius: 2.2,
+        lines: [
+          'Three spotless drains have never caught a clipping. Gunnar cleans them anyway.',
+          'The conditioner promises volume, repair, and a tactful refusal to discuss raw materials.',
+        ],
+      },
+    );
 
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
   }
