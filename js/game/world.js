@@ -8,6 +8,7 @@
  *   ROOMS                 in the back — one house, two material moods.
  *   THE GILDED FORK       one long table, every artworld big shot,
  *                         all of them drunk and messed up.
+ *   PUBLIC RESTROOM       tiled stalls, plumbing, bodily techno zamba.
  *
  * Everything uses procedural geometry with generated and locally stored textures.
  * Collision is XZ axis-aligned boxes (single-floor zones by design).
@@ -505,6 +506,7 @@ export class World {
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
     this.#buildVacantEditions();
+    this.#buildPublicRestroom();
     this.#buildBlackForest();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
@@ -934,6 +936,7 @@ export class World {
     door(z, { x: 0, z: 6.62, ry: Math.PI, label: 'THE GILDED FORK →', to: 'gildedFork' });
     door(z, { x: 6.8, z: 6.62, ry: Math.PI, label: 'MAX PRO KUNST 2000 →', to: 'maxPro' });
     door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
+    door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -3736,6 +3739,591 @@ export class World {
   }
 
   /* ---------------------------------------------------------- */
+  /*  THE PUBLIC RESTROOM — ceramic acoustics, no polite sounds */
+  /* ---------------------------------------------------------- */
+  #buildPublicRestroom() {
+    const z = this.#newZone('publicRestroom');
+    const roomW = 16;
+    const roomD = 12;
+    const roomH = 4.2;
+    shell(z, {
+      w: roomW, d: roomD, h: roomH,
+      floorColor: 0x65716c, wallColor: 0xb9c4bd, ceilColor: 0x7d8580,
+    });
+    // Clear the return door's interaction radius so arrival begins with the
+    // room, not an immediate invitation to leave again.
+    z.spawn.set(0, 0, 3.55);
+    z.spawnYaw = 0;
+    z.fog = { color: 0x18221f, density: 0.024 };
+
+    // Grimy sea-green ceramic tile remains highly readable in the low club
+    // light. The grout is drawn once and repeated by the GPU.
+    const tileSource = canvasTexture(256, 256, (ctx, w, h) => {
+      ctx.fillStyle = '#9eaaa3'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#657069';
+      ctx.fillRect(0, 0, w, 9); ctx.fillRect(0, 0, 9, h);
+      ctx.fillStyle = 'rgba(235,245,239,0.16)';
+      ctx.fillRect(14, 14, w - 24, 4);
+      ctx.fillStyle = 'rgba(38,54,48,0.11)';
+      for (let i = 0; i < 22; i++) {
+        const x = (i * 71) % w; const y = (i * 113) % h;
+        ctx.fillRect(x, y, 2 + (i % 5), 2 + ((i * 3) % 7));
+      }
+    });
+    const tiled = (repeatX, repeatY, color = 0xffffff) => {
+      const map = tileSource.clone();
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(repeatX, repeatY);
+      map.needsUpdate = true;
+      return new THREE.MeshStandardMaterial({ color, map, roughness: 0.26, metalness: 0.04 });
+    };
+    plane(z, {
+      w: roomW - 0.45, h: roomD - 0.45, y: 0.012, rx: -Math.PI / 2,
+      material: tiled(12, 9, 0x89968f), noSplat: false, name: 'restroom tile floor',
+    });
+    plane(z, { w: roomW - 0.45, h: roomH - 0.25, y: roomH / 2, z: -5.785, material: tiled(14, 4), noSplat: false });
+    plane(z, { w: roomW - 0.45, h: roomH - 0.25, y: roomH / 2, z: 5.785, ry: Math.PI, material: tiled(14, 4), noSplat: false });
+    plane(z, { w: roomD - 0.45, h: roomH - 0.25, x: -7.785, y: roomH / 2, ry: Math.PI / 2, material: tiled(10, 4), noSplat: false });
+    plane(z, { w: roomD - 0.45, h: roomH - 0.25, x: 7.785, y: roomH / 2, ry: -Math.PI / 2, material: tiled(10, 4), noSplat: false });
+
+    // A genuine local Poly Haven material from the project's texture library
+    // skins the damp ceiling, including its normal and roughness maps.
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xaab4ad, roughness: 0.92 });
+    plane(z, {
+      w: roomW - 0.42, h: roomD - 0.42, y: roomH - 0.105, rx: Math.PI / 2,
+      material: ceilingMat, noSplat: true, name: 'Poly Haven painted plaster ceiling',
+    });
+    const restroomLoader = new THREE.TextureLoader();
+    const ceilingRoot = 'puplic/polyhaven/daylight-garden/painted_plaster_wall';
+    const loadCeiling = (slot, file, srgb = false) => {
+      restroomLoader.load(encodeURI(`${ceilingRoot}/${file}`), (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(4, 3);
+        tex.anisotropy = 4;
+        if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+        ceilingMat[slot] = tex;
+        ceilingMat.needsUpdate = true;
+      });
+    };
+    loadCeiling('map', 'painted_plaster_wall_diff_1k.jpg', true);
+    loadCeiling('normalMap', 'painted_plaster_wall_nor_gl_1k.jpg');
+    loadCeiling('roughnessMap', 'painted_plaster_wall_rough_1k.jpg');
+
+    const porcelain = new THREE.MeshPhysicalMaterial({
+      color: 0xe9eee9, roughness: 0.15, metalness: 0.02,
+      clearcoat: 0.82, clearcoatRoughness: 0.08,
+    });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xabb9b6, roughness: 0.18, metalness: 0.84 });
+    const partitionMat = new THREE.MeshStandardMaterial({ color: 0x29463f, roughness: 0.44, metalness: 0.36 });
+    const blackRubber = mat(0x111817, { roughness: 0.88, metalness: 0.02 });
+
+    // Four stalls form the back wall. Their laminated fronts use one of the
+    // user's blue painterly textures from puplic/textures as a shared library
+    // image, so the restroom still belongs to this particular art world.
+    const stallDoorMat = new THREE.MeshStandardMaterial({ color: 0x5f8d9d, roughness: 0.46, metalness: 0.08 });
+    restroomLoader.load(encodeURI('puplic/textures/8.jpg'), (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      stallDoorMat.map = tex;
+      stallDoorMat.color.set(0xb9d7df);
+      stallDoorMat.needsUpdate = true;
+    });
+    const stallCenters = [-5.7, -1.9, 1.9, 5.7];
+    let impossiblePoop = null;
+    let doomedFlush = null;
+    let containmentBeacon = null;
+    for (const x of [-7.55, -3.8, 0, 3.8, 7.55]) {
+      box(z, {
+        w: 0.11, h: 2.48, d: 3.95, x, y: 0.18, z: -3.75,
+        material: partitionMat, noSplat: true, name: 'restroom stall partition',
+      });
+    }
+    for (let i = 0; i < stallCenters.length; i++) {
+      const x = stallCenters[i];
+      const doorPanel = box(z, {
+        w: 2.68, h: 2.2, d: 0.09, x, y: 0.25, z: -1.79,
+        material: stallDoorMat, solid: false, noSplat: false, name: 'painted restroom stall door',
+      });
+      doorPanel.rotation.y = (i % 2 ? -1 : 1) * (0.08 + i * 0.025);
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.09), steel);
+      latch.position.set(x + 1.03, 1.35, -1.71);
+      z.group.add(latch);
+
+      const toilet = new THREE.Group();
+      toilet.position.set(x, 0, -4.75);
+      const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.38, 20, 12), porcelain);
+      bowl.scale.set(1, 0.58, 1.32); bowl.position.set(0, 0.39, 0.08);
+      const seat = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.052, 9, 28), porcelain);
+      seat.rotation.x = Math.PI / 2; seat.scale.z = 1.24; seat.position.set(0, 0.57, 0.06);
+      const cistern = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.72, 0.26), porcelain);
+      cistern.position.set(0, 0.74, -0.38);
+      const flush = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 14), steel);
+      flush.rotation.z = Math.PI / 2; flush.position.set(0.39, 0.86, -0.38);
+      toilet.add(bowl, seat, cistern, flush);
+      toilet.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      z.group.add(toilet);
+
+      if (i === 2) {
+        // Stall three contains an object whose scale is incompatible with both
+        // the toilet and municipal optimism. Coiled glossy forms rise far above
+        // the seat, with extra overflow parked on the tile.
+        const poopMat = new THREE.MeshPhysicalMaterial({
+          color: 0x4a1f0d, roughness: 0.34, metalness: 0.02,
+          clearcoat: 0.68, clearcoatRoughness: 0.19,
+        });
+        impossiblePoop = new THREE.Group();
+        impossiblePoop.position.set(x, 0.55, -4.67);
+        const coils = [
+          [0.48, 0.18, 0.07, -0.06],
+          [0.43, 0.17, 0.32, 0.05],
+          [0.35, 0.155, 0.56, -0.04],
+          [0.27, 0.135, 0.77, 0.035],
+        ];
+        for (const [radius, tube, yy, offsetX] of coils) {
+          const coil = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 12, 32), poopMat);
+          coil.rotation.x = Math.PI / 2;
+          coil.position.set(offsetX, yy, 0);
+          coil.castShadow = true;
+          impossiblePoop.add(coil);
+        }
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.48, 22), poopMat);
+        crown.position.set(0.045, 1.03, 0.01);
+        crown.rotation.z = -0.13;
+        crown.castShadow = true;
+        impossiblePoop.add(crown);
+        for (const [ox, oz, scale] of [[-0.52, 0.16, 0.48], [0.48, 0.28, 0.4], [0.32, -0.36, 0.33]]) {
+          const overflow = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 10), poopMat);
+          overflow.position.set(ox, -0.34, oz);
+          overflow.scale.set(scale * 1.35, scale * 0.42, scale);
+          overflow.castShadow = true;
+          impossiblePoop.add(overflow);
+        }
+        impossiblePoop.traverse((o) => { if (o.isMesh) o.userData.noSplat = true; });
+        z.group.add(impossiblePoop);
+        doomedFlush = flush;
+
+        plane(z, {
+          w: 2.2, h: 0.33, x, y: 2.06, z: -1.735,
+          material: new THREE.MeshBasicMaterial({
+            map: textTexture('STALL 3 · CONTAINMENT', { fg: '#fff2a8', bg: '#491d18', size: 31, w: 900, h: 145, font: '800' }),
+          }), noSplat: true,
+        });
+        const warning = new THREE.PointLight(0xff3c32, 3.4, 4.5, 1.7);
+        warning.position.set(x, 2.35, -3.8);
+        z.group.add(warning);
+
+        // The door is now a tiny crime scene: crossed tape and a rotating red
+        // beacon make the incident legible before the player enters the stall.
+        const tapeMat = new THREE.MeshBasicMaterial({
+          map: textTexture('DO NOT CROSS  ·  POOP CRIME SCENE  ·  DO NOT CROSS', {
+            fg: '#17130a', bg: '#f4d13f', size: 27, w: 1400, h: 115, font: '800',
+          }),
+        });
+        for (const [yy, rz] of [[1.18, 0.1], [1.5, -0.1]]) {
+          const tape = plane(z, { w: 3.0, h: 0.18, x, y: yy, z: -1.685, material: tapeMat, noSplat: true });
+          tape.rotation.z = rz;
+        }
+        const beaconBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.08, 16), blackRubber);
+        beaconBase.position.set(x, 2.62, -1.69);
+        const beaconDome = new THREE.Mesh(
+          new THREE.SphereGeometry(0.145, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.58),
+          new THREE.MeshPhysicalMaterial({
+            color: 0xff3328, emissive: 0xff1f18, emissiveIntensity: 3.2,
+            transparent: true, opacity: 0.82, roughness: 0.12, clearcoat: 1,
+          })
+        );
+        beaconDome.position.set(x, 2.69, -1.69);
+        const beaconLight = new THREE.PointLight(0xff3028, 4.5, 5.2, 1.7);
+        beaconLight.position.set(x, 2.73, -1.56);
+        beaconBase.userData.noSplat = beaconDome.userData.noSplat = true;
+        z.group.add(beaconBase, beaconDome, beaconLight);
+        containmentBeacon = { dome: beaconDome, light: beaconLight };
+      }
+
+      z.colliders.push({ minX: x - 0.48, maxX: x + 0.48, minZ: -5.38, maxZ: -4.18 });
+      z.interactables.push({
+        id: `restroom-toilet-${i}`, type: 'restroomFixture', sound: 'fart', variant: i,
+        label: `Test stall ${i + 1}`, title: `STALL ${i + 1}`,
+        lines: i === 2
+          ? [
+            'GUARD: “Sir, the bowl has constitutional limits.” The poop declines to comment.',
+            'GUARD: “We have flushed twelve times. You are now infrastructure.”',
+            'GUARD: “Please reduce yourself to a standard municipal volume.” The poop remains huge.',
+          ]
+          : null,
+        line: i === 2 ? null : 'The porcelain answers with the only review this room permits.',
+        pos: new THREE.Vector3(x, 0.9, -3.75), radius: 2.0,
+      });
+    }
+
+    // The Toilet Guard has one duty and no useful equipment. He faces the
+    // impossible poop, points at it continuously and delivers a rotating silent
+    // lecture so the room's piss-and-fart-only audio policy remains unbroken.
+    {
+      const guard = new THREE.Group();
+      guard.position.set(3.0, 0, -0.55);
+      guard.rotation.y = -0.27;
+      const uniform = new THREE.MeshStandardMaterial({ color: 0x182b3e, roughness: 0.72 });
+      const skin = new THREE.MeshStandardMaterial({ color: 0xc18d68, roughness: 0.86 });
+      const gold = new THREE.MeshStandardMaterial({ color: 0xe0b948, roughness: 0.3, metalness: 0.58 });
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.34, 0.84, 14), uniform);
+      torso.position.y = 1.05;
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.345, 0.345, 0.075, 14), blackRubber);
+      belt.position.y = 0.72;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.225, 18, 13), skin);
+      head.position.y = 1.67;
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.25, 0.15, 16), uniform);
+      hat.position.y = 1.88;
+      const brim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.035, 0.22), uniform);
+      brim.position.set(0, 1.82, 0.1);
+      const badge = new THREE.Mesh(new THREE.OctahedronGeometry(0.095, 0), gold);
+      badge.position.set(0.17, 1.2, 0.245);
+      badge.scale.y = 1.28;
+      const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.075, 0.045), gold);
+      buckle.position.set(0, 0.72, 0.19);
+      const radio = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.08), blackRubber);
+      radio.position.set(-0.2, 1.36, 0.2);
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.2, 6), blackRubber);
+      antenna.position.set(-0.23, 1.54, 0.2);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x171313 });
+      for (const ex of [-0.07, 0.07]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), eyeMat);
+        eye.position.set(ex, 1.7, 0.208);
+        guard.add(eye);
+      }
+      const moustache = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.028, 0.028), eyeMat);
+      moustache.position.set(0, 1.59, 0.224);
+      guard.add(torso, belt, head, hat, brim, badge, buckle, radio, antenna, moustache);
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.72, 10), uniform);
+        leg.position.set(side * 0.15, 0.36, 0);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.31), blackRubber);
+        shoe.position.set(side * 0.15, 0.055, 0.07);
+        guard.add(leg, shoe);
+      }
+      const armQuiet = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.64, 10), uniform);
+      armQuiet.position.set(0.35, 1.08, 0);
+      armQuiet.rotation.z = 0.12;
+      const armPoint = new THREE.Group();
+      armPoint.position.set(-0.31, 1.36, 0);
+      armPoint.rotation.set(-1.18, -0.18, 0.28);
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.078, 0.68, 10), uniform);
+      sleeve.position.y = -0.29;
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 9), skin);
+      hand.position.y = -0.65;
+      armPoint.add(sleeve, hand);
+      guard.add(armQuiet, armPoint);
+      const clipboard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.035), new THREE.MeshStandardMaterial({ color: 0x6a4628, roughness: 0.82 }));
+      clipboard.position.set(0.43, 0.97, 0.23);
+      clipboard.rotation.z = -0.18;
+      const report = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.34), new THREE.MeshBasicMaterial({ color: 0xf2ead1 }));
+      report.position.set(0.43, 0.99, 0.25);
+      report.rotation.z = -0.18;
+      guard.add(clipboard, report);
+      guard.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(guard);
+
+      const guardLines = [
+        '“WHO DID THIS? STEP FORWARD.”',
+        '“THE POOPER IS UNDER ARREST.”',
+        '“I WILL DUST THE FLUSH HANDLE.”',
+        '“THIS IS A CUSTODIAL FELONY.”',
+        '“CONFESS BEFORE I CHECK THE CCTV.”',
+      ];
+      const bubbleMaps = guardLines.map((line) => canvasTexture(1200, 190, (ctx, w, h) => {
+        const pad = 10; const radius = 38;
+        ctx.clearRect(0, 0, w, h);
+        ctx.beginPath();
+        ctx.moveTo(pad + radius, pad);
+        ctx.lineTo(w - pad - radius, pad);
+        ctx.quadraticCurveTo(w - pad, pad, w - pad, pad + radius);
+        ctx.lineTo(w - pad, h - pad - radius);
+        ctx.quadraticCurveTo(w - pad, h - pad, w - pad - radius, h - pad);
+        ctx.lineTo(pad + radius, h - pad);
+        ctx.quadraticCurveTo(pad, h - pad, pad, h - pad - radius);
+        ctx.lineTo(pad, pad + radius);
+        ctx.quadraticCurveTo(pad, pad, pad + radius, pad);
+        ctx.closePath();
+        ctx.fillStyle = '#f5f0d8'; ctx.fill();
+        ctx.strokeStyle = '#17221e'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.fillStyle = '#17221e';
+        ctx.font = '800 31px Georgia, serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(line, w / 2, h / 2 + 2);
+      }));
+      const bubble = plane(z, {
+        w: 3.2, h: 0.56, x: 2.55, y: 2.65, z: -0.43,
+        material: new THREE.MeshBasicMaterial({ map: bubbleMaps[0], transparent: true }), noSplat: true,
+        name: 'toilet guard speech bubble',
+      });
+      const tailGeom = new THREE.BufferGeometry();
+      tailGeom.setAttribute('position', new THREE.Float32BufferAttribute([
+        0, 0, 0, 0.28, 0, 0, 0.2, -0.28, 0,
+      ], 3));
+      tailGeom.computeVertexNormals();
+      const tail = new THREE.Mesh(tailGeom, new THREE.MeshBasicMaterial({ color: 0xf5f0d8, side: THREE.DoubleSide }));
+      tail.position.set(2.85, 2.39, -0.425);
+      tail.userData.noSplat = true;
+      z.group.add(tail);
+      plane(z, {
+        w: 1.75, h: 0.25, x: 3.0, y: 2.2, z: -0.42,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture('TOILET GUARD · POOP CRIMES UNIT', { fg: '#ffd75e', bg: '#182b3e', size: 25, w: 980, h: 130, font: '800' }),
+        }), noSplat: true,
+      });
+      z.animated.toiletGuard = {
+        group: guard, head, arm: armPoint, bubble, bubbleMaps,
+        lineIndex: 0, bubbleChangedAt: 0, poop: impossiblePoop, flush: doomedFlush,
+        beacon: containmentBeacon,
+      };
+      z.interactables.push({
+        id: 'toilet-guard', type: 'restroomFixture', sound: 'fart', variant: 11,
+        label: 'Ask who is under arrest', title: 'THE TOILET GUARD',
+        lines: [
+          '“Whoever produced stall three is under arrest. I am building a stool profile.”',
+          '“Nobody leaves until the poop has an alibi and the pooper has a lawyer.”',
+          '“I will fingerprint the flush handle. Laugh now. Regret it at processing.”',
+          '“One of these patrons knows something. Bodies always talk eventually.”',
+        ],
+        pos: new THREE.Vector3(3.0, 1.2, -0.55), radius: 2.0,
+      });
+    }
+
+    // Three wall urinals and privacy dividers make the west aisle an actual
+    // public facility rather than a gallery that merely owns some toilets.
+    for (let i = 0; i < 3; i++) {
+      const zz = -0.55 + i * 2.05;
+      const urinal = new THREE.Group();
+      urinal.position.set(-7.56, 0, zz);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.86, 0.62), porcelain);
+      back.position.set(0.12, 0.78, 0);
+      const cup = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 12), porcelain);
+      cup.scale.set(0.55, 0.82, 1); cup.position.set(0.31, 0.48, 0);
+      const drain = new THREE.Mesh(new THREE.CircleGeometry(0.075, 16), blackRubber);
+      drain.rotation.y = Math.PI / 2; drain.position.set(0.505, 0.49, 0);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.55, 10), steel);
+      pipe.position.set(0.29, 1.45, 0);
+      urinal.add(back, cup, drain, pipe);
+      z.group.add(urinal);
+      box(z, {
+        w: 0.78, h: 1.32, d: 0.075, x: -7.25, y: 0.48, z: zz + 0.98,
+        material: partitionMat, ry: Math.PI / 2, solid: false, noSplat: true,
+      });
+      z.colliders.push({ minX: -7.78, maxX: -6.96, minZ: zz - 0.42, maxZ: zz + 0.42 });
+      z.interactables.push({
+        id: `restroom-urinal-${i}`, type: 'restroomFixture', sound: 'piss', variant: i,
+        label: `Use urinal ${i + 1}`, title: `URINAL ${i + 1}`,
+        line: 'A bright stream joins the rhythm. The tiled room approves without words.',
+        pos: new THREE.Vector3(-6.9, 1.0, zz), radius: 1.65,
+      });
+    }
+
+    // Communal sink, mirror and exposed plumbing on the east wall.
+    box(z, { w: 0.78, h: 0.16, d: 5.65, x: 6.85, y: 0.76, z: 1.15, material: porcelain, name: 'communal sink' });
+    for (const zz of [-0.65, 1.15, 2.95]) {
+      const basin = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 10), porcelain);
+      basin.scale.set(0.58, 0.25, 1.0); basin.position.set(6.53, 0.88, zz);
+      z.group.add(basin);
+      const tap = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 7, 14, Math.PI), steel);
+      tap.rotation.z = Math.PI / 2; tap.position.set(6.45, 1.14, zz);
+      z.group.add(tap);
+    }
+    z.colliders.push({ minX: 6.22, maxX: 7.78, minZ: -1.95, maxZ: 4.25 });
+    const mirrorMat = new THREE.MeshPhysicalMaterial({
+      color: 0x9fb7b4, roughness: 0.08, metalness: 0.92, clearcoat: 1, clearcoatRoughness: 0.03,
+    });
+    plane(z, { w: 5.75, h: 1.45, x: 7.765, y: 2.16, z: 1.15, ry: -Math.PI / 2, material: mirrorMat, noSplat: true, name: 'fogged mirror' });
+    plane(z, {
+      w: 5.2, h: 0.32, x: 7.755, y: 3.12, z: 1.15, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('YOU LOOK EXPENSIVE WHEN DAMP', { fg: '#ccffe9', bg: '#1a322b', size: 31, w: 1100, h: 130, font: '800' }) }),
+      noSplat: true,
+    });
+
+    // The restroom is occupied: two patrons use the urinals, one scrubs at the
+    // sink, and one waits outside the stalls while pretending not to hear the
+    // Poop Crimes Unit. Bodies are simple procedural geometry so they remain
+    // readable under the hard green/magenta club light.
+    const buildPatron = ({ x, z: zz, ry, shirt, trousers, skinColor, hairColor }) => {
+      const group = new THREE.Group();
+      group.position.set(x, 0, zz);
+      group.rotation.y = ry;
+      const shirtMat = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.78 });
+      const trouserMat = new THREE.MeshStandardMaterial({ color: trousers, roughness: 0.82 });
+      const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.88 });
+      const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.96 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.25, 0.45, 4, 10), shirtMat);
+      torso.position.y = 1.16;
+      const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.3), shirtMat);
+      shoulders.position.y = 1.38;
+      const hips = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.3), trouserMat);
+      hips.position.y = 0.73;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), skinMat);
+      head.position.y = 1.77;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.225, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), hairMat);
+      hair.position.y = 1.84;
+      group.add(torso, shoulders, hips, head, hair);
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.105, 0.72, 9), trouserMat);
+        leg.position.set(side * 0.145, 0.35, 0);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.095, 0.3), trouserMat);
+        shoe.position.set(side * 0.145, 0.05, 0.07);
+        group.add(leg, shoe);
+        legs.push(leg);
+      }
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.073, 0.58, 9), shirtMat);
+        arm.position.set(side * 0.31, 1.12, 0.06);
+        arm.rotation.z = side * 0.38;
+        group.add(arm);
+        arms.push(arm);
+      }
+      group.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(group);
+      return { group, torso, head, arms, legs };
+    };
+
+    const peeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffe35d, emissive: 0xa86b08, emissiveIntensity: 0.8,
+      transparent: true, opacity: 0.72, roughness: 0.12, depthWrite: false,
+    });
+    const peeing = [];
+    const peeDefs = [
+      { zz: -0.55, shirt: 0xa73e72, trousers: 0x222631, skinColor: 0xb97c58, hairColor: 0x2c1710 },
+      { zz: 1.5, shirt: 0x396f8f, trousers: 0x28231f, skinColor: 0xd0a078, hairColor: 0xd4b55e },
+    ];
+    for (let i = 0; i < peeDefs.length; i++) {
+      const def = peeDefs[i];
+      const patron = buildPatron({ x: -6.42, z: def.zz, ry: -Math.PI / 2, ...def });
+      // Hands hover awkwardly at the waist; nobody makes eye contact.
+      patron.arms[0].rotation.z = -0.76;
+      patron.arms[1].rotation.z = 0.76;
+      patron.arms[0].position.y = patron.arms[1].position.y = 1.0;
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.68, 8), peeMat.clone());
+      stream.rotation.z = Math.PI / 2;
+      stream.position.set(-7.01, 0.69, def.zz);
+      stream.userData.noSplat = true;
+      z.group.add(stream);
+      const drops = [];
+      for (let d = 0; d < 4; d++) {
+        const drop = new THREE.Mesh(new THREE.SphereGeometry(0.024, 7, 5), peeMat.clone());
+        drop.position.set(-6.78 - d * 0.11, 0.69 - d * 0.018, def.zz + (d % 2 ? 0.012 : -0.01));
+        drop.userData.noSplat = true;
+        z.group.add(drop);
+        drops.push(drop);
+      }
+      peeing.push({ ...patron, stream, drops, phase: i * 1.7, z: def.zz });
+    }
+
+    const washing = buildPatron({
+      x: 6.0, z: 1.15, ry: Math.PI / 2,
+      shirt: 0x7b5aaa, trousers: 0x242832, skinColor: 0x8f604d, hairColor: 0x151318,
+    });
+    washing.arms[0].rotation.x = -0.92;
+    washing.arms[1].rotation.x = -0.92;
+    washing.arms[0].position.y = washing.arms[1].position.y = 1.06;
+    const waiting = buildPatron({
+      x: -2.15, z: 1.05, ry: -0.18,
+      shirt: 0xc28735, trousers: 0x31343b, skinColor: 0xe0b18d, hairColor: 0x5b271c,
+    });
+    waiting.arms[0].rotation.z = -0.92;
+    waiting.arms[1].rotation.z = 0.92;
+    z.animated.restroomPatrons = { peeing, washing, waiting };
+    z.interactables.push(
+      {
+        id: 'restroom-patron-waiting', type: 'restroomFixture', sound: 'fart', variant: 14,
+        label: 'Ask the nervous patron', title: 'NERVOUS PATRON',
+        lines: [
+          'They stare at stall three and silently shake their head much too quickly.',
+          '“I came in after it happened.” The guard writes that down without blinking.',
+        ],
+        pos: new THREE.Vector3(-2.15, 1.1, 1.05), radius: 1.75,
+      },
+      {
+        id: 'restroom-patron-sink', type: 'restroomFixture', sound: 'piss', variant: 15,
+        label: 'Observe the hand washing', title: 'THE SINK WITNESS',
+        lines: ['They have been washing the same hands since the guard said “fingerprints.”'],
+        pos: new THREE.Vector3(6.0, 1.1, 1.15), radius: 1.75,
+      },
+    );
+
+    // Puddles, drains and exposed pipes sell the dampness from eye level.
+    const puddleMat = new THREE.MeshPhysicalMaterial({
+      color: 0x8cb49c, transparent: true, opacity: 0.38, roughness: 0.08,
+      metalness: 0.05, clearcoat: 1, depthWrite: false,
+    });
+    for (const [x, zz, sx, sz] of [[-5.6, 0.2, 1.3, 0.5], [1.3, 2.6, 0.8, 1.4], [5.4, -0.3, 1.1, 0.55]]) {
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.72, 26), puddleMat);
+      puddle.rotation.x = -Math.PI / 2; puddle.position.set(x, 0.026, zz); puddle.scale.set(sx, sz, 1);
+      puddle.userData.noSplat = true; z.group.add(puddle);
+    }
+    for (const [x, zz] of [[-2.1, 0.5], [3.5, 3.5]]) {
+      const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.018, 20), steel);
+      drain.position.set(x, 0.025, zz); drain.userData.noSplat = true; z.group.add(drain);
+    }
+    for (const x of [-6.75, 6.05]) {
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 3.7, 10), steel);
+      pipe.position.set(x, 1.85, -5.56); pipe.userData.noSplat = true; z.group.add(pipe);
+    }
+
+    // Fluorescent slabs stay sickly white; hidden colored bulbs punch the fart
+    // downbeats into the wet floor without turning the room into a clean club.
+    z.animated.strobes = [];
+    for (let i = 0; i < 4; i++) {
+      const x = -5.4 + i * 3.6;
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(2.25, 0.06, 0.28),
+        new THREE.MeshStandardMaterial({ color: 0xe7fff3, emissive: 0xb8ffe0, emissiveIntensity: 1.8, roughness: 0.24 })
+      );
+      slab.position.set(x, roomH - 0.19, 0.65); slab.userData.noSplat = true; z.group.add(slab);
+      const pulse = new THREE.PointLight(i % 2 ? 0x50ffb0 : 0xff5dbb, 0.8, 7.5, 1.8);
+      pulse.position.set(x, roomH - 0.36, 0.65); pulse.userData.base = 0.62; z.group.add(pulse);
+      z.animated.strobes.push(pulse);
+    }
+    z.group.add(new THREE.HemisphereLight(0xcfffe6, 0x10221c, 1.15));
+
+    plane(z, {
+      w: 7.8, h: 0.78, x: 0, y: 3.48, z: -5.77,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('T E C H N O   Z A M B A', { fg: '#ff83d3', bg: '#162b26', size: 64, w: 1500, h: 190, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 6.7, h: 0.45, x: 0, y: 2.91, z: -5.765,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('ACOUSTIC POLICY: PISS + FART ONLY', { fg: '#bfffe5', bg: '#162b26', size: 34, w: 1300, h: 150, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 5.4, h: 0.38, x: 0, y: 3.25, z: 5.77, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('PUBLIC RESTROOM · EVERY BODY IS ON THE LIST', { fg: '#d8f5e8', bg: '#223c34', size: 29, w: 1300, h: 140, font: '800' }),
+      }), noSplat: true,
+    });
+    z.interactables.push({
+      id: 'restroom-policy', type: 'restroomFixture', sound: 'fart', variant: 7,
+      label: 'Read the acoustic policy', title: 'ACOUSTIC POLICY',
+      line: 'No speech, no melody, no applause. The room recognizes only pressure and plumbing.',
+      pos: new THREE.Vector3(0, 2.9, -5.3), radius: 2.35,
+    });
+
+    z.waypoints = [
+      new THREE.Vector3(-4.6, 0, 3.3), new THREE.Vector3(-2.1, 0, 1.0),
+      new THREE.Vector3(1.2, 0, 3.4), new THREE.Vector3(4.4, 0, 0.4),
+    ];
+    door(z, { x: 0, z: 5.82, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+  }
+
+  /* ---------------------------------------------------------- */
   /*  THE BLACK FOREST                                          */
   /* ---------------------------------------------------------- */
   #buildBlackForest() {
@@ -4258,6 +4846,67 @@ export class World {
         e.group.rotation.y += dt * 0.075 * e.direction;
         e.group.position.y = e.baseY + Math.sin(t * 0.72 + e.phase) * 0.012;
       }
+    }
+    if (z.animated.toiletGuard) {
+      const guard = z.animated.toiletGuard;
+      const lineIndex = Math.floor(t / 3.4) % guard.bubbleMaps.length;
+      if (lineIndex !== guard.lineIndex) {
+        guard.lineIndex = lineIndex;
+        guard.bubble.material.map = guard.bubbleMaps[lineIndex];
+        guard.bubble.material.needsUpdate = true;
+        guard.bubbleChangedAt = t;
+      }
+      const bubbleAge = t - guard.bubbleChangedAt;
+      const bubblePop = bubbleAge >= 0 && bubbleAge < 0.34
+        ? Math.sin((bubbleAge / 0.34) * Math.PI) * 0.055 : 0;
+      guard.bubble.scale.set(1 + bubblePop, 1 + bubblePop, 1);
+      // He keeps pointing; the poop answers only with a tiny, insoluble wobble.
+      guard.head.rotation.y = Math.sin(t * 1.1) * 0.13 - 0.18;
+      guard.head.rotation.z = Math.sin(t * 0.72) * 0.035;
+      guard.arm.rotation.z = 0.28 + Math.sin(t * 2.15) * 0.08;
+      guard.group.position.y = Math.abs(Math.sin(t * 1.25)) * 0.012;
+      if (guard.poop) {
+        guard.poop.rotation.y = Math.sin(t * 0.83) * 0.055;
+        guard.poop.scale.y = 1 + Math.sin(t * 1.67) * 0.018 + kick * 0.026;
+      }
+      if (guard.flush) guard.flush.rotation.x = Math.sin(t * 9.2) * 0.18;
+      if (guard.beacon) {
+        const flash = Math.pow(Math.max(0, Math.sin(t * 4.8)), 5);
+        guard.beacon.light.intensity = 0.7 + flash * 8.5 + kick * 2.2;
+        guard.beacon.dome.material.emissiveIntensity = 1.5 + flash * 4.8;
+        guard.beacon.dome.rotation.y += dt * 4.2;
+      }
+    }
+    if (z.animated.restroomPatrons) {
+      const patrons = z.animated.restroomPatrons;
+      for (let i = 0; i < patrons.peeing.length; i++) {
+        const p = patrons.peeing[i];
+        const sway = Math.sin(t * 1.35 + p.phase);
+        p.group.position.y = Math.abs(sway) * 0.009;
+        p.torso.rotation.z = sway * 0.018;
+        p.head.rotation.y = Math.sin(t * 0.57 + p.phase) * 0.08;
+        p.stream.material.opacity = 0.56 + Math.sin(t * 8.4 + p.phase) * 0.14;
+        p.stream.scale.y = 0.92 + Math.sin(t * 6.7 + p.phase) * 0.08;
+        for (let d = 0; d < p.drops.length; d++) {
+          const progress = (t * 1.9 + p.phase + d * 0.23) % 1;
+          const drop = p.drops[d];
+          drop.position.x = -6.72 - progress * 0.57;
+          drop.position.y = 0.72 - Math.sin(progress * Math.PI) * 0.055;
+          drop.position.z = p.z + Math.sin(t * 5.1 + d) * 0.012;
+          drop.scale.setScalar(0.72 + (1 - progress) * 0.42);
+        }
+      }
+      const wash = patrons.washing;
+      const scrub = Math.sin(t * 7.6);
+      wash.arms[0].rotation.x = -0.92 + scrub * 0.14;
+      wash.arms[1].rotation.x = -0.92 - scrub * 0.14;
+      wash.head.rotation.z = Math.sin(t * 1.2) * 0.045;
+      wash.group.position.y = Math.abs(Math.sin(t * 2.3)) * 0.008;
+      const wait = patrons.waiting;
+      wait.head.rotation.y = Math.sin(t * 0.74) * 0.46;
+      wait.head.rotation.z = Math.sin(t * 0.42) * 0.055;
+      wait.legs[0].rotation.x = Math.max(0, Math.sin(t * 4.8)) * 0.12;
+      wait.group.position.y = Math.max(0, Math.sin(t * 4.8)) * 0.016;
     }
     // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays
     if (z.animated.strobes) {

@@ -813,6 +813,7 @@ const MAP_ZONES = [
   { key: 'upAndCumming', name: 'UP AND CUMMING ARTIST', desc: 'Huge paintings in hard daylight. Muscle Mania 300 refuses every sale. Zebra Zebrason refuses his refusal.' },
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
+  { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },
 ];
 
 

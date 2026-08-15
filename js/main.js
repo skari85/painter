@@ -1014,6 +1014,11 @@ class Game {
         this.ui.toast(it.title ?? 'THE SCENE', pick(it.lines));
         this.audio.uiMove();
         break;
+      case 'restroomFixture':
+        this.ui.toast(it.title ?? 'THE PUBLIC RESTROOM', it.lines ? pick(it.lines) : it.line);
+        if (it.sound === 'piss') this.audio.restroomPiss(it.variant ?? 0);
+        else this.audio.restroomFart(it.variant ?? 0);
+        break;
       case 'church': {
         const result = this.world.primeForestChurch(it.churchIndex);
         const n = it.churchIndex + 1;
@@ -1147,9 +1152,10 @@ class Game {
         maxPro: 'Forty metres of wall. One painting. Somewhere in it, an argument.',
         dildoBall: 'The bass is wearing a crown. The court is in session. Wobble accordingly.',
         daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
-        upAndCumming: 'Five enormous works, two red dots, seven coded birds, one desk, and an argument strong enough to move inventory.',
+        upAndCumming: 'Five enormous works, two red dots, seven coded birds, and an original woozy trap remix: sliding sub, haunted bells, and a synthetic rapper with no actual words.',
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
+        publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
       }[zoneKey]);
 
       if (zoneKey === 'maxPro') this.debate.enter();
@@ -1171,6 +1177,17 @@ class Game {
       this.audio.setMusic(null);
       this.audio.setRoomScore(null, false);
       this.audio.startJazz();
+      this.world.setRecordPlayerState(null);
+      return;
+    }
+
+    // The restroom is even stricter than the royal court: communal records,
+    // ambient drones and the jazz combo stay outside. Its entire score is made
+    // from synthesized urine and fart sounds.
+    if (zoneKey === 'publicRestroom') {
+      this.audio.stopJazz(true);
+      this.audio.cutMusic();
+      this.audio.setRoomScore(zoneKey, true, true);
       this.world.setRecordPlayerState(null);
       return;
     }
@@ -1315,7 +1332,7 @@ class Game {
       this.arti.update(dt);
 
       // footsteps
-      if (moving) {
+      if (moving && this.world.current !== 'publicRestroom') {
         this.#stepAccum += dt * (this.player.sprinting ? 5.6 : 4.1);
         if (this.#stepAccum > 2.1) { this.#stepAccum = 0; this.audio.footstep(); }
       }
@@ -1368,9 +1385,16 @@ class Game {
     const keys = Object.keys(MUSIC);
     const current = keys.indexOf(this.#recordKey);
     this.#recordKey = keys[(current + 1 + keys.length) % keys.length];
-    if (this.world.current === 'dildoBall') {
+    if (this.world.current === 'dildoBall' || this.world.current === 'publicRestroom') {
       this.world.setRecordPlayerState(null);
-      this.ui.toast('THE ROYAL SOUND POLICY', `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`, 'good');
+      const royal = this.world.current === 'dildoBall';
+      this.ui.toast(
+        royal ? 'THE ROYAL SOUND POLICY' : 'THE RESTROOM SOUND POLICY',
+        royal
+          ? `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`
+          : `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here: piss, fart, Techno Zamba.`,
+        'good'
+      );
       return;
     }
     this.audio.setMusic(this.#recordKey, MUSIC);

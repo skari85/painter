@@ -86,6 +86,13 @@ values from Poly Haven's asset API are recorded in
 `puplic/polyhaven/daylight-garden/CHECKSUMS.md5` so local copies can be checked
 without relying on filenames or file sizes alone.
 
+### Up and Cumming remix
+
+Up and Cumming Artist has an original procedural woozy-trap room remix: sliding
+sub-bass, half-time drums, detuned bell fragments, tape air, and short synthetic
+rapper-like vowel chops. It uses no sampled performer, copyrighted melody, or
+song lyric; every sound is synthesized at runtime in `js/core/audio.js`.
+
 ### The Garret studio
 
 The studio floor uses Poly Haven's [Old Wood Floor](https://polyhaven.com/a/old_wood_floor),
@@ -93,6 +100,24 @@ while its walls and ceiling use [Worn Plaster Wall](https://polyhaven.com/a/worn
 Both are CC0 materials. Their 1K JPG diffuse, OpenGL normal, and roughness maps
 are stored under `puplic/polyhaven/studio/`; API-provided MD5 values are recorded
 in the adjacent `CHECKSUMS.md5` manifest.
+
+### The Public Restroom
+
+Galleria Bianca now has a public restroom: four usable stall sound points,
+three urinals, a communal sink, fogged mirrors, puddles, drains, exposed pipes,
+fluorescent club lighting, and painted stall fronts using the existing
+`puplic/textures/8.jpg` library image. The damp ceiling reuses the local CC0
+Poly Haven Painted Plaster Wall diffuse, normal, and roughness maps.
+Stall three is under permanent containment: an impossibly large, animated poop
+has defeated the flush, while a uniformed Toilet Guard points at it and cycles
+through silent threats to arrest whoever produced it. Two patrons keep using the
+urinals, one washes their hands with suspicious commitment, and another waits
+outside the stalls while trying not to look implicated.
+
+The room enforces a literal acoustic policy. Its original 132 BPM **Techno
+Zamba** score contains only procedural urine streams, splashes, droplets, and
+layered fart synthesis, with short tiled-room reflections. There are no sampled
+recordings, conventional drums, voices, melodies, or footsteps in the room.
 
 **The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
 face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
