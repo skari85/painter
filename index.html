@@ -249,6 +249,7 @@
     <div class="modal-card">
       <h2 class="modal-title">SOMEONE ELSE WAS HERE</h2>
       <p id="ghost-note-text" class="modal-note">No note left here.</p>
+      <p id="ghost-note-status" class="ghost-note-status">This trace is still warm.</p>
       <input id="ghost-note-input" type="text" maxlength="140" placeholder="Leave something for the next one…" autocomplete="off" spellcheck="false" />
       <div class="modal-actions">
         <button class="btn" id="ghost-note-skip">Say nothing</button>
@@ -270,6 +271,7 @@
         <div id="daily-progress" class="daily-progress">RETURN TO FIND OUT</div>
       </section>
       <nav class="title-menu" aria-label="Main menu">
+        <button class="btn primary xl hidden" id="btn-resume">Resume Night One</button>
         <button class="btn primary xl" id="btn-begin">Begin Night One</button>
         <button class="btn ghost" id="btn-howto">How to Play</button>
         <button class="btn ghost" id="btn-settings">Settings</button>
@@ -290,7 +292,7 @@
     <button class="film-skip" id="onboarding-skip">Skip film <kbd>Esc</kbd></button>
     <div class="film-frame" id="onboarding-frame" data-scene="garret">
       <div class="film-image" aria-hidden="true">
-        <div class="film-image-topline"><span>PAINTER ASCENSION</span><span id="onboarding-image-count">01 / 05</span></div>
+        <div class="film-image-topline"><span>PAINTER ASCENSION</span><span id="onboarding-image-count">01 / 06</span></div>
         <p class="film-image-caption" id="onboarding-image-caption">THE GARRET · BEFORE THE MARKET</p>
         <div class="film-portrait-stack" id="onboarding-cast"></div>
         <div class="film-case-file"><span>CASE FILE</span><strong id="onboarding-chapter">01 · EXPOSURE</strong></div>
@@ -304,7 +306,7 @@
         <div class="film-playbook" id="onboarding-playbook" aria-label="What you will do"></div>
       </div>
       <div class="film-controls">
-        <div class="film-controls-meta"><div class="film-progress" id="onboarding-progress" aria-label="Scene 1 of 5"></div><span id="onboarding-control-note">A short brief before the first mark.</span></div>
+        <div class="film-controls-meta"><div class="film-progress" id="onboarding-progress" aria-label="Scene 1 of 6"></div><span id="onboarding-control-note">A short brief before the first mark.</span></div>
         <button class="btn primary" id="onboarding-next">Continue <kbd>Space</kbd></button>
       </div>
     </div>

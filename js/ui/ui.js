@@ -60,6 +60,7 @@ export class UIManager {
       curtain: $('curtain'),
       credPulse: $('cred-pulse'),
       title: $('title-screen'),
+      resumeRun: $('btn-resume'),
       onboarding: $('onboarding'),
       onboardingFrame: $('onboarding-frame'),
       onboardingKicker: $('onboarding-kicker'),
@@ -85,6 +86,7 @@ export class UIManager {
       namingInput: $('naming-input'),
       ghostNote: $('ghost-note'),
       ghostNoteText: $('ghost-note-text'),
+      ghostNoteStatus: $('ghost-note-status'),
       ghostNoteInput: $('ghost-note-input'),
       nightEnd: $('night-end'),
       nightEndTitle: $('night-end-title'),
@@ -118,6 +120,15 @@ export class UIManager {
   show(name) { $(name)?.classList.remove('hidden'); }
   hide(name) { $(name)?.classList.add('hidden'); }
 
+  setResumeRun(saved) {
+    const button = this.el.resumeRun;
+    if (!button) return;
+    const night = Number(saved?.state?.night);
+    const names = ['', 'One', 'Two', 'Three'];
+    button.classList.toggle('hidden', !Number.isInteger(night) || night < 1 || night > 3);
+    if (night >= 1 && night <= 3) button.textContent = `Resume Night ${names[night]}`;
+  }
+
   /** A compact opening film. Gameplay is not initialized until it completes. */
   openOnboarding(onComplete) {
     const scenes = [
@@ -149,16 +160,26 @@ export class UIManager {
         beats: [['Talk', 'Press E, then choose Kind, Witty, or Brutal.'], ['Watch yourself', 'Fame opens doors. Integrity tells you why you entered.']],
       },
       {
+        scene: 'ghosts', kicker: 'THE GHOST LAYER · OTHER ARTISTS, AFTERWARD', title: 'SOMEONE ELSE WALKED THIS ROOM FIRST.',
+        body: 'A pale figure is not a live player or a bot. It is an asynchronous trace: a past route replaying in the room, with a note that may have been left for whoever arrives next. Notes burn after 24 hours; the route stays.',
+        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'No live chat. Notes burn in 24 hours; routes linger.', accent: '#8ab4ff',
+        cast: [
+          { name: 'SOMEONE ELSE', role: 'a recorded route', face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png', pose: 'hero', ghost: true },
+          { name: 'THE NEXT ARTIST', role: 'maybe you', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'side', ghost: true },
+        ],
+        beats: [['Read', 'Walk up to a pale figure and press E. Its note shows a live burn timer.'], ['Leave a trace', 'Type a short note—or say nothing. Notes last 24 hours; routes can echo later.']],
+      },
+      {
         scene: 'vault', kicker: 'NIGHT THREE · THE VAULT', title: 'THEY DO NOT ONLY WANT THE CANVAS.',
         body: 'The market wants the proof that you made it: your title, your history, your provenance. Find Mister Index and choose what, if anything, can be owned.',
-        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '04 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
+        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '05 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
         cast: [{ name: 'MISTER INDEX', role: 'archivist of ownership', face: 'puplic/visual assets/character_faces/07-elegant-older-man.png', pose: 'hero' }],
         beats: [['Navigate', 'M opens the map. Optional rooms add evidence, never requirements.'], ['Decide', 'Your choices and meters shape one of four endings.']],
       },
       {
         scene: 'choice', kicker: 'YOUR FIRST MOVE · THE GARRET', title: 'PAINT. GET SEEN. STAY YOURSELF IF YOU CAN.',
         body: 'Three nights, one growing body of work, and a city ready to turn it into an asset. Begin with the canvas. The rest will find you.',
-        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '05 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
+        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '06 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
         cast: [
           { name: 'THE ARTIST', role: 'still making the call', face: 'puplic/art gimps/Alex.png', pose: 'hero' },
           { name: 'THE CITY', role: 'already watching', face: 'puplic/visual assets/character_faces_alt/05-punk-librarian.png', pose: 'side' },
@@ -192,7 +213,7 @@ export class UIManager {
       this.el.onboardingControlNote.textContent = shot.note;
       this.el.onboardingStamp.textContent = shot.stamp;
       this.el.onboardingCast.innerHTML = shot.cast.map((person) => `
-        <figure class="film-portrait ${person.pose}">
+        <figure class="film-portrait ${person.pose}${person.ghost ? ' ghost-trace' : ''}">
           <img src="${person.face}" alt="" />
           <figcaption><strong>${person.name}</strong><span>${person.role}</span></figcaption>
         </figure>`).join('');
@@ -801,18 +822,38 @@ export class UIManager {
   }
 
   /** onClose(text) fires with a trimmed note string, or null if the player left nothing. */
-  openGhostNote(existingNote, onClose) {
+  openGhostNote(existingNote, noteExpiresAt, onClose) {
     this.show('ghost-note');
     this.el.ghostNoteText.textContent = existingNote || 'No note left here.';
+    const status = this.el.ghostNoteStatus;
+    const expiry = Number.isFinite(noteExpiresAt) ? noteExpiresAt : null;
+    const updateCountdown = () => {
+      const remaining = expiry ? Math.max(0, expiry - Date.now()) : 0;
+      if (!existingNote || !expiry || remaining <= 0) {
+        if (existingNote && expiry) this.el.ghostNoteText.textContent = 'The note burned away. Only the route remains.';
+        status.textContent = existingNote && expiry ? 'The note burned away.' : 'This trace has no message. You can still leave one.';
+        status.classList.toggle('burning', Boolean(existingNote && expiry));
+        return false;
+      }
+      const hours = Math.floor(remaining / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      status.textContent = `Burns in ${hours}h ${String(minutes).padStart(2, '0')}m · then only the route remains.`;
+      status.classList.toggle('burning', remaining <= 15 * 60 * 1000);
+      return true;
+    };
+    updateCountdown();
+    const timer = expiry ? setInterval(updateCountdown, 1000) : null;
     const input = this.el.ghostNoteInput;
     input.value = '';
     setTimeout(() => input.focus(), 60);
 
     const cleanup = () => {
+      if (timer) clearInterval(timer);
       $('ghost-note-confirm').removeEventListener('click', confirm);
       $('ghost-note-skip').removeEventListener('click', skip);
       input.removeEventListener('keydown', onKey);
       input.blur();
+      status.classList.remove('burning');
       this.hide('ghost-note');
     };
     const confirm = () => { const text = input.value.trim(); cleanup(); onClose(text || null); };
@@ -903,7 +944,7 @@ const MAP_ZONES = [
   { key: 'upAndCumming', name: 'UP AND CUMMING ARTIST', desc: 'Huge paintings in hard daylight. Muscle Mania 300 refuses every sale. Zebra Zebrason refuses his refusal.' },
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
   { key: 'hairSalon', name: 'U WISH U HAD HAIR BUT U DONT', desc: 'Six chairs, six immaculate bald heads, and enough mirrors to confirm the situation from every angle.' },
-  { key: 'rageRoom', name: 'THE GLASS BOXES', desc: 'Five soundproof booths, one breakable inventory, and Martin already halfway through the waiver.' },
+      { key: 'rageRoom', name: 'THE GLASS BOXES', desc: 'Five daylight booths, one weird jazz beat, and MC Freeglass rapping chaos into freedom.' },
   { key: 'deathMetal', name: 'BARBIE DEATH METAL', desc: 'Punks, death-metal goths, pink amps, and an argument about whether Barbie is a product or a survivor.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
   { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },

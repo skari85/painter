@@ -30,6 +30,7 @@ export class GameState extends Emitter {
     this.nightLog = [];         // rows for the end-of-night summary
     this.stats = { duelsWon: 0, meltdowns: 0, splats: 0, paintingsMade: 0, sold: 0, refused: 0 };
     this.emit('reset');
+    this.emit('change');
   }
 
   /* ---------------- meters ---------------- */
@@ -45,6 +46,7 @@ export class GameState extends Emitter {
       if (Math.abs(applied) >= 1) {
         this.nightLog.push({ label: reason || key, delta: applied, meter: key });
       }
+      this.emit('change');
     }
     return applied;
   }
@@ -58,7 +60,10 @@ export class GameState extends Emitter {
     const next = clamp(this.virtues[key] + delta, VIRTUE_MIN, VIRTUE_MAX);
     const applied = next - this.virtues[key];
     this.virtues[key] = next;
-    if (applied !== 0) this.emit('virtue', { key, value: next, delta: applied, reason });
+    if (applied !== 0) {
+      this.emit('virtue', { key, value: next, delta: applied, reason });
+      this.emit('change');
+    }
     return applied;
   }
 
@@ -73,6 +78,7 @@ export class GameState extends Emitter {
     if (this.flags.get(key) === value) return;
     this.flags.set(key, value);
     this.emit('flag', { key, value });
+    this.emit('change');
   }
   getFlag(key) { return this.flags.get(key) ?? false; }
 
@@ -83,6 +89,7 @@ export class GameState extends Emitter {
     this.items.set(key, label);
     this.nightLog.push({ label: `Received ${label}`, delta: null, item: key });
     this.emit('item', { key, label, action: 'added' });
+    this.emit('change');
     return true;
   }
 
@@ -91,6 +98,7 @@ export class GameState extends Emitter {
     const label = this.items.get(key);
     this.items.delete(key);
     this.emit('item', { key, label, action: 'removed' });
+    this.emit('change');
     return true;
   }
 
@@ -104,6 +112,7 @@ export class GameState extends Emitter {
     const text = label || 'The room has started keeping records.';
     this.nightLog.push({ label: text, delta: null, clue: key });
     this.emit('clueFound', { key, label: text, count: this.clues.size });
+    this.emit('change');
     return true;
   }
 
@@ -117,6 +126,7 @@ export class GameState extends Emitter {
     this.paintings.push(p);
     this.stats.paintingsMade++;
     this.emit('paintings');
+    this.emit('change');
   }
 
   getPainting(id) { return this.paintings.find((p) => p.id === id) ?? null; }
@@ -127,12 +137,59 @@ export class GameState extends Emitter {
 
   record(label, delta = null) {
     this.nightLog.push({ label, delta });
+    this.emit('change');
   }
 
   drainNightLog() {
     const log = this.nightLog.slice(-8);
     this.nightLog = [];
+    this.emit('change');
     return log;
+  }
+
+  snapshot() {
+    return {
+      night: this.night,
+      meters: { ...this.meters }, virtues: { ...this.virtues },
+      flags: [...this.flags], clues: [...this.clues], items: [...this.items],
+      paintings: this.paintings.map(({ id, title, quality, sold, lotNumber, storyTags, artData }) => ({
+        id, title, quality, sold: Boolean(sold), lotNumber: lotNumber ?? null,
+        storyTags: Array.isArray(storyTags) ? storyTags.slice(0, 12) : [], artData: artData ?? null,
+      })),
+      carrying: this.carrying, nightLog: this.nightLog.slice(-16), stats: { ...this.stats },
+    };
+  }
+
+  restore(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+    const night = Number(snapshot.night);
+    if (!Number.isInteger(night) || night < 1 || night > 3) return false;
+    this.night = night;
+    this.meters = Object.fromEntries(Object.entries(METERS).map(([key, def]) => {
+      const value = Number(snapshot.meters?.[key]);
+      return [key, clamp(Number.isFinite(value) ? value : def.start, def.min, def.max)];
+    }));
+    this.virtues = Object.fromEntries(VIRTUES.map((virtue) => {
+      const value = Number(snapshot.virtues?.[virtue.key]);
+      return [virtue.key, clamp(Number.isFinite(value) ? value : VIRTUE_START, VIRTUE_MIN, VIRTUE_MAX)];
+    }));
+    this.flags = new Map(Array.isArray(snapshot.flags) ? snapshot.flags.filter(([key]) => typeof key === 'string') : []);
+    this.clues = new Set(Array.isArray(snapshot.clues) ? snapshot.clues.filter((key) => typeof key === 'string') : []);
+    this.items = new Map(Array.isArray(snapshot.items) ? snapshot.items.filter(([key, label]) => typeof key === 'string' && typeof label === 'string') : []);
+    this.paintings = Array.isArray(snapshot.paintings) ? snapshot.paintings.filter((p) => p && typeof p.id === 'string' && typeof p.title === 'string').map((p) => ({
+      id: p.id, title: p.title.slice(0, 42), quality: clamp(Number(p.quality) || 0, 0, 100), sold: Boolean(p.sold),
+      lotNumber: typeof p.lotNumber === 'string' ? p.lotNumber.slice(0, 32) : null,
+      storyTags: Array.isArray(p.storyTags) ? p.storyTags.filter((tag) => typeof tag === 'string').slice(0, 12) : [],
+      artData: typeof p.artData === 'string' && p.artData.startsWith('data:image/') && p.artData.length < 1500000 ? p.artData : null,
+      texture: null,
+    })) : [];
+    this.carrying = this.paintings.some((p) => p.id === snapshot.carrying) ? snapshot.carrying : null;
+    this.nightLog = Array.isArray(snapshot.nightLog) ? snapshot.nightLog.slice(-16) : [];
+    this.stats = { ...this.stats, ...(snapshot.stats && typeof snapshot.stats === 'object' ? snapshot.stats : {}) };
+    this.emit('reset');
+    this.emit('paintings');
+    this.emit('change');
+    return true;
   }
 }
 
@@ -242,3 +299,14 @@ export function completeDaily(stamp = dayStamp()) {
   }
   return meta;
 }
+
+export function loadRun() {
+  try {
+    const raw = localStorage.getItem(STORAGE.run);
+    const saved = raw ? JSON.parse(raw) : null;
+    return saved?.version === 1 && saved.state ? saved : null;
+  } catch { return null; }
+}
+
+export function saveRun(run) { write(STORAGE.run, run); }
+export function clearRun() { try { localStorage.removeItem(STORAGE.run); } catch { /* fail-soft */ } }

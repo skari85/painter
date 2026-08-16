@@ -11,6 +11,7 @@ const MAX_PATH_POINTS = 150;
 const MAX_NOTE_LEN = 140;
 const MAX_LIMIT = 20;
 const RATE_LIMIT_WINDOW_SECONDS = 60;
+const NOTE_TTL_MS = 24 * 60 * 60 * 1000;
 const CONTROL_CHARS = new RegExp('[\\u0000-\\u001F\\u007F]', 'g');
 
 function corsHeaders(allowedOrigin) {
@@ -110,17 +111,24 @@ async function handleGet(url, env, headers) {
   const limit = Math.min(MAX_LIMIT, Math.max(1, Number(url.searchParams.get('limit')) || 8));
 
   const { results } = await env.DB.prepare(
-    'SELECT id, palette, path, note FROM ghosts WHERE zone_key = ? ORDER BY created_at DESC LIMIT ?'
+    'SELECT id, created_at, palette, path, note FROM ghosts WHERE zone_key = ? ORDER BY created_at DESC LIMIT ?'
   )
     .bind(zoneKey, limit)
     .all();
 
-  const ghosts = results.map((row) => ({
-    id: row.id,
-    palette: JSON.parse(row.palette),
-    path: JSON.parse(row.path),
-    note: row.note ?? null,
-  }));
+  const now = Date.now();
+  const ghosts = results.map((row) => {
+    const noteExpiresAt = row.note ? Number(row.created_at) + NOTE_TTL_MS : null;
+    const noteIsAlive = noteExpiresAt && noteExpiresAt > now;
+    return {
+      id: row.id,
+      palette: JSON.parse(row.palette),
+      path: JSON.parse(row.path),
+      // The recording can remain, but its message only belongs to the next day.
+      note: noteIsAlive ? row.note : null,
+      noteExpiresAt: noteIsAlive ? noteExpiresAt : null,
+    };
+  });
 
   return json({ ghosts }, { status: 200 }, headers);
 }

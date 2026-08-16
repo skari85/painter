@@ -198,6 +198,9 @@ kbd {
 .film-portrait.side { width: 45%; height: 52%; right: 1%; bottom: 3%; transform: rotate(6deg); border-color: color-mix(in srgb, var(--film-scene) 72%, white); }
 .film-portrait img { display: block; width: 100%; height: calc(100% - 53px); object-fit: cover; object-position: center top; filter: saturate(.83) contrast(1.1); }
 .film-portrait.hero img { object-position: center 20%; }
+.film-portrait.ghost-trace { border-color: color-mix(in srgb, var(--film-scene) 82%, white); box-shadow: 0 0 0 1px rgba(255,255,255,.16), 0 0 36px color-mix(in srgb, var(--film-scene) 35%, transparent), 18px 24px 45px rgba(0,0,0,.46); }
+.film-portrait.ghost-trace::after { content: ''; position: absolute; z-index: 2; inset: 0 0 53px; pointer-events: none; opacity: .34; background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--film-scene) 48%, transparent) 0 1px, transparent 1px 6px); mix-blend-mode: screen; }
+.film-portrait.ghost-trace img { opacity: .7; filter: saturate(.58) contrast(1.14) sepia(.12) hue-rotate(168deg); }
 .film-portrait figcaption { position: absolute; inset: auto 0 0; min-height: 53px; padding: 9px 12px; display: grid; gap: 1px; background: #e9e4d5; color: #191912; }
 .film-portrait figcaption strong { font: 800 10px/1.1 var(--font-mono); letter-spacing: .1em; }
 .film-portrait figcaption span { font-size: 10px; color: #625e51; }
@@ -219,6 +222,7 @@ kbd {
 .film-controls .btn.primary:hover { background: color-mix(in srgb, var(--film-scene) 88%, white); }
 .film-frame[data-scene="market"] .film-image { background-image: linear-gradient(125deg, rgba(25,21,17,.78), rgba(15,10,12,.62)), url('../puplic/polyhaven/daylight-garden/painted_plaster_wall/painted_plaster_wall_diff_1k.jpg'); }
 .film-frame[data-scene="voices"] .film-image { background-image: linear-gradient(125deg, rgba(20,14,18,.86), rgba(10,9,13,.72)), url('../puplic/polyhaven/max-pro/concrete_floor_painted/concrete_floor_painted_diff_1k.jpg'); }
+.film-frame[data-scene="ghosts"] .film-image { background-image: linear-gradient(125deg, rgba(10,18,27,.88), rgba(8,11,18,.68)), url('../puplic/polyhaven/max-pro/concrete_floor_painted/concrete_floor_painted_diff_1k.jpg'); }
 .film-frame[data-scene="vault"] .film-image { background-image: linear-gradient(125deg, rgba(15,18,15,.86), rgba(4,6,5,.72)), url('../puplic/polyhaven/studio/worn_plaster_wall/worn_plaster_wall_diff_1k.jpg'); }
 .film-frame[data-scene="choice"] .film-image { background-image: linear-gradient(125deg, rgba(28,22,17,.82), rgba(8,9,9,.7)), url('../puplic/polyhaven/studio/old_wood_floor/old_wood_floor_diff_1k.jpg'); }
 .shot-enter .film-copy, .shot-enter .film-portrait { animation: film-copy-in .48s var(--ease-out) both; }
@@ -826,6 +830,9 @@ kbd {
 }
 .ghost-chip:hover { transform: translateY(-3px) scale(1.06); box-shadow: 0 0 18px var(--ghost-color); }
 .ghost-chip.active { background: var(--ghost-color); color: #0b0b0f; box-shadow: 0 0 24px var(--ghost-color); }
+.ghost-note-status { margin: -9px 0 var(--s2); color: #8ab4ff; font: 700 10px/1.45 var(--font-mono); letter-spacing: .04em; }
+.ghost-note-status.burning { color: #f08a5d; animation: ghost-note-burn .75s steps(2) infinite; }
+@keyframes ghost-note-burn { 50% { opacity: .45; text-shadow: 0 0 10px rgba(240,138,93,.72); } }
 .seance-orb {
   min-height: 120px;
   border-radius: 16px;
