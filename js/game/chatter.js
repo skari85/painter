@@ -164,9 +164,15 @@ export class ChatterEngine extends Emitter {
     const [a, b] = pickPair(near);
     const s = this.#state;
     const lastEvent = s.nightLog.length ? s.nightLog[s.nightLog.length - 1].label : null;
+    const latest = s.paintings[s.paintings.length - 1];
+    const story = s.clueCount
+      ? `The Artist has noticed ${s.clueCount} quiet archive sign${s.clueCount === 1 ? '' : 's'}. Let the guests infer what that means.`
+      : '';
     const user = [
       `Setting: ${ctx.zoneName}, night ${ctx.night}. The wandering artist's fame is ${Math.round(s.meters.fame)}, notoriety ${Math.round(s.meters.heat)}.`,
       lastEvent ? `Something just happened: ${lastEvent}. They may gossip about it.` : '',
+      latest?.title ? `The current work is titled “${latest.title}” and carries lot ${latest.lotNumber ?? 'A-01'}.` : '',
+      story,
       `A is ${persona(a.def)}`,
       `B is ${persona(b.def)}`,
       `They are standing near: ${pick(ctx.zoneKey === 'daylightClub' ? DAYLIGHT_TOPICS : TOPICS)}.`,

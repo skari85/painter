@@ -12,6 +12,7 @@
 
 import { Emitter, pick, randInt, chance, clamp } from '../core/utils.js';
 import { DUEL } from '../core/config.js';
+import { storyLineFor } from './narrative.js';
 
 /* ============================================================
    The Weird Line Generator — for the unauthored masses
@@ -107,11 +108,19 @@ function lineFor(def, poolName, genFallback) {
 export class DialogueEngine extends Emitter {
   #state;
   #usedJabs = { kind: [], witty: [], brutal: [] };
+  #usedStoryLines = new Set();
 
   constructor(state) {
     super();
     this.#state = state;
     this.active = null;
+  }
+
+  #line(def, poolName, genFallback = null, tone = null) {
+    return storyLineFor(def, poolName, this.#state, this.#usedStoryLines)
+      ?? (poolName === 'reactions' && tone && def.reactions?.[tone]?.length
+        ? pick(def.reactions[tone])
+        : lineFor(def, poolName, genFallback));
   }
 
   start(npc, opts = {}) {
@@ -127,7 +136,7 @@ export class DialogueEngine extends Emitter {
       options,
       outcome: null,
     };
-    const line = opts.opener ?? lineFor(npc.def, 'openers', GEN.openers);
+    const line = opts.opener ?? this.#line(npc.def, 'openers', GEN.openers);
     this.emit('start', { npc, line, options, hint: npc.def.hint ?? '' });
     return true;
 
@@ -210,9 +219,9 @@ export class DialogueEngine extends Emitter {
 
     // ---- their reply ----
     let line;
-    if (resisted || healed) line = lineFor(def, 'countered', GEN.countered);
-    else if (mod >= DUEL.weakMultiplier) line = def.weakHit?.length ? pick(def.weakHit) : lineFor(def, 'reactions', GEN.reactions);
-    else line = def.reactions?.[tone]?.length ? pick(def.reactions[tone]) : lineFor(def, 'reactions', GEN.reactions);
+    if (resisted || healed) line = this.#line(def, 'countered', GEN.countered);
+    else if (mod >= DUEL.weakMultiplier) line = this.#line(def, 'weakHit', GEN.reactions);
+    else line = this.#line(def, 'reactions', GEN.reactions, tone);
 
     // ---- outcomes ----
     if (npc.ego <= 0) {
@@ -223,7 +232,7 @@ export class DialogueEngine extends Emitter {
       s.addMeter('heat', 8, 'Everyone saw it happen');
       s.shiftVirtue('valor', 2, '');
       s.shiftVirtue('humility', -2, '');
-      this.emit('shatter', { npc, line: lineFor(def, 'meltdown', GEN.meltdowns), dmg, tone });
+      this.emit('shatter', { npc, line: this.#line(def, 'meltdown', GEN.meltdowns), dmg, tone });
       return;
     }
 
@@ -231,13 +240,13 @@ export class DialogueEngine extends Emitter {
       a.outcome = 'disarm';
       s.addMeter('soul', 4, 'You reached the person inside');
       s.shiftVirtue('compassion', 3, '');
-      this.emit('disarm', { npc, line: lineFor(def, 'disarmed', null) || '...Oh. Oh no. You meant that.', dmg, tone });
+      this.emit('disarm', { npc, line: this.#line(def, 'disarmed', null) || '...Oh. Oh no. You meant that.', dmg, tone });
       return;
     }
 
     if (a.rounds >= DUEL.roundsBeforeDismiss) {
       a.outcome = 'dismiss';
-      this.emit('dismiss', { npc, line: lineFor(def, 'dismiss', GEN.dismiss), dmg, tone });
+      this.emit('dismiss', { npc, line: this.#line(def, 'dismiss', GEN.dismiss), dmg, tone });
       return;
     }
 

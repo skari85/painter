@@ -1946,6 +1946,219 @@ export const HAIR_SALON_CAST = [
   },
 ];
 
+/* ============================================================
+   BARBIE DEATH METAL — five punks/goths, one pink argument.
+   Nobody in this room is allowed to call Barbie “just a toy”.
+   ============================================================ */
+export const DEATH_METAL_CAST = [
+  {
+    id: 'razorKen', name: 'Razor Ken', shortRole: 'punk curator', role: 'Punk Curator — Barbie Is a Riot Grrrl With a Brand Deal',
+    static: true, anchor: 'razorKen', ego: 72, weak: 'witty', resist: 'kind',
+    hint: 'He thinks every Barbie accessory is a tiny riot sign, including the accessories he is currently wearing.',
+    pace: 0.42, pitch: 0.78, accessory: null,
+    palette: { skin: 0xc98f70, hair: 0x17131c, top: 0xd42072, bottom: 0x121018 },
+    openers: [
+      'Barbie is not pink. Barbie is a riot with excellent merchandising.',
+      'The first thing punk did was make a style out of refusing style. Barbie has been doing that in heels for decades.',
+    ],
+    countered: ['That is a suspiciously clean argument. I respect the dirt you hid under it.', 'You almost made a point. Put a safety pin through it.'],
+    reactions: {
+      kind: ['Fine. Barbie can be complicated and still deserve a chorus.'],
+      witty: ['Good. The joke has a mohawk now.'],
+      brutal: ['That is not criticism. That is a landlord yelling at a poster.'],
+    },
+    weakHit: ['Do not confuse a product with a person. Barbie has survived worse branding than yours.'],
+    disarmed: ['I hate that you made room for both the doll and the damage. That is good curation.'],
+    dismiss: ['I am going to argue with the amp. It has fewer investors.'],
+    meltdown: 'BARBIE IS A CORPORATION, A CHILDHOOD, A BODY, A FANTASY, AND A TOTE BAG. STOP ASKING FOR ONE ANSWER.',
+    barks: ['Barbie is a riot in a pink jacket.', 'The plastic is not the problem. The product meeting is.', 'I would die for a doll with a decent zine.'],
+    playerJabs: { kind: ['You found the person inside the product. Do not tell the product manager.'], witty: ['Razor Ken, your thesis has better hair than your haircut.'], brutal: ['You are a curator because the band would not let you touch the cables.'] },
+  },
+  {
+    id: 'baronessBlastbeat', name: 'Baroness Blastbeat', shortRole: 'death-metal goth', role: 'Death-Metal Goth — The Doll Is a Tiny Funeral',
+    static: true, anchor: 'baronessBlastbeat', ego: 84, weak: 'brutal', resist: 'witty',
+    hint: 'She sees every pastel object as evidence of a beautiful, market-tested apocalypse.',
+    pace: 0.35, pitch: 0.58, accessory: null,
+    palette: { skin: 0xd0a18e, hair: 0x08070c, top: 0x17131e, bottom: 0x08080d },
+    openers: [
+      'Barbie is a death-metal figure. The pink is the blood after the lights come on.',
+      'The doll has had more identities than this room has amps. That is why I trust her.',
+    ],
+    countered: ['Your argument has a pulse. Irritating. Continue.', 'Do not make the darkness cute. The darkness has a union.'],
+    reactions: {
+      kind: ['Tenderness is not a betrayal of the riff. It is the intro.'],
+      witty: ['That joke entered wearing corpse paint. Acceptable.'],
+      brutal: ['Finally, a sentence with a coffin in it.'],
+    },
+    weakHit: ['You cannot call the doll shallow while standing on a stage made of other people’s projections.'],
+    disarmed: ['You may remain near the pink object. It has not rejected you yet.'],
+    dismiss: ['I have to go stare at the speaker until it confesses.'],
+    meltdown: 'SHE IS NOT EMPTY. SHE IS A VESSEL. THE BRAND FILLED HER WITH EVERYONE’S DESIRE AND CALLED IT PLAYTIME.',
+    barks: ['The doll wears the apocalypse better than most adults.', 'Pink is a minor key if you hit it hard enough.', 'Every accessory is a tiny relic from the consumer afterlife.'],
+    playerJabs: { kind: ['Your kindness has a funeral march underneath it. I approve.'], witty: ['Baroness, your eyeliner has more footnotes than the artwork.'], brutal: ['You are not a goth; you are a mood board waiting for a candle.'] },
+  },
+  {
+    id: 'kikiKillswitch', name: 'Kiki Killswitch', shortRole: 'punk zine artist', role: 'Punk Zine Artist — Barbie Against the Wall',
+    static: true, anchor: 'kikiKillswitch', ego: 61, weak: 'kind', resist: 'brutal',
+    hint: 'She wants the Barbie debate to become a photocopied zine before anyone can turn it into a panel.',
+    pace: 0.5, pitch: 1.15, accessory: null,
+    palette: { skin: 0xc98770, hair: 0xf32b82, top: 0x25202d, bottom: 0x111018 },
+    openers: [
+      'Barbie art should be photocopied badly, stapled crookedly, and handed to someone who needs it.',
+      'If Barbie can be anything, she can be an anti-capitalist poster with terrible kerning.',
+    ],
+    countered: ['That line needs a photocopier and one illegal margin.', 'You are dangerously close to making a zine.'],
+    reactions: {
+      kind: ['The doll can be a wound and a weapon. Put that on page two.'],
+      witty: ['I am stealing that joke for the back cover.'],
+      brutal: ['Good. Make it uglier. Pretty arguments get sponsored.'],
+    },
+    weakHit: ['The joke is not the politics. The joke is how fast the politics gets merch.'],
+    disarmed: ['You can write the dedication. I will spell your name correctly on purpose.'],
+    dismiss: ['I need to staple something before the room becomes a conference.'],
+    meltdown: 'BARBIE HAS A DREAMHOUSE. I HAVE A COPY SHOP. BOTH ARE TEMPORARY. ONLY ONE HAS A PHOTOCOPIER JAM.',
+    barks: ['The zine title is BARBIE AGAINST THE WALL.', 'Pink ink costs more. That is already a political statement.', 'I cut the logo out and it still followed me.'],
+    playerJabs: { kind: ['You gave the doll a margin. That is more freedom than most galleries offer.'], witty: ['Kiki, your zine has better structure than the entire art market.'], brutal: ['You are punk in the way a stapler is punk: useful, loud, and always jammed.'] },
+  },
+  {
+    id: 'morticiaPlastic', name: 'Morticia Plastic', shortRole: 'death-metal goth', role: 'Death-Metal Goth — Barbie’s Funeral Director',
+    static: true, anchor: 'morticiaPlastic', ego: 76, weak: 'witty', resist: 'kind',
+    hint: 'She has dressed Barbie for her funeral, her comeback tour, and three increasingly expensive rebrands.',
+    pace: 0.3, pitch: 0.66, accessory: null,
+    palette: { skin: 0xd8b09a, hair: 0x111018, top: 0x3a164c, bottom: 0x0b0a10 },
+    openers: [
+      'Every Barbie is a ghost of a future self. The death-metal version simply admits the haunting.',
+      'I am not saying Barbie is dead. I am saying the corpse has excellent posture.',
+    ],
+    countered: ['A bright thought. Hide it under black lace before it gets ideas.', 'Your argument has returned from the grave with improved wording.'],
+    reactions: {
+      kind: ['There is room for joy at the funeral. The dead are often generous.'],
+      witty: ['That was almost elegant. I will permit the laughter.'],
+      brutal: ['Cruelty is not depth. It is only volume without a drummer.'],
+    },
+    weakHit: ['Barbie is not shallow because the world keeps trying to flatten her.'],
+    disarmed: ['You may place one pink flower on the coffin. Do not make it sentimental.'],
+    dismiss: ['The bass is calling. It has a better grasp of mortality.'],
+    meltdown: 'I HAVE BURIED BARBIE TWICE. SHE CAME BACK WITH A NEW OUTFIT AND A STRONGER CONTRACT.',
+    barks: ['The funeral has a merch table.', 'Her afterlife is made of accessories.', 'Black is just pink after the shareholders leave.'],
+    playerJabs: { kind: ['You found the grief inside the glamour. That is almost a song.'], witty: ['Morticia, your mourning veil has the room’s most coherent theory.'], brutal: ['You are a funeral director for ideas you never had.'] },
+  },
+  {
+    id: 'boneBarbie', name: 'Bone Barbie', shortRole: 'goth bass player', role: 'Goth Bass Player — The Low End of the Dreamhouse',
+    static: true, anchor: 'boneBarbie', ego: 68, weak: 'brutal', resist: 'kind',
+    hint: 'He believes every Barbie debate needs more bass, fewer panels, and one honest answer about the shoes.',
+    pace: 0.38, pitch: 0.74, accessory: null,
+    palette: { skin: 0xb57e69, hair: 0x08090d, top: 0x24202b, bottom: 0x0b0b10 },
+    openers: [
+      'Barbie art is a bassline: everybody stands on it, nobody admits it is carrying the song.',
+      'The dreamhouse is just a stage set with better lighting and no load-in instructions.',
+    ],
+    countered: ['That has rhythm. I hate rhythm when it proves a point.', 'You can stay near the amp. Your argument is almost loud enough.'],
+    reactions: {
+      kind: ['Maybe the dream is allowed to be heavy. That is the first useful thing tonight.'],
+      witty: ['Good line. I will play it in E flat.'],
+      brutal: ['At least you hit the low end. Most critics only kick the treble.'],
+    },
+    weakHit: ['Do not blame the doll for the people who keep turning her into a mirror.'],
+    disarmed: ['Fine. The plastic can stay. The bass can make room.'],
+    dismiss: ['I am going to tune the dreamhouse until it stops lying.'],
+    meltdown: 'THE DREAMHOUSE IS OUT OF TUNE. THE DOLL IS STILL SINGING. THE AMP IS THE ONLY HONEST WITNESS.',
+    barks: ['The dreamhouse has no basement. Cowardice.', 'A good riff can make a plastic body feel haunted.', 'The shoes are not practical. Neither is art.'],
+    playerJabs: { kind: ['You heard the low end under the fantasy. Keep listening.'], witty: ['Bone Barbie, your bass has better arguments than your mouth.'], brutal: ['You are the backing track of a person who keeps missing the chorus.'] },
+  },
+  {
+    id: 'fatPunk', name: 'Big Fart Tony', shortRole: 'roaming punk', role: 'Punk — Atmospheric Warfare / Unconvincing Denial',
+    fartingPunk: true, bodyScale: [1.35, 1.08, 1.22], anchor: 'fatPunk',
+    ego: 52, weak: 'witty', resist: 'brutal', pace: 0.72, pitch: 0.64, accessory: null,
+    palette: { skin: 0xc58a70, hair: 0x17121b, top: 0x42152f, bottom: 0x0d0d12 },
+    hint: 'A large roaming punk with a suspiciously innocent face and a route that keeps ending beside other people.',
+    openers: [
+      'Barbie art needs air. I am helping the installation breathe.',
+      'I support the doll, the riff, and plausible deniability.',
+    ],
+    countered: ['That accusation has no forensic basis. Also, move two steps left.', 'I am just walking. The room is making its own decisions.'],
+    reactions: {
+      kind: ['Thank you. Finally, a person who understands the difference between blame and evidence.'],
+      witty: ['You are hilarious. I am still innocent.'],
+      brutal: ['Big words from someone standing directly downwind of the truth.'],
+    },
+    weakHit: ['You cannot prove intent. You can barely prove the amp is plugged in.'],
+    disarmed: ['Fine. I may have encouraged the atmosphere. Barbie would want the honesty.'],
+    dismiss: ['I am going to the other side of the pit where the air has fewer witnesses.'],
+    meltdown: 'IT WAS NOT ME. I WAS NOT EVEN THERE. THE BARBIE DID IT. ASK THE BARBIE.',
+    barks: ['Oh sorry, but it was not me.', 'The air is punk now. You are welcome.', 'I have been framed by my own trousers.'],
+    playerJabs: { kind: ['You are kind. That makes the denial harder, but not impossible.'], witty: ['Tony, your alibi has a smell and a rhythm section.'], brutal: ['You are a walking venue evacuation with a merch table.'] },
+  },
+];
+
+/** The public restroom's only fully conversational patron. */
+export const PUBLIC_RESTROOM_CAST = [{
+  id: 'doctorDrug', name: 'Doctor Drug', shortRole: '', role: 'Drugdealer',
+  interactLabel: 'Talk to Drugdealer',
+  static: true, anchor: 'doctorDrug', bald: true, accessory: 'drugHelmet',
+  ego: 78, weak: 'kind', resist: 'brutal',
+  hint: 'He thinks every institution is following him. A calm distinction between real crises and private patterns gets under the helmet.',
+  pace: 0.58, pitch: 0.67, labelScale: 1.08,
+  palette: { skin: 0x9b6c53, hair: 0x05060a, top: 0x05060a, bottom: 0x030407, hat: 0x05060a },
+  openers: [
+    'Keep your voice below the hand dryer. The coalition records everything above forty decibels.',
+    'Climate change is real. The weather following me personally is a separate operation.',
+    'Politics is weather in a necktie. Climate is politics after everybody responsible has retired.',
+    'I do not sell drugs. I redistribute chemistry before parliament can form a committee around it.',
+  ],
+  countered: [
+    'Threats are useful. They confirm the microphone was worth installing in the helmet.',
+    'That is exactly how an unmarked ministry intern would phrase it.',
+  ],
+  reactions: {
+    kind: [
+      'You believe the planet is in trouble without believing the ceiling vent knows my surname. Interesting boundary.',
+      'Quiet. Reasonable. Specific. I distrust it, but my pulse has filed a temporary ceasefire.',
+      'Maybe concern does not have to become surveillance. Do not repeat that near the mirror.',
+    ],
+    witty: [
+      'Laugh now. When the carbon tax develops facial recognition, use the back stall.',
+      'A joke is a message that destroyed its own paper trail. I respect the format.',
+    ],
+    brutal: [
+      'Raised voices make the helmet encrypt my thoughts harder.',
+      'Aggression is just policy with the committee stage removed.',
+    ],
+  },
+  weakHit: [
+    'Fine. The climate report is evidence. The soap dispenser blinking twice at me is probably not.',
+    'Stop separating public danger from private paranoia. The distinction is structurally devastating.',
+  ],
+  disarmed: [
+    'The planet can be warming and I can still be wrong about the minister hiding in stall two. Both facts fit under the helmet.',
+  ],
+  dismiss: [
+    'Conversation terminated. The ventilation has changed parties.',
+    'Go. I need to rotate three degrees away from the security camera.',
+  ],
+  meltdown: 'THE CRISIS IS REAL. THE CONSPIRACY IS MOSTLY ME. THE HELMET HAS BEEN AMPLIFYING BOTH.',
+  barks: [
+    'The hand dryer is lobbying somebody.',
+    'Never trust a policy announced during unusual humidity.',
+    'The planet is heating. My helmet has independent findings.',
+    'Stall two has changed its voting record.',
+  ],
+  playerJabs: {
+    kind: [
+      'Climate change is real, but not every flickering bulb is a government message meant specifically for you.',
+      'You can care about politics without making every room into a private surveillance chamber.',
+    ],
+    witty: [
+      'Your helmet has two antennas and somehow receives only opposition polling.',
+      'The hand dryer denies all lobbying allegations and requests counsel.',
+    ],
+    brutal: [
+      'You turned every shared emergency into a private thriller where you are the only credited expert.',
+      'The helmet is not blocking propaganda. It is keeping your own panic on surround sound.',
+    ],
+  },
+}];
+
 /** Build a crowd of ambient weirdos for a zone. */
 export function buildCrowd(zoneKey, night, count) {
   const defs = [];
@@ -2065,6 +2278,9 @@ export function castForNight(night) {
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
         hairSalon: HAIR_SALON_CAST,
+        rageRoom: [],
+        deathMetal: DEATH_METAL_CAST,
+        publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
     case 2:
@@ -2085,6 +2301,9 @@ export function castForNight(night) {
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
         hairSalon: HAIR_SALON_CAST,
+        rageRoom: [],
+        deathMetal: DEATH_METAL_CAST,
+        publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
     default:
@@ -2102,6 +2321,9 @@ export function castForNight(night) {
         upAndCumming: UP_AND_CUMMING_CAST,
         vacantEditions: VACANT_EDITIONS_CAST,
         hairSalon: HAIR_SALON_CAST,
+        rageRoom: [],
+        deathMetal: DEATH_METAL_CAST,
+        publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
       };
 

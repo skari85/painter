@@ -96,6 +96,9 @@ export class QuestDirector extends Emitter {
       case 'paintingHung':
         if (step.id === 'hang') {
           s.addMeter('fame', 4, 'Your work is on a white wall');
+          s.record(s.night === 1
+            ? 'Your work was discussed before it was seen'
+            : 'The title travelled farther than the canvas', null);
           this.#advance();
         }
         break;
@@ -162,11 +165,14 @@ export class QuestDirector extends Emitter {
   appraisalScript(painting, fame) {
     const q = painting.quality;
     const offer = Math.round(18 + q * 0.75 + fame * 0.35);
+    const archive = this.#state.hasClue('provenanceSeen')
+      ? `There is already a red dot beside “${painting.title}”. ${painting.lotNumber ?? 'A-01'} is what they call it. `
+      : '';
     const opener = q >= 55
-      ? `Hm. “${painting.title}”. It's... actually good. Don't let it go to your head, it's bad for the walls. ${offer} cash, and I hang it where people can see it.`
+      ? `${archive}Hm. “${painting.title}”. It's... actually good. Don't let it go to your head, it's bad for the walls. ${offer} cash, and I hang it where people can see it.`
       : q >= 30
-        ? `“${painting.title}”. Competent. Competence is having a moment. ${offer} cash, take it before the moment passes.`
-        : `“${painting.title}”. Well. It's certainly... on canvas. I can move it as "raw". ${offer} cash, and we never speak of the process.`;
+        ? `${archive}“${painting.title}”. Competent. Competence is having a moment. ${offer} cash, take it before the moment passes.`
+        : `${archive}“${painting.title}”. Well. It's certainly... on canvas. I can move it as "raw". ${offer} cash, and we never speak of the process.`;
     return {
       opener,
       custom: [

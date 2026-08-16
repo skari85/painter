@@ -23,7 +23,9 @@ export class GameState extends Emitter {
     );
     this.virtues = Object.fromEntries(VIRTUES.map((v) => [v.key, VIRTUE_START]));
     this.flags = new Map();
-    this.paintings = [];        // { id, title, texture, quality, sold }
+    this.clues = new Set();
+    this.items = new Map();      // run-only side-quest inventory
+    this.paintings = [];        // { id, title, texture, quality, sold, lotNumber, storyTags }
     this.carrying = null;       // painting id
     this.nightLog = [];         // rows for the end-of-night summary
     this.stats = { duelsWon: 0, meltdowns: 0, splats: 0, paintingsMade: 0, sold: 0, refused: 0 };
@@ -73,6 +75,41 @@ export class GameState extends Emitter {
     this.emit('flag', { key, value });
   }
   getFlag(key) { return this.flags.get(key) ?? false; }
+
+  /* ---------------- side-quest inventory ---------------- */
+
+  addItem(key, label = key) {
+    if (this.items.has(key)) return false;
+    this.items.set(key, label);
+    this.nightLog.push({ label: `Received ${label}`, delta: null, item: key });
+    this.emit('item', { key, label, action: 'added' });
+    return true;
+  }
+
+  removeItem(key) {
+    if (!this.items.has(key)) return false;
+    const label = this.items.get(key);
+    this.items.delete(key);
+    this.emit('item', { key, label, action: 'removed' });
+    return true;
+  }
+
+  hasItem(key) { return this.items.has(key); }
+
+  /* ---------------- narrative memory ---------------- */
+
+  discoverClue(key, label = '') {
+    if (this.clues.has(key)) return false;
+    this.clues.add(key);
+    const text = label || 'The room has started keeping records.';
+    this.nightLog.push({ label: text, delta: null, clue: key });
+    this.emit('clueFound', { key, label: text, count: this.clues.size });
+    return true;
+  }
+
+  hasClue(key) { return this.clues.has(key); }
+  get clueCount() { return this.clues.size; }
+  storyContext() { return [...this.clues]; }
 
   /* ---------------- paintings ---------------- */
 

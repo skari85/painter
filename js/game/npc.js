@@ -71,6 +71,7 @@ const FACE_STYLE = {
   petra:    { brow: 0.6,  mouth: -0.3,  lip: '#3a3a44' },  // severe
   baron:    { brow: 0.25, mouth: 0.15,  moustache: true },
   lucia:    { brow: -0.1, mouth: 0.25,  lip: '#6e2f3a' },
+  doctorDrug: { brow: 0.92, mouth: -0.42, shift: 5.5, gaunt: true },
 };
 
 const faceCache = new Map();
@@ -218,6 +219,37 @@ const ACCESSORY = {
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.035, 16), mats.hat ?? mats.hair);
     brim.position.set(0, hy - 0.06, 0);
     g.add(crown, brim);
+  },
+  drugHelmet(g) {
+    const shell = new THREE.MeshStandardMaterial({
+      color: 0x05060a, roughness: 0.18, metalness: 0.72,
+    });
+    const signal = new THREE.MeshStandardMaterial({
+      color: 0x8f35ff, emissive: 0x5015b8, emissiveIntensity: 2.4,
+      roughness: 0.16, metalness: 0.38,
+    });
+    // A five-sided crown, floating side plates and a luminous visor make the
+    // helmet look like surveillance equipment designed by a frightened club.
+    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.245, 0.34, 5), shell);
+    crown.position.set(0, 1.94, -0.015);
+    crown.rotation.y = Math.PI / 5;
+    for (const side of [-1, 1]) {
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.43, 0.27), shell);
+      plate.position.set(side * 0.185, 1.69, -0.015);
+      plate.rotation.z = side * 0.16;
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.31, 7), shell);
+      antenna.position.set(side * 0.16, 2.16, -0.01);
+      antenna.rotation.z = side * -0.2;
+      const tip = new THREE.Mesh(new THREE.OctahedronGeometry(0.045, 0), signal);
+      tip.position.set(side * 0.19, 2.31, -0.01);
+      g.add(plate, antenna, tip);
+    }
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.075, 0.07), signal);
+    visor.position.set(0, 1.69, 0.16);
+    const respirator = new THREE.Mesh(new THREE.OctahedronGeometry(0.105, 0), shell);
+    respirator.scale.set(1.1, 0.72, 0.78);
+    respirator.position.set(0, 1.52, 0.16);
+    g.add(crown, visor, respirator);
   },
 };
 
@@ -373,6 +405,10 @@ export class NPC {
 
     const parts = buildBody(def);
     this.group = parts.group;
+    if (def.bodyScale) {
+      const [sx = 1, sy = 1, sz = sx] = def.bodyScale;
+      this.group.scale.set(sx, sy, sz);
+    }
     // brush raycasts should never treat a body as a wall
     this.group.traverse((o) => { o.userData.noSplat = true; });
 
@@ -404,6 +440,12 @@ export class NPC {
   place(pos, faceYaw = rand(0, Math.PI * 2)) {
     this.group.position.copy(pos);
     this.group.rotation.y = faceYaw;
+  }
+
+  setWalkTarget(pos) {
+    if (this.dead || this.state === 'talk' || this.state === 'meltdown' || this.state === 'leaving') return;
+    this.#target = pos.clone();
+    this.#idleFor = 8;
   }
 
   setEgoVisible(v) {
@@ -653,6 +695,8 @@ export class NPCManager extends Emitter {
   #upFightT = 1.8;
   #upFight = null;
   #vacantTalkT = 2.4;
+  #fartT = 5.2;
+  #fartTarget = null;
   #vacantTalk = null;
 
   constructor(world, audio) {
@@ -670,6 +714,8 @@ export class NPCManager extends Emitter {
     this.#upFightT = 1.8;
     this.#vacantTalk = null;
     this.#vacantTalkT = 2.4;
+    this.#fartT = 4.8;
+    this.#fartTarget = null;
   }
 
   spawn(cast, zoneKey) {
@@ -744,6 +790,7 @@ export class NPCManager extends Emitter {
     this.#updateForkFight(dt);
     this.#updateUpAndCummingFight(dt);
     this.#updateVacantEditionsTalk(dt);
+    this.#updateFartPrank(dt, playerPos);
 
     // Ambient barks — subtitles from whoever is near enough to overhear. Long
     // authored room exchanges own their subtitles while they are rolling.
@@ -762,6 +809,54 @@ export class NPCManager extends Emitter {
         this.emit('bark', { name: n.def.name, text: line, pitch: n.def.pitch });
       }
     }
+  }
+
+  #updateFartPrank(dt, playerPos) {
+    if (this.world.current !== 'deathMetal') {
+      this.#fartTarget = null;
+      this.#fartT = Math.max(this.#fartT, 3.5);
+      return;
+    }
+    const punk = this.inCurrentZone.find((n) => n.def.fartingPunk && !n.dead);
+    if (!punk) return;
+    if (punk.state === 'talk' || punk.state === 'meltdown' || punk.state === 'leaving') return;
+
+    if (this.#fartTarget) {
+      const targetPos = this.#fartTarget.player ? playerPos : this.#fartTarget.npc?.group.position;
+      if (!targetPos || this.#fartTarget.npc?.dead) {
+        this.#fartTarget = null;
+        this.#fartT = 1.2;
+        return;
+      }
+      const distance = punk.group.position.distanceTo(targetPos);
+      if (distance < 1.18) {
+        const variant = Math.floor((Date.now() / 1000) * 7) % 5;
+        this.audio?.punkFart?.(variant);
+        this.emit('fartPrank', {
+          name: punk.def.name,
+          victim: this.#fartTarget.player ? 'YOU' : this.#fartTarget.npc.def.name,
+          variant,
+        });
+        this.#fartTarget = null;
+        this.#fartT = rand(6.5, 10.5);
+      } else {
+        punk.setWalkTarget(targetPos);
+      }
+      return;
+    }
+
+    this.#fartT -= dt;
+    if (this.#fartT > 0 || punk.state !== 'idle') return;
+    const guests = this.inCurrentZone.filter((n) => n !== punk && !n.dead && n.state === 'idle');
+    if (!guests.length) {
+      this.#fartT = 3;
+      return;
+    }
+    this.#fartTarget = Math.random() < 0.2
+      ? { player: true }
+      : { npc: pick(guests) };
+    const targetPos = this.#fartTarget.player ? playerPos : this.#fartTarget.npc.group.position;
+    punk.setWalkTarget(targetPos);
   }
 
   /**

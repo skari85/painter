@@ -37,6 +37,7 @@ import { ArtiEngine, COLLECTOR_CALL } from './game/arti.js';
 import { DialogueEngine } from './game/dialogue.js';
 import { ChatterEngine } from './game/chatter.js';
 import { DebateEngine } from './game/debate.js';
+import { clueReveal, endingCallback, lotNumberFor, transitionLine } from './game/narrative.js';
 
 import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
@@ -172,7 +173,11 @@ class Game {
   #resize() {
     const w = window.innerWidth, h = window.innerHeight;
     const scale = this.settings.quality;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
+    // BARBIE DEATH METAL deliberately carries the heaviest lighting/material
+    // budget. Cap its internal resolution so the concert stays responsive on
+    // high-DPI screens without lowering quality in every other room.
+    const pixelCap = this.world?.current === 'deathMetal' ? 1.15 : 2;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap) * scale);
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
@@ -341,6 +346,10 @@ class Game {
     this.dialogue.on('disarm', (r) => { this.audio.gasp(); finalLine(r, 'disarm'); });
 
     this.dialogue.on('custom', ({ npc, action }) => {
+      if (action.startsWith('drug:')) {
+        this.#resolveDrugAction(action);
+        return;
+      }
       // MAX PRO — the player has taken a position. It will be forgotten by no one.
       if (action === 'maxpro:a' || action === 'maxpro:b') {
         const side = action === 'maxpro:a' ? 'a' : 'b';
@@ -390,6 +399,9 @@ class Game {
 
     // ---- ambient barks → subtitles ----
     this.npcs.on('bark', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
+    this.npcs.on('fartPrank', ({ name, victim }) => {
+      ui.subtitle(name, `OH SORRY, BUT IT WASN'T ME. (${victim} IS MAKING ACCUSATIONS.)`, 0.64, this.audio);
+    });
 
     // ---- the ghostwriter: AI party chatter, when the key is in the room ----
     this.ai = new Ghostwriter();
@@ -424,7 +436,10 @@ class Game {
       ui.setHotkeys('naming');
       const n = this.state.paintings.length + 1;
       ui.openNaming(`Untitled Nº ${n}`, (title) => {
-        const p = { id: `p${Date.now()}`, title, texture, quality, sold: false };
+        const p = {
+          id: `p${Date.now()}`, title, texture, quality, sold: false,
+          lotNumber: lotNumberFor(n), storyTags: [],
+        };
         this.state.addPainting(p);
         this.state.carrying = p.id;
         this.#syncCarry();
@@ -487,7 +502,9 @@ class Game {
     this.npcs.clear();
     this.world.clearSplats();
     this.world.clearDisplay();
+    this.world.setVaultArchive('THE ARTIST', 'A-01');
     this.world.resetForestChurches();
+    this.world.resetRageRoom();
     this.pendingAppraisal = null;
     this.#dailyProgress = 0;
     this.#cowVisitedThisRun = false;
@@ -556,7 +573,7 @@ class Game {
 
       this.ui.hide('hud');
       this.ui.hideHotkeys();
-      this.ui.showEnding(key, this.state);
+      this.ui.showEnding(key, this.state, endingCallback(key, this.state));
       this.mode = 'ending';
     });
   }
@@ -866,6 +883,21 @@ class Game {
       return;
     }
 
+    if (this.world.current === 'rageRoom') {
+      this.#swingCooldown = SWING.cooldown;
+      this.hand.swing();
+      this.audio.swing();
+      setTimeout(() => {
+        if (this.mode !== 'playing' || this.world.current !== 'rageRoom') return;
+        const result = this.world.breakRageObject(this.player.position, this.player.forwardDir(this.#fwd));
+        if (result.broken) {
+          this.audio.rageBreak(result.variant);
+          this.ui.toast('RAGE ROOM', `${result.label} breaks. The waiver remains undefeated.`, 'bad');
+        }
+      }, 120);
+      return;
+    }
+
     this.#swingCooldown = SWING.cooldown;
     this.hand.swing();
     this.audio.swing();
@@ -899,6 +931,7 @@ class Game {
       }
 
       // walls & floors drink the paint
+      this.#raycaster.camera = this.camera; // sprite billboards need camera context while recursively raycasting
       this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
       this.#raycaster.far = SWING.range + 0.6;
       const hit = this.paint.splatFromRay(this.#raycaster, this.world);
@@ -928,6 +961,7 @@ class Game {
       this.audio.uiMove();
       return;
     }
+    this.#raycaster.camera = this.camera;
     this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
     this.#raycaster.far = 5.5;
     const hits = this.#raycaster.intersectObjects(this.world.zone().group.children, true);
@@ -1030,6 +1064,23 @@ class Game {
         }
         break;
       case 'flavor':
+        if (it.clueKey && !this.state.hasClue(it.clueKey)) {
+          const latest = this.state.paintings[this.state.paintings.length - 1];
+          if (it.requiresPainting && !latest) {
+            this.ui.toast('THE ARCHIVE', 'The room has nothing to catalogue yet. Make something first.', 'bad');
+            break;
+          }
+          const lot = latest?.lotNumber ?? lotNumberFor(this.state.paintings.length || 1);
+          const title = latest?.title ?? 'the work';
+          this.state.discoverClue(it.clueKey, clueReveal(it.clueKey));
+          const clueLines = it.clueLines?.length ? it.clueLines : it.lines;
+          const clueLine = pick(clueLines)
+            .replaceAll('{{lot}}', lot)
+            .replaceAll('{{title}}', `“${title}”`);
+          this.ui.toast(it.title ?? 'THE ARCHIVE', clueLine, 'good');
+          this.audio.uiMove();
+          break;
+        }
         if (it.id === 'dildoball-cow') { this.#addressTheCow(it); break; }
         this.ui.toast(it.title ?? 'THE SCENE', pick(it.lines));
         this.audio.uiMove();
@@ -1038,6 +1089,9 @@ class Game {
         this.ui.toast(it.title ?? 'THE PUBLIC RESTROOM', it.lines ? pick(it.lines) : it.line);
         if (it.sound === 'piss') this.audio.restroomPiss(it.variant ?? 0);
         else this.audio.restroomFart(it.variant ?? 0);
+        break;
+      case 'drugPacking':
+        this.#packMuscleManiaDelivery();
         break;
       case 'church': {
         const result = this.world.primeForestChurch(it.churchIndex);
@@ -1115,7 +1169,7 @@ class Game {
           this.ui.toast('EMPTY HANDS', 'Your wall waits. Bring something finished from the garret.');
           return;
         }
-        this.world.hangOnDisplay(carried.texture, carried.title);
+        this.world.hangOnDisplay(carried.texture, carried.title, carried.lotNumber);
         this.pendingAppraisal = { p: carried };
         this.state.carrying = null;
         this.#syncCarry();
@@ -1145,6 +1199,14 @@ class Game {
       this.dialogue.start(npc, script);
       return;
     }
+    if (npc.def.id === 'doctorDrug') {
+      this.dialogue.start(npc, this.#doctorDrugShopScript());
+      return;
+    }
+    if (npc.def.id === 'muscleMania300' && this.state.hasItem('muscleManiaDelivery')) {
+      this.dialogue.start(npc, this.#muscleDeliveryScript());
+      return;
+    }
     this.dialogue.start(npc);
   }
 
@@ -1164,18 +1226,124 @@ class Game {
     });
   }
 
+  #doctorDrugShopScript() {
+    const owned = (key, name) => this.state.hasItem(key) ? `OWNED · ${name}` : `BUY · ${name} · 3€`;
+    const ready = ['energyAmpoule', 'siliconePlug', 'titaniumRing'].every((key) => this.state.hasItem(key));
+    return {
+      opener: this.state.hasItem('muscleManiaDelivery')
+        ? 'The package is sealed. Do not say its name near the hand dryer. The hand dryer has party affiliations.'
+        : ready
+          ? 'All three items are accounted for. Pack them at the counter, then take the sealed delivery to Muscle Mania 300.'
+          : 'For the Muscle Mania delivery you need three sealed items. This is a fictional retail transaction conducted beside a sink.',
+      custom: [
+        { key: '1', tone: 'kind', tag: owned('energyAmpoule', 'PRE-WORKOUT AMPOULE'), text: 'Buy a sealed pre-workout ampoule for the delivery.', action: 'drug:energyAmpoule' },
+        { key: '2', tone: 'witty', tag: owned('siliconePlug', 'PINK SILICONE PLUG'), text: 'Buy the pink silicone accessory. Doctor Drug labels it “recovery-adjacent.”', action: 'drug:siliconePlug' },
+        { key: '3', tone: 'brutal', tag: owned('titaniumRing', 'TITANIUM COCK RING'), text: 'Buy the titanium ring. The receipt is printed on waterproof paper.', action: 'drug:titaniumRing' },
+      ],
+    };
+  }
+
+  #muscleDeliveryScript() {
+    return {
+      opener: 'You brought a sealed package into my studio? Good. The red dots cannot open childproof containers.',
+      custom: [
+        { key: '1', tone: 'kind', tag: 'DELIVER', text: 'Hand over Doctor Drug’s sealed Muscle Mania package.', action: 'drug:deliver' },
+        { key: '2', tone: 'witty', tag: 'JOKE', text: 'Ask whether this counts as an edition of three.', action: 'drug:decline' },
+        { key: '3', tone: 'brutal', tag: 'KEEP IT', text: 'Keep the package and refuse the errand.', action: 'drug:keep' },
+      ],
+    };
+  }
+
+  #resolveDrugAction(action) {
+    const deals = {
+      'drug:energyAmpoule': { item: 'energyAmpoule', label: 'sealed pre-workout ampoule' },
+      'drug:siliconePlug': { item: 'siliconePlug', label: 'pink silicone plug' },
+      'drug:titaniumRing': { item: 'titaniumRing', label: 'titanium cock ring' },
+    };
+    const deal = deals[action];
+    if (deal) {
+      if (this.state.hasItem(deal.item)) {
+        this.ui.toast('DOCTOR DRUG', `Already sealed: ${deal.label}. The hand dryer has logged the duplicate attempt.`);
+        return;
+      }
+      if (this.state.meters.cash < 3) {
+        this.ui.toast('DOCTOR DRUG', 'Three euros short. The market has once again mistaken you for a concept.', 'bad');
+        return;
+      }
+      this.state.addMeter('cash', -3, `Bought ${deal.label} from Doctor Drug`);
+      this.state.addItem(deal.item, deal.label);
+      this.state.setFlag('doctorDrugMissionStarted');
+      this.audio.pickup();
+      const ready = ['energyAmpoule', 'siliconePlug', 'titaniumRing'].every((key) => this.state.hasItem(key));
+      this.ui.toast('DOCTOR DRUG', ready
+        ? 'All three sealed items acquired. Use the counter to pack the Muscle Mania delivery.'
+        : `${deal.label} acquired. Two more items belong in the Muscle Mania delivery.`, ready ? 'good' : undefined);
+      return;
+    }
+    if (action === 'drug:deliver') {
+      if (!this.state.hasItem('muscleManiaDelivery')) {
+        this.ui.toast('MUSCLE MANIA 300', 'No sealed package. Doctor Drug’s counter is still waiting beside the sink.', 'bad');
+        return;
+      }
+      this.state.removeItem('muscleManiaDelivery');
+      this.state.setFlag('doctorDrugMissionPacked', false);
+      this.state.setFlag('doctorDrugMissionComplete');
+      this.state.addMeter('fame', 3, 'Muscle Mania accepted the sealed delivery');
+      this.state.addMeter('soul', 2, 'Completed an extremely specific favor');
+      this.state.shiftVirtue('compassion', 2, 'You carried the package across town');
+      this.state.record('Delivered Doctor Drug’s sealed Muscle Mania package', null);
+      this.audio.pickup();
+      this.ui.toast('MUSCLE MANIA 300', 'Package accepted. The artist checks the seal, flexes once, and hides it behind a huge painting. “NOT FOR SALE.”', 'good');
+      return;
+    }
+    if (action === 'drug:decline') {
+      this.ui.toast('MUSCLE MANIA 300', '“Three is an edition. This is a survival kit. Do not let Zebra hear either sentence.”');
+      return;
+    }
+    if (action === 'drug:keep') {
+      this.ui.toast('MUSCLE MANIA 300', 'He nods at the refusal. “Keep it. The work and I have survived worse couriers.”', 'bad');
+    }
+  }
+
+  #packMuscleManiaDelivery() {
+    if (this.state.hasItem('muscleManiaDelivery')) {
+      this.ui.toast('DOCTOR DRUG COUNTER', 'The delivery is already sealed. Muscle Mania 300 is waiting in UP AND CUMMING ARTIST.');
+      return;
+    }
+    const required = [
+      ['energyAmpoule', 'pre-workout ampoule'],
+      ['siliconePlug', 'pink silicone plug'],
+      ['titaniumRing', 'titanium cock ring'],
+    ];
+    const missing = required.filter(([key]) => !this.state.hasItem(key)).map(([, label]) => label);
+    if (missing.length) {
+      this.ui.toast('DOCTOR DRUG COUNTER', `Package incomplete. Missing: ${missing.join(', ')}. Speak to Doctor Drug.`, 'bad');
+      return;
+    }
+    for (const [key] of required) this.state.removeItem(key);
+    this.state.addItem('muscleManiaDelivery', 'sealed Muscle Mania delivery');
+    this.state.setFlag('doctorDrugMissionPacked');
+    this.state.record('Packed a sealed delivery for Muscle Mania 300', null);
+    this.audio.pickup();
+    this.ui.toast('POV: COURIER', 'You seal the package at the sink-side counter. Deliver it to Muscle Mania 300 in UP AND CUMMING ARTIST.', 'good');
+  }
+
 
   #travelTo(zoneKey) {
+    const fromZone = this.world.current;
     this.audio.uiConfirm();
     this.ui.transition(() => {
 
       const z = this.world.setZone(zoneKey);
       this.ghostRecorder.onZoneChange(zoneKey);
       this.ghosts.loadZone(zoneKey);
+      this.#resize();
       this.paint.attachTo(z.group);
       this.hand.setForestLoadout(zoneKey === 'blackForest');
       this.#applyZoneAtmosphere(zoneKey);
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
+      const latest = this.state.paintings[this.state.paintings.length - 1];
+      this.world.setVaultArchive(latest?.title, latest?.lotNumber);
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
         this.#cowVisitedThisRun = true;
         const visits = recordCowVisit();
@@ -1194,8 +1362,13 @@ class Game {
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
         hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
+        rageRoom: 'Five glass boxes invite the private scream. Martin is already demolishing the evidence.',
+        deathMetal: 'Pink lights, black amps, and five punks arguing that Barbie is the loudest death-metal artist alive.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
       }[zoneKey]);
+      if (fromZone && fromZone !== zoneKey) {
+        this.ui.toast('BETWEEN ROOMS', transitionLine(fromZone, zoneKey));
+      }
 
       if (zoneKey === 'maxPro') this.debate.enter();
       this.quests.notify('zoneEntered', { zone: zoneKey });
@@ -1344,13 +1517,20 @@ class Game {
 
       const worldEvent = this.world.update(dt, now, beatPhase);
       if (worldEvent?.type === 'boxingImpact') {
-        this.audio.boxingImpact(worldEvent.variant);
+        this.audio.boxingImpact(worldEvent.variant, worldEvent.victim);
       }
       if (worldEvent?.type === 'boarSqueak') {
         this.audio.boarSqueak(worldEvent.variant);
       }
       if (worldEvent?.type === 'churchCrackle') {
         this.audio.churchCrackle(worldEvent.variant, worldEvent.burningCount);
+      }
+      if (worldEvent?.type === 'rageBreak') {
+        this.audio.rageBreak(worldEvent.variant);
+        this.ui.subtitle('MARTIN · NO ADVICE', worldEvent.line, 0.72, this.audio);
+      }
+      if (worldEvent?.type === 'deathMetalHit') {
+        this.audio.deathMetalHit(worldEvent.variant);
       }
 
       this.npcs.update(dt, now, this.player.position);
@@ -1402,7 +1582,7 @@ class Game {
     if (npc) {
       const label = npc.def.id === 'victoria' && this.pendingAppraisal
         ? `Face the appraisal — ${npc.def.name}`
-        : `Talk — ${npc.def.name}`;
+        : (npc.def.interactLabel ?? `Talk — ${npc.def.name}`);
       this.#interactTarget = { kind: 'npc', npc };
       this.ui.interactPrompt(label);
       return;

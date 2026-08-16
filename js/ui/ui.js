@@ -65,6 +65,13 @@ export class UIManager {
       onboardingKicker: $('onboarding-kicker'),
       onboardingTitle: $('onboarding-title'),
       onboardingBody: $('onboarding-body'),
+      onboardingCast: $('onboarding-cast'),
+      onboardingCaption: $('onboarding-image-caption'),
+      onboardingImageCount: $('onboarding-image-count'),
+      onboardingChapter: $('onboarding-chapter'),
+      onboardingControlNote: $('onboarding-control-note'),
+      onboardingStamp: $('onboarding-stamp'),
+      onboardingPlaybook: $('onboarding-playbook'),
       onboardingProgress: $('onboarding-progress'),
       onboardingNext: $('onboarding-next'),
       onboardingSkip: $('onboarding-skip'),
@@ -114,11 +121,50 @@ export class UIManager {
   /** A compact opening film. Gameplay is not initialized until it completes. */
   openOnboarding(onComplete) {
     const scenes = [
-      { scene: 'garret', kicker: 'OSLO · 02:13', title: 'YOU ARE STILL A PAINTER.', body: 'Your garret is cold. Rent is late. The canvas is blank. Outside, the artworld is having a party without you.' },
-      { scene: 'market', kicker: 'MEANWHILE · ACROSS THE CITY', title: 'THE MARKET ATE THE VIRTUES.', body: 'Vision became branding. Courage became scandal. Community became networking. Everyone calls the damage a movement.' },
-      { scene: 'phone', kicker: 'ARTI · 241 FOLLOWERS', title: 'THE PHONE KNOWS YOU ARE INVISIBLE.', body: 'KREYO.ETH is minting other people’s feelings. Collectors are buying silence by the square metre. Your feed keeps asking what you are working on.' },
-      { scene: 'invite', kicker: 'ONE MESSAGE · NO APOLOGY', title: 'BIANCA HAS LEFT THE DOOR OPEN.', body: 'Three nights. Openings, private rooms, impossible patrons. Make work, survive conversations, and decide what part of yourself is actually for sale.' },
-      { scene: 'choice', kicker: 'NIGHT ONE · THE GARRET', title: 'PAINT SOMETHING. ENTER THE SCENE.', body: 'Your brush can make art or enemies. Fame opens doors. Integrity lets you recognize yourself when they do.' },
+      {
+        scene: 'garret', kicker: 'NIGHT ONE · OSLO 02:13', title: 'MAKE SOMETHING BEFORE THEY NAME IT.',
+        body: 'You are an artist with a cold room, late rent, and one blank canvas. The first painting is yours for exactly as long as it takes the city to notice.',
+        caption: 'THE GARRET · BEFORE THE MARKET', stamp: 'MAKE THE WORK', chapter: '01 · EXPOSURE', note: 'A short brief before the first mark.', accent: '#e8c15a',
+        cast: [{ name: 'THE ARTIST', role: 'your unfinished self', face: 'puplic/art gimps/Alex.png', pose: 'hero' }],
+        beats: [['Paint', 'Finish a canvas and give it a title.'], ['Move', 'Use doors or M to cross the city instantly.']],
+      },
+      {
+        scene: 'market', kicker: 'THE WHITE CUBE · GALLERIA BIANCA', title: 'THE ROOM HAS A PRICE BEFORE IT HAS AN OPINION.',
+        body: 'Victoria can hang your work. Collectors can buy the silence around it. A small red mark keeps appearing beside things that have become inventory.',
+        caption: 'THE GALLERY · A MARKET IN GOOD LIGHT', stamp: 'GET SEEN', chapter: '02 · CIRCULATION', note: 'Your work is moving before you are.', accent: '#df9eae',
+        cast: [
+          { name: 'VICTORIA VANE', role: 'gallerist', face: 'puplic/visual assets/character_faces/03-stern-older-woman.png', pose: 'hero' },
+          { name: 'CHAD STERLING', role: 'collector', face: 'puplic/visual assets/character_faces/12-office-worker.png', pose: 'side' },
+        ],
+        beats: [['Appraise', 'Press Q to learn what the room thinks your work is worth.'], ['Notice', 'Look for the red archive mark. It never blocks progress.']],
+      },
+      {
+        scene: 'voices', kicker: 'NIGHT TWO · THE COMMENTARY MACHINE', title: 'EVERYONE HAS A VERSION OF YOUR WORK.',
+        body: 'Dolores writes the review. KREYO turns feeling into content. Guests talk before they look. Your title travels faster than you do — decide how you answer back.',
+        caption: 'THE CITY · OPINIONS WITH LEGS', stamp: 'SPEAK BACK', chapter: '03 · COMMENTARY', note: 'Choose a tone. Every tone leaves a trace.', accent: '#92c7bc',
+        cast: [
+          { name: 'DOLORES PANG', role: 'critic', face: 'puplic/visual assets/character_faces/08-exhausted-nurse.png', pose: 'hero' },
+          { name: 'KREYO', role: 'rival artist', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'side' },
+        ],
+        beats: [['Talk', 'Press E, then choose Kind, Witty, or Brutal.'], ['Watch yourself', 'Fame opens doors. Integrity tells you why you entered.']],
+      },
+      {
+        scene: 'vault', kicker: 'NIGHT THREE · THE VAULT', title: 'THEY DO NOT ONLY WANT THE CANVAS.',
+        body: 'The market wants the proof that you made it: your title, your history, your provenance. Find Mister Index and choose what, if anything, can be owned.',
+        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '04 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
+        cast: [{ name: 'MISTER INDEX', role: 'archivist of ownership', face: 'puplic/visual assets/character_faces/07-elegant-older-man.png', pose: 'hero' }],
+        beats: [['Navigate', 'M opens the map. Optional rooms add evidence, never requirements.'], ['Decide', 'Your choices and meters shape one of four endings.']],
+      },
+      {
+        scene: 'choice', kicker: 'YOUR FIRST MOVE · THE GARRET', title: 'PAINT. GET SEEN. STAY YOURSELF IF YOU CAN.',
+        body: 'Three nights, one growing body of work, and a city ready to turn it into an asset. Begin with the canvas. The rest will find you.',
+        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '05 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
+        cast: [
+          { name: 'THE ARTIST', role: 'still making the call', face: 'puplic/art gimps/Alex.png', pose: 'hero' },
+          { name: 'THE CITY', role: 'already watching', face: 'puplic/visual assets/character_faces_alt/05-punk-librarian.png', pose: 'side' },
+        ],
+        beats: [['Core controls', 'WASD move · mouse looks · E interacts.'], ['No checklist', 'Follow the objective; explore when curiosity wins.']],
+      },
     ];
     let index = 0;
     let finished = false;
@@ -136,9 +182,22 @@ export class UIManager {
       frame.classList.remove('shot-enter');
       void frame.offsetWidth;
       frame.dataset.scene = shot.scene;
+      frame.style.setProperty('--film-scene', shot.accent);
       this.el.onboardingKicker.textContent = shot.kicker;
       this.el.onboardingTitle.textContent = shot.title;
       this.el.onboardingBody.textContent = shot.body;
+      this.el.onboardingCaption.textContent = shot.caption;
+      this.el.onboardingImageCount.textContent = `${String(index + 1).padStart(2, '0')} / ${String(scenes.length).padStart(2, '0')}`;
+      this.el.onboardingChapter.textContent = shot.chapter;
+      this.el.onboardingControlNote.textContent = shot.note;
+      this.el.onboardingStamp.textContent = shot.stamp;
+      this.el.onboardingCast.innerHTML = shot.cast.map((person) => `
+        <figure class="film-portrait ${person.pose}">
+          <img src="${person.face}" alt="" />
+          <figcaption><strong>${person.name}</strong><span>${person.role}</span></figcaption>
+        </figure>`).join('');
+      this.el.onboardingPlaybook.innerHTML = shot.beats.map(([label, copy]) => `
+        <div><strong>${label}</strong><span>${copy}</span></div>`).join('');
       this.el.onboardingNext.childNodes[0].textContent = index === scenes.length - 1 ? 'Begin Night One ' : 'Continue ';
       this.el.onboardingProgress.innerHTML = scenes.map((_, i) => `<span class="${i <= index ? 'on' : ''}"></span>`).join('');
       this.el.onboardingProgress.setAttribute('aria-label', `Scene ${index + 1} of ${scenes.length}`);
@@ -789,10 +848,10 @@ export class UIManager {
     btn.addEventListener('click', go);
   }
 
-  showEnding(key, state) {
+  showEnding(key, state, bodyOverride = null) {
     const e = ENDINGS[key];
     this.el.endingTitle.textContent = e.name;
-    this.el.endingBody.textContent = ENDING_TEXT[key];
+    this.el.endingBody.textContent = bodyOverride ? `${ENDING_TEXT[key]}\n\n${bodyOverride}` : ENDING_TEXT[key];
     const stats = [
       ['FAME', state.meters.fame], ['INTEGRITY', state.meters.soul], ['CASH', state.meters.cash],
       ['MELTDOWNS', state.stats.meltdowns], ['WORKS MADE', state.stats.paintingsMade],
@@ -844,6 +903,8 @@ const MAP_ZONES = [
   { key: 'upAndCumming', name: 'UP AND CUMMING ARTIST', desc: 'Huge paintings in hard daylight. Muscle Mania 300 refuses every sale. Zebra Zebrason refuses his refusal.' },
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
   { key: 'hairSalon', name: 'U WISH U HAD HAIR BUT U DONT', desc: 'Six chairs, six immaculate bald heads, and enough mirrors to confirm the situation from every angle.' },
+  { key: 'rageRoom', name: 'THE GLASS BOXES', desc: 'Five soundproof booths, one breakable inventory, and Martin already halfway through the waiver.' },
+  { key: 'deathMetal', name: 'BARBIE DEATH METAL', desc: 'Punks, death-metal goths, pink amps, and an argument about whether Barbie is a product or a survivor.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
   { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },
 ];

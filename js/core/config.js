@@ -85,6 +85,8 @@ export const ZONES = {
   upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
   hairSalon: { name: 'U WISH U HAD HAIR BUT U DONT', mood: 'galleria' },
+  rageRoom: { name: 'THE GLASS BOXES', mood: 'rageRoom' },
+  deathMetal: { name: 'BARBIE DEATH METAL', mood: 'deathMetal' },
   blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
   publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },
 };
@@ -210,6 +212,29 @@ export const ROOM_SCORES = {
       ],
     },
   },
+  rageRoom: {
+    // A fluorescent anger-room pulse: clipped, metallic, and deliberately
+    // unable to resolve into a comfortable chord.
+    bpm: 128, level: 0.32, root: 46.25, scale: [0, 1, 3, 6, 7, 10, 12],
+    wave: 'square', bassWave: 'sawtooth', cutoff: 1500, pad: [0, 1, 6, 10],
+    bass: [0, 0, null, 3, 0, null, 6, 1],
+    lead: [null, 5, null, 2, 6, null, 3, null, 1, null, 4, 2, null, 6, null, 3],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.02, texture: 0.44,
+    kickLevel: 0.34, snareLevel: 0.09, hatLevel: 0.03,
+    bassLevel: 0.1, bassDecay: 0.62, leadLevel: 0.024,
+  },
+  deathMetal: {
+    // A pink-black blast beat: the room's thesis is that a toy can be both
+    // mass-produced and emotionally radioactive.
+    bpm: 176, level: 0.3, root: 38.89, scale: [0, 1, 3, 5, 6, 8, 10, 12],
+    wave: 'square', bassWave: 'sawtooth', cutoff: 1850, pad: [0, 1, 6, 8],
+    bass: [0, null, 0, 3, 0, null, 6, 1],
+    lead: [0, 3, null, 5, 6, null, 2, 1, 0, null, 4, 6, null, 3, 1, 5],
+    kick: [0, 4, 8, 12], snare: [2, 6, 10, 14], hats: [1, 3, 5, 7, 9, 11, 13, 15],
+    swing: 0.01, texture: 0.5,
+    kickLevel: 0.38, snareLevel: 0.105, hatLevel: 0.035,
+    bassLevel: 0.115, bassDecay: 0.42, leadLevel: 0.022,
+  },
   vacantEditions: {
     // Dry showroom electro: tactile clicks, a rubbery bassline, and enough
     // empty air for Vincent and Eddie's material seminar to remain audible.
@@ -251,10 +276,18 @@ export const ROOM_SCORES = {
     kick: [], snare: [], hats: [], swing: 0.075, texture: 0,
     restroom: {
       // Four low farts supply the techno floor; the five syncopated accents
-      // answer like a crooked samba/zamba hand pattern. Piss is the shaker.
+      // answer like a crooked samba/zamba hand pattern. Piss is the shaker,
+      // but its broadband spray stays tucked behind the lower percussion.
       floor: [0, 4, 8, 12],
       accents: [3, 6, 10, 13, 15],
       splashes: [1, 2, 5, 7, 9, 11, 14],
+      splashLevel: 0.058,
+      streamLevel: 0.046,
+      streamEveryBars: 2,
+      streamHighpass: 520,
+      sprayCenter: 1680,
+      needleFrequency: 4200,
+      needleLevel: 0.055,
     },
   },
 };
