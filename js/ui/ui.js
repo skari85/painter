@@ -149,16 +149,26 @@ export class UIManager {
         beats: [['Talk', 'Press E, then choose Kind, Witty, or Brutal.'], ['Watch yourself', 'Fame opens doors. Integrity tells you why you entered.']],
       },
       {
+        scene: 'ghosts', kicker: 'THE GHOST LAYER · OTHER ARTISTS, AFTERWARD', title: 'SOMEONE ELSE WALKED THIS ROOM FIRST.',
+        body: 'A pale figure is not a live player or a bot. It is an asynchronous trace: a past route replaying in the room, with a note that may have been left for whoever arrives next.',
+        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'No live chat. Just routes, notes, and afterimages.', accent: '#8ab4ff',
+        cast: [
+          { name: 'SOMEONE ELSE', role: 'a recorded route', face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png', pose: 'hero', ghost: true },
+          { name: 'THE NEXT ARTIST', role: 'maybe you', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'side', ghost: true },
+        ],
+        beats: [['Read', 'Walk up to a pale figure and press E to read what they left.'], ['Leave a trace', 'Type a short note—or say nothing. Your route can still echo later.']],
+      },
+      {
         scene: 'vault', kicker: 'NIGHT THREE · THE VAULT', title: 'THEY DO NOT ONLY WANT THE CANVAS.',
         body: 'The market wants the proof that you made it: your title, your history, your provenance. Find Mister Index and choose what, if anything, can be owned.',
-        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '04 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
+        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '05 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
         cast: [{ name: 'MISTER INDEX', role: 'archivist of ownership', face: 'puplic/visual assets/character_faces/07-elegant-older-man.png', pose: 'hero' }],
         beats: [['Navigate', 'M opens the map. Optional rooms add evidence, never requirements.'], ['Decide', 'Your choices and meters shape one of four endings.']],
       },
       {
         scene: 'choice', kicker: 'YOUR FIRST MOVE · THE GARRET', title: 'PAINT. GET SEEN. STAY YOURSELF IF YOU CAN.',
         body: 'Three nights, one growing body of work, and a city ready to turn it into an asset. Begin with the canvas. The rest will find you.',
-        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '05 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
+        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '06 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
         cast: [
           { name: 'THE ARTIST', role: 'still making the call', face: 'puplic/art gimps/Alex.png', pose: 'hero' },
           { name: 'THE CITY', role: 'already watching', face: 'puplic/visual assets/character_faces_alt/05-punk-librarian.png', pose: 'side' },
@@ -192,7 +202,7 @@ export class UIManager {
       this.el.onboardingControlNote.textContent = shot.note;
       this.el.onboardingStamp.textContent = shot.stamp;
       this.el.onboardingCast.innerHTML = shot.cast.map((person) => `
-        <figure class="film-portrait ${person.pose}">
+        <figure class="film-portrait ${person.pose}${person.ghost ? ' ghost-trace' : ''}">
           <img src="${person.face}" alt="" />
           <figcaption><strong>${person.name}</strong><span>${person.role}</span></figcaption>
         </figure>`).join('');
