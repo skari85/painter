@@ -19,6 +19,7 @@
 import * as THREE from 'three';
 import { clamp, mulberry32, rand, pick } from '../core/utils.js';
 import { MAXPRO } from '../core/config.js';
+import { lotNumberFor } from './narrative.js';
 
 
 const WALL_H = 3.6;
@@ -491,6 +492,7 @@ function pornScreenTexture() {
 export class World {
   #scene;
   #splatTex;
+  #t = 0;
 
   constructor(scene) {
     this.#scene = scene;
@@ -508,6 +510,8 @@ export class World {
     this.#buildUpAndCumming();
     this.#buildVacantEditions();
     this.#buildHairSalon();
+    this.#buildRageRoom();
+    this.#buildDeathMetal();
     this.#buildPublicRestroom();
     this.#buildBlackForest();
     this.#buildRecordPlayers();
@@ -548,6 +552,7 @@ export class World {
       daylightClub: { x: 8.4,   z: 5.25,  ry: Math.PI },
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
       vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
+      rageRoom: { x: 9.1, z: 5.1, ry: Math.PI },
     };
 
     for (const [key, p] of Object.entries(placements)) {
@@ -776,6 +781,11 @@ export class World {
     z.interactables.push({
       id: 'desk', type: 'flavor', label: 'Read rejection letters',
       pos: new THREE.Vector3(4.5, 0.9, 1.8), radius: 1.6,
+      clueKey: 'provenanceSeen', requiresPainting: true,
+      clueLines: [
+        'A carbon copy has appeared beneath the rejection letters. It carries a red dot and lot number {{lot}}.',
+        'In the smallest type: “For the archive.” You have not agreed to an archive.',
+      ],
       lines: [
         '“We love your energy. We are going with someone richer.”',
         '“Your work is exactly what we would show if we still took risks.”',
@@ -880,6 +890,20 @@ export class World {
     });
     z.displayArt = displayArt;
     z.displaySign = spotSign;
+    const archiveDot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.075, 18),
+      new THREE.MeshBasicMaterial({ color: 0xc3263e, transparent: true, opacity: 0 })
+    );
+    archiveDot.position.set(-1.73, 0.75, -6.22);
+    archiveDot.userData.noSplat = true;
+    const archiveLabel = plane(z, {
+      w: 0.85, h: 0.14, x: -1.2, y: 0.72, z: -6.22,
+      material: new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }),
+      noSplat: true, name: 'archive label',
+    });
+    z.group.add(archiveDot);
+    z.archiveDot = archiveDot;
+    z.archiveLabel = archiveLabel;
     z.displayOccupied = false;
     z.interactables.push({
       id: 'display', type: 'display', label: 'Hang your work',
@@ -939,6 +963,8 @@ export class World {
     door(z, { x: 6.8, z: 6.62, ry: Math.PI, label: 'MAX PRO KUNST 2000 →', to: 'maxPro' });
     door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
     door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
+    door(z, { x: 6.8, z: -6.62, ry: 0, label: 'THE GLASS BOXES →', to: 'rageRoom' });
+    door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -1003,6 +1029,24 @@ export class World {
     z.group.add(lampGold);
     z.anchors.index = new THREE.Vector3(6.2, 0, 0);
     z.anchors.lucia = new THREE.Vector3(4.2, 0, 2.2);
+
+    const archivePlate = plane(z, {
+      w: 2.8, h: 0.38, x: 3.8, y: 2.05, z: -5.24,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('ARCHIVE · EDITION OF ONE', { fg: '#e8c15a', bg: '#17151b', size: 32, w: 900, h: 140, font: '800' }),
+      }),
+      noSplat: true, name: 'archive plate',
+    });
+    z.archivePlate = archivePlate;
+    z.interactables.push({
+      id: 'vault-archive', type: 'flavor', label: 'Read the archive plate',
+      pos: new THREE.Vector3(3.8, 1.8, -4.9), radius: 2.1,
+      lines: [
+        'The plate is smaller than the wall text and heavier than the painting deserves.',
+        'The red dot is not a price. It is a decision someone made before you arrived.',
+        'The archive has a file on the Artist. The file is not the work. Not yet.',
+      ],
+    });
 
     // gold trim strips
     for (const y of [0.08, 3.3]) {
@@ -1454,6 +1498,11 @@ export class World {
     z.interactables.push({
       id: 'sideboard', type: 'flavor', label: 'Inspect the sideboard',
       pos: new THREE.Vector3(-9.4, 0.9, -4.5), radius: 1.5,
+      clueKey: 'privateCollectionSeen', requiresPainting: true,
+      clueLines: [
+        'Behind the glass, one frame uses the same cheap wood as the Artist’s Garret.',
+        'A typed note says: “for the house.” The room is very pleased with itself.',
+      ],
       lines: [
         'A row of unframed canvases leans behind glass. The collector\'s eye is restless.',
         'There is a catalogue raisonné open to a page that has been pressed flat by something heavy.',
@@ -1869,6 +1918,11 @@ export class World {
     z.interactables.push({
       id: 'fork-table', type: 'flavor', label: 'Read the table\'s stains',
       pos: new THREE.Vector3(0.5, 0.8, 0), radius: 2.2,
+      clueKey: 'titleCirculating', requiresPainting: true,
+      clueLines: [
+        'A guest has written “{{title}}” beside a wine ring. The ink is dry. You have not shown it here.',
+        'Underneath: “for the archive.” The table has become a press office.',
+      ],
       lines: [
         'A ring of red where someone set down a glass and a secret at the same time.',
         'The wood remembers every deal, every divorce, every “just one more”.',
@@ -1920,10 +1974,37 @@ export class World {
 
     const P = MAXPRO.painting;
 
-    // polished concrete — the floor is doing the work of three paintings
+    // Two lightweight CC0 Poly Haven material sets give the oversized room a
+    // photographed surface vocabulary: chipped painted concrete underfoot and
+    // wrinkled leather across the ring equipment. All maps are local 1K JPGs.
+    const maxProLoader = new THREE.TextureLoader();
+    const maxProMap = (path, repeatX, repeatY, srgb = false) => {
+      const tex = maxProLoader.load(encodeURI(`puplic/polyhaven/max-pro/${path}`));
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.anisotropy = 4;
+      if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const concretePbr = {
+      map: maxProMap('concrete_floor_painted/concrete_floor_painted_diff_1k.jpg', 10.5, 6, true),
+      normalMap: maxProMap('concrete_floor_painted/concrete_floor_painted_nor_gl_1k.jpg', 10.5, 6),
+      roughnessMap: maxProMap('concrete_floor_painted/concrete_floor_painted_rough_1k.jpg', 10.5, 6),
+    };
+    const leatherPbr = {
+      map: maxProMap('fabric_leather_02/fabric_leather_02_diff_1k.jpg', 2.4, 2.4, true),
+      normalMap: maxProMap('fabric_leather_02/fabric_leather_02_nor_gl_1k.jpg', 2.4, 2.4),
+      roughnessMap: maxProMap('fabric_leather_02/fabric_leather_02_rough_1k.jpg', 2.4, 2.4),
+    };
+
+    // Weathered painted concrete — still a gallery floor, now with enough
+    // scuffs and chipped pigment to remember every prior office match.
     plane(z, {
       w: w - 0.1, h: d - 0.1, x: 0, y: 0.011, z: 0, rx: -Math.PI / 2,
-      material: new THREE.MeshStandardMaterial({ color: 0xbebcb7, roughness: 0.34, metalness: 0.05 }),
+      material: new THREE.MeshStandardMaterial({
+        color: 0xb8b9bc, ...concretePbr, roughness: 0.72, metalness: 0.025,
+        normalScale: new THREE.Vector2(0.36, 0.36),
+      }),
       noSplat: true, name: 'floor',
     });
 
@@ -1934,74 +2015,289 @@ export class World {
       const steel = mat(0x282c33, { metalness: 0.68, roughness: 0.28 });
       const blue = mat(0x1648d8, { roughness: 0.42 });
       const red = mat(0xd42632, { roughness: 0.42 });
+      const leatherMaterial = (color, clearcoat = 0.46) => new THREE.MeshPhysicalMaterial({
+        color, ...leatherPbr, roughness: 0.48, metalness: 0.02,
+        normalScale: new THREE.Vector2(0.52, 0.52), clearcoat, clearcoatRoughness: 0.24,
+      });
+      const apronLeather = leatherMaterial(0x232938, 0.24);
+      const canvasLeather = new THREE.MeshStandardMaterial({
+        color: 0xd5d9dd, normalMap: leatherPbr.normalMap, roughnessMap: leatherPbr.roughnessMap,
+        normalScale: new THREE.Vector2(0.22, 0.22), roughness: 0.76,
+      });
 
-      // Raised broadcast ring: regulation-ish, but nobody checked which regulation.
-      box(z, { w: 6.4, h: 0.34, d: 5.2, x: ringX, z: ringZ, material: mat(0xd8d9dc, { roughness: 0.62 }), name: 'kunstRing' });
+      // Raised broadcast ring: stitched leather apron, four rope levels,
+      // padded turnbuckles, corner steps and a canvas carrying its own chyron.
+      box(z, { w: 6.55, h: 0.46, d: 5.35, x: ringX, z: ringZ, material: apronLeather, name: 'kunstRing' });
       plane(z, {
-        w: 5.9, h: 4.7, x: ringX, y: 0.352, z: ringZ, rx: -Math.PI / 2,
-        material: new THREE.MeshStandardMaterial({ color: 0xf6f7f8, roughness: 0.58 }),
+        w: 6.05, h: 4.85, x: ringX, y: 0.472, z: ringZ, rx: -Math.PI / 2,
+        material: canvasLeather,
         noSplat: false, name: 'kunstCanvas',
       });
       for (const [dx, dz] of [[-3, -2.4], [3, -2.4], [-3, 2.4], [3, 2.4]]) {
-        cylinder(z, { rT: 0.07, rB: 0.09, h: 1.6, x: ringX + dx, y: 0.34, z: ringZ + dz, material: steel, solid: false, noSplat: true });
+        cylinder(z, { rT: 0.085, rB: 0.11, h: 1.78, x: ringX + dx, y: 0.46, z: ringZ + dz, material: steel, solid: false, noSplat: true });
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), steel);
+        cap.position.set(ringX + dx, 2.27, ringZ + dz);
+        cap.userData.noSplat = true;
+        z.group.add(cap);
+        const padMat = dx < 0 ? leatherMaterial(0xcf1f2c) : leatherMaterial(0x173fbd);
+        for (const y of [0.93, 1.25, 1.57, 1.89]) {
+          box(z, {
+            w: 0.32, h: 0.24, d: 0.2, x: ringX + dx * 0.965, y: y - 0.12, z: ringZ + dz * 0.965,
+            ry: Math.atan2(dx, dz), material: padMat, solid: false, noSplat: true, name: 'turnbuckle pad',
+          });
+        }
       }
-      for (const y of [0.76, 1.12, 1.48]) {
-        for (const dz of [-2.4, 2.4]) box(z, { w: 6.0, h: 0.035, d: 0.035, x: ringX, y, z: ringZ + dz, material: y === 1.12 ? red : white, solid: false, noSplat: true });
-        for (const dx of [-3, 3]) box(z, { w: 0.035, h: 0.035, d: 4.8, x: ringX + dx, y, z: ringZ, material: y === 1.12 ? blue : white, solid: false, noSplat: true });
+      for (const [ropeIndex, y] of [0.93, 1.25, 1.57, 1.89].entries()) {
+        const ropeMat = ropeIndex % 2 ? white : (ropeIndex === 0 ? blue : red);
+        for (const dz of [-2.4, 2.4]) box(z, { w: 6.0, h: 0.052, d: 0.052, x: ringX, y, z: ringZ + dz, material: ropeMat, solid: false, noSplat: true });
+        for (const dx of [-3, 3]) box(z, { w: 0.052, h: 0.052, d: 4.8, x: ringX + dx, y, z: ringZ, material: ropeMat, solid: false, noSplat: true });
+      }
+      plane(z, {
+        w: 2.9, h: 0.58, x: ringX, y: 0.25, z: ringZ + 2.685,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture('MAX PRO  ·  ROUND ∞', { fg: '#f4f6fb', bg: '#151923', size: 45, w: 1000, h: 190, font: '900' }),
+        }),
+        noSplat: true, name: 'ring apron title',
+      });
+      plane(z, {
+        w: 2.55, h: 1.1, x: ringX, y: 0.485, z: ringZ, rx: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture('KUNST 2000\n0 — 0', { fg: '#173c9f', bg: '#e8eaec', size: 52, w: 900, h: 390, font: '900' }),
+          transparent: true,
+        }),
+        noSplat: true, name: 'ring canvas logo',
+      });
+      for (let step = 0; step < 3; step++) {
+        box(z, {
+          w: 1.2 - step * 0.13, h: 0.16, d: 0.42, x: ringX - 3.75, y: step * 0.16,
+          z: ringZ + 1.55, material: steel, name: 'ring access step',
+        });
       }
 
-      // Two coded figures: full gloves, boxing shorts, guards up. One white boxer, one Black boxer.
-      const makeBoxer = ({ x, skin, shorts, gloves, trim, phase }) => {
+      // Two detailed broadcast fighters: facial features, taped wrists,
+      // articulated limbs, stitched trunks, boots, glove thumbs and sweat.
+      const makeBoxer = ({ x, skin, shorts, gloves, trim, boots, phase, code, bruise = false }) => {
         const g = new THREE.Group();
-        g.position.set(x, 0.35, ringZ);
-        const skinMat = mat(skin, { roughness: 0.7 });
-        const shortsMat = mat(shorts, { roughness: 0.46 });
-        const gloveMat = mat(gloves, { roughness: 0.3 });
+        g.position.set(x, 0.47, ringZ);
+        const skinMat = new THREE.MeshPhysicalMaterial({
+          color: skin, roughness: 0.42, metalness: 0, clearcoat: 0.25, clearcoatRoughness: 0.5,
+        });
+        const shortsMat = new THREE.MeshStandardMaterial({
+          color: shorts, normalMap: leatherPbr.normalMap, roughnessMap: leatherPbr.roughnessMap,
+          normalScale: new THREE.Vector2(0.18, 0.18), roughness: 0.56,
+        });
+        const gloveMat = leatherMaterial(gloves, 0.74);
         const trimMat = mat(trim, { roughness: 0.5 });
-        const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.55, 6, 12), skinMat);
-        torso.position.y = 1.12;
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 12), skinMat);
-        head.position.y = 1.72;
-        const shortsBody = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.34, 0.34), shortsMat);
-        shortsBody.position.y = 0.75;
-        const waistband = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.075, 0.35), trimMat);
-        waistband.position.y = 0.91;
+        const bootMat = leatherMaterial(boots, 0.62);
+        const wrapMat = mat(0xe9e4da, { roughness: 0.72 });
+
+        const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.29, 0.56, 8, 16), skinMat);
+        torso.position.y = 1.16;
+        torso.scale.set(1.08, 1, 0.82);
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.13, 0.22, 12), skinMat);
+        neck.position.y = 1.57;
+        const chest = [];
+        for (const sx of [-1, 1]) {
+          const pec = new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 8), skinMat);
+          pec.scale.set(1.15, 0.62, 0.5);
+          pec.position.set(sx * 0.145, 1.3, 0.205);
+          chest.push(pec);
+        }
+        const abs = [];
+        for (const [ax, ay] of [[-0.08, 1.08], [0.08, 1.08], [-0.075, 0.94], [0.075, 0.94]]) {
+          const muscle = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 7), skinMat);
+          muscle.scale.set(0.9, 0.65, 0.34);
+          muscle.position.set(ax, ay, 0.24);
+          abs.push(muscle);
+        }
+
+        const head = new THREE.Group();
+        head.position.y = 1.74;
+        const skull = new THREE.Mesh(new THREE.SphereGeometry(0.205, 20, 15), skinMat);
+        skull.scale.set(0.92, 1.08, 0.94);
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.044, 0.12, 7), skinMat);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.set(0, -0.015, 0.21);
+        const earL = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 7), skinMat);
+        earL.scale.set(0.55, 1, 0.55); earL.position.set(-0.195, 0, 0);
+        const earR = earL.clone(); earR.position.x = 0.195;
+        const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xf2eee5, roughness: 0.35 });
+        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x101116 });
+        const browMat = new THREE.MeshStandardMaterial({ color: bruise ? 0x1d1412 : 0x2c2019, roughness: 0.9 });
+        for (const sx of [-1, 1]) {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 7), eyeWhite);
+          eye.scale.y = bruise && sx > 0 ? 0.45 : 0.72;
+          eye.position.set(sx * 0.078, 0.035, 0.184);
+          const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 6), pupilMat);
+          pupil.position.set(sx * 0.078, 0.035, 0.214);
+          const brow = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.018, 0.022), browMat);
+          brow.position.set(sx * 0.078, 0.105, 0.188);
+          brow.rotation.z = sx * -0.16;
+          head.add(eye, pupil, brow);
+        }
+        const mouthMat = new THREE.MeshStandardMaterial({ color: 0x481823, emissive: 0x1f060c, emissiveIntensity: 0.35, roughness: 0.5 });
+        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.105, 0.026, 0.024), mouthMat);
+        mouth.position.set(0, -0.105, 0.195);
+        const mouthguard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.026), mat(0xeef6ff, { roughness: 0.3 }));
+        mouthguard.position.set(0, -0.096, 0.211);
+        head.add(skull, nose, earL, earR, mouth, mouthguard);
+
+        const shortsBody = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.285, 0.39, 12), shortsMat);
+        shortsBody.position.y = 0.78;
+        const waistband = new THREE.Mesh(new THREE.CylinderGeometry(0.347, 0.347, 0.085, 12), trimMat);
+        waistband.position.y = 0.985;
+        const beltCode = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.22, 0.075),
+          new THREE.MeshBasicMaterial({ map: textTexture(code, { fg: '#ffffff', bg: '#12141b', size: 48, w: 512, h: 170, font: '900' }) })
+        );
+        beltCode.position.set(0, 0.987, 0.35);
+        const sidePanels = [];
+        for (const sx of [-1, 1]) {
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.31, 0.29), trimMat);
+          stripe.position.set(sx * 0.31, 0.77, 0);
+          sidePanels.push(stripe);
+        }
         const legs = [];
         for (const sx of [-1, 1]) {
-          const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.42, 5, 8), skinMat);
-          leg.position.set(sx * 0.16, 0.37, 0);
+          const leg = new THREE.Group();
+          leg.position.set(sx * 0.16, 0, 0);
+          const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.105, 0.23, 6, 10), skinMat);
+          thigh.position.y = 0.53;
+          const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.22, 6, 10), skinMat);
+          shin.position.y = 0.24;
+          const boot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.19, 0.35), bootMat);
+          boot.position.set(0, 0.095, 0.065);
+          const bootCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.105, 0.13, 10), trimMat);
+          bootCuff.position.y = 0.2;
+          leg.add(thigh, shin, boot, bootCuff);
           leg.rotation.z = sx * 0.05;
           legs.push(leg);
         }
         const arms = [];
+        const gloveMeshes = [];
         for (const sx of [-1, 1]) {
           const arm = new THREE.Group();
           arm.position.set(sx * 0.31, 1.34, 0.04);
-          const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.32, 5, 8), skinMat);
-          forearm.position.set(sx * 0.06, 0.02, 0.1);
-          forearm.rotation.z = sx * 0.55;
-          const glove = new THREE.Mesh(new THREE.SphereGeometry(0.145, 12, 10), gloveMat);
-          glove.scale.set(1.08, 0.92, 1.18);
-          glove.position.set(sx * 0.15, 0.22, 0.24);
-          arm.add(forearm, glove);
+          const upperArm = new THREE.Mesh(new THREE.CapsuleGeometry(0.085, 0.24, 6, 10), skinMat);
+          upperArm.position.set(sx * 0.025, -0.05, 0.035);
+          upperArm.rotation.z = sx * 0.32;
+          const forearm = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.27, 6, 10), skinMat);
+          forearm.position.set(sx * 0.08, 0.11, 0.13);
+          forearm.rotation.z = sx * 0.62;
+          const wrap = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.085, 0.13, 10), wrapMat);
+          wrap.position.set(sx * 0.135, 0.22, 0.22);
+          wrap.rotation.z = sx * 0.6;
+          const glove = new THREE.Group();
+          glove.position.set(sx * 0.16, 0.27, 0.29);
+          const fist = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), gloveMat);
+          fist.scale.set(1.08, 0.94, 1.2);
+          const thumb = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 8), gloveMat);
+          thumb.position.set(-sx * 0.105, -0.045, 0.04);
+          const gloveSeam = new THREE.Mesh(new THREE.TorusGeometry(0.105, 0.012, 7, 18, Math.PI * 1.35), trimMat);
+          gloveSeam.rotation.set(Math.PI / 2, 0, sx > 0 ? 0.6 : -2.5);
+          gloveSeam.position.z = 0.105;
+          glove.add(fist, thumb, gloveSeam);
+          arm.add(upperArm, forearm, wrap, glove);
           arms.push(arm);
+          gloveMeshes.push(glove);
         }
-        g.add(torso, head, shortsBody, waistband, ...legs, ...arms);
-        g.traverse((o) => { o.userData.noSplat = true; });
+        g.add(torso, neck, ...chest, ...abs, head, shortsBody, waistband, beltCode, ...sidePanels, ...legs, ...arms);
+        g.traverse((o) => {
+          o.userData.noSplat = true;
+          if (o.isMesh) o.castShadow = true;
+        });
         z.group.add(g);
         return {
-          group: g, torso, head, shortsBody, arms, legs,
-          baseX: x, baseZ: ringZ, baseY: 0.35, phase,
+          group: g, torso, head, mouth, mouthguard, shortsBody, arms, legs, gloves: gloveMeshes,
+          baseX: x, baseZ: ringZ, baseY: 0.47, phase,
         };
       };
-      const boxerA = makeBoxer({ x: ringX - 1.15, skin: 0xe2b28d, shorts: 0xf1f1ed, gloves: 0xd42632, trim: 0xd42632, phase: 0 });
-      const boxerB = makeBoxer({ x: ringX + 1.15, skin: 0x4f2f22, shorts: 0x15171c, gloves: 0x1648d8, trim: 0xf0d447, phase: Math.PI });
+      const boxerA = makeBoxer({
+        x: ringX - 1.15, skin: 0xe2b28d, shorts: 0xe8e9eb, gloves: 0xd42632,
+        trim: 0xd42632, boots: 0x9d1824, phase: 0, code: 'RED / 01', bruise: true,
+      });
+      const boxerB = makeBoxer({
+        x: ringX + 1.15, skin: 0x4f2f22, shorts: 0x15171c, gloves: 0x1648d8,
+        trim: 0xf0d447, boots: 0x12358f, phase: Math.PI, code: 'BLUE / 02',
+      });
       boxerA.group.rotation.y = Math.PI / 2;
       boxerB.group.rotation.y = -Math.PI / 2;
       boxerA.direction = 1;
       boxerB.direction = -1;
       z.animated.boxers = [boxerA, boxerB];
-      z.animated.boxing = { lastImpactSlot: -1 };
+      z.animated.boxing = { lastImpactSlot: -1, flash: null };
+
+      // Corner equipment: leather stools, enamel buckets, towels and water
+      // bottles make the ring feel maintained between its endless rounds.
+      for (const [side, cornerColor] of [[-1, 0xd42632], [1, 0x1648d8]]) {
+        const cornerX = ringX + side * 2.45;
+        const stoolMat = leatherMaterial(cornerColor, 0.58);
+        const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.25, 0.11, 16), stoolMat);
+        seat.position.set(cornerX, 0.67, ringZ - 1.84);
+        const stoolStem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.34, 10), steel);
+        stoolStem.position.set(cornerX, 0.46, ringZ - 1.84);
+        const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.14, 0.25, 14), mat(0xe8ebef, { metalness: 0.55, roughness: 0.22 }));
+        bucket.position.set(cornerX + side * 0.45, 0.59, ringZ - 1.72);
+        const towel = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.025, 0.22), mat(0xf4f1e9, { roughness: 1 }));
+        towel.position.set(cornerX - side * 0.34, 0.56, ringZ - 2.12);
+        towel.rotation.y = side * 0.18;
+        z.group.add(seat, stoolStem, bucket, towel);
+      }
+
+      // A square broadcast truss and four targeted fixtures put proper pools
+      // of light on the fighters while leaving the office edges cool and flat.
+      const trussY = 6.85;
+      for (const dz of [-3.2, 3.2]) box(z, { w: 8.0, h: 0.12, d: 0.12, x: ringX, y: trussY, z: ringZ + dz, material: steel, solid: false, noSplat: true, name: 'broadcast truss' });
+      for (const dx of [-4.0, 4.0]) box(z, { w: 0.12, h: 0.12, d: 6.4, x: ringX + dx, y: trussY, z: ringZ, material: steel, solid: false, noSplat: true, name: 'broadcast truss' });
+      for (const [dx, dz, color] of [[-2.6, -2.1, 0xffded0], [2.6, -2.1, 0xd7e4ff], [-2.6, 2.1, 0xffffff], [2.6, 2.1, 0xffffff]]) {
+        const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 0.3, 12), steel);
+        fixture.position.set(ringX + dx, trussY - 0.18, ringZ + dz);
+        fixture.rotation.x = Math.PI;
+        fixture.userData.noSplat = true;
+        const spot = new THREE.SpotLight(color, 14, 13, Math.PI * 0.2, 0.58, 1.15);
+        spot.position.set(ringX + dx, trussY - 0.35, ringZ + dz);
+        spot.target.position.set(ringX + dx * 0.18, 0.8, ringZ + dz * 0.12);
+        spot.castShadow = true;
+        spot.shadow.mapSize.set(512, 512);
+        z.group.add(fixture, spot, spot.target);
+      }
+
+      const makeCamera = (x, zz, ry, tallyColor) => {
+        const camera = new THREE.Group();
+        camera.position.set(x, 0, zz);
+        camera.rotation.y = ry;
+        const tripodMat = mat(0x20242c, { metalness: 0.62, roughness: 0.3 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.34, 0.72), tripodMat);
+        body.position.y = 1.65;
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.4, 16), mat(0x111620, { metalness: 0.72, roughness: 0.14 }));
+        lens.rotation.x = Math.PI / 2; lens.position.set(0, 1.65, 0.47);
+        const glass = new THREE.Mesh(new THREE.CircleGeometry(0.135, 18), new THREE.MeshBasicMaterial({ color: 0x416ba2 }));
+        glass.position.set(0, 1.65, 0.675);
+        const tally = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.035), new THREE.MeshBasicMaterial({ color: tallyColor }));
+        tally.position.set(0, 1.88, 0.18);
+        camera.add(body, lens, glass, tally);
+        for (const sx of [-1, 0, 1]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, 1.42, 7), tripodMat);
+          leg.position.set(sx * 0.22, 0.71, -0.04);
+          leg.rotation.z = sx * 0.19;
+          camera.add(leg);
+        }
+        camera.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.noSplat = true; } });
+        z.group.add(camera);
+      };
+      makeCamera(ringX - 5.15, ringZ + 3.75, 0.62, 0xff334d);
+      makeCamera(ringX + 4.95, ringZ + 3.65, -0.65, 0x34e27b);
+
+      // A textured concrete broadcast wall frames the scoreboard rather than
+      // letting it float on an untouched white expanse.
+      plane(z, {
+        w: 11.2, h: 4.15, x: 8.2, y: 4.65, z: -11.74,
+        material: new THREE.MeshStandardMaterial({
+          color: 0x8e9299, ...concretePbr, roughness: 0.78,
+          normalScale: new THREE.Vector2(0.25, 0.25),
+        }),
+        noSplat: true, name: 'max pro broadcast wall',
+      });
 
       // News-station office: desks, glowing monitors, rolling chairs, no journalists.
       for (const [x, zz, headline] of [[-13.6, -6.9, 'BREAKING: ROUND 0'], [-13.6, -3.8, 'POSSESSION 50 / 50'], [-13.6, -0.7, 'ART REMAINS LIVE']]) {
@@ -2013,7 +2309,7 @@ export class World {
 
       // Football score wall. Nobody scores; the clock is emotionally stopped.
       plane(z, {
-        w: 8.2, h: 2.0, x: 8.2, y: 4.7, z: -11.77,
+        w: 8.2, h: 2.0, x: 8.2, y: 4.7, z: -11.69,
         material: new THREE.MeshBasicMaterial({ map: textTexture('MAX PRO KUNST 2000     0  —  0     90:00 + ∞', { fg: '#f5f7ff', bg: '#092151', size: 42, w: 1400, h: 260, font: '800' }) }),
         noSplat: true, name: 'kunstScoreboard',
       });
@@ -2236,6 +2532,11 @@ export class World {
     z.interactables.push({
       id: 'maxpro-catalogue', type: 'flavor', label: 'Open the catalogue',
       pos: new THREE.Vector3(-4.5, 1.0, -2.5), radius: 1.8,
+      clueKey: 'theorySeen', requiresPainting: true,
+      clueLines: [
+        'Page 80 describes the Artist as “a context-bearing unit.” Page 81 adds “for the archive.”',
+        'The language is enormous. The transaction underneath it is very small.',
+      ],
       lines: [
         'Two hundred pages. One painting. Page 80 is the word “whereas” set in Caslon.',
         'The catalogue weighs more than the painting. So does the receipt.',
@@ -3732,6 +4033,11 @@ export class World {
     z.interactables.push({
       id: 'vacant-material-index', type: 'flavor', label: 'Read the material index',
       title: 'MATERIAL INDEX', pos: new THREE.Vector3(0, 1.2, -6.5), radius: 2.2,
+      clueKey: 'editionSeen', requiresPainting: true,
+      clueLines: [
+        'The next entry is “ARTIST — EDITION OF ONE.” Its lot number begins A-, like yours.',
+        'The maintenance plan says: “Keep identity sealed. Display only under controlled conditions.”',
+      ],
       lines: [
         'Eight dildos, eight surfaces, eight maintenance plans. “Vacant” refers to availability, not restraint.',
         'The checklist asks: glossy or matte, porous or sealed, ribbed or legally smooth, unique or aggressively editioned.',
@@ -3946,6 +4252,11 @@ export class World {
       {
         id: 'salon-menu', type: 'flavor', label: 'Read the treatment menu',
         title: 'FULL SERVICE MENU', pos: new THREE.Vector3(6.85, 1.0, 2.1), radius: 2.2,
+        clueKey: 'brandSeen', requiresPainting: true,
+        clueLines: [
+          'PERSONAL BRAND MAINTENANCE — market price. ARTIST IDENTITY CONSOLIDATION — ask receptionist.',
+          'A prepared client card already has your name and “{{title}}” written on it.',
+        ],
         lines: [
           'INVISIBLE TRIM — 90. CONCEPTUAL COLOR — 140. SCALP POLISH — market price.',
           'The cancellation policy is longer than every haircut in the building combined.',
@@ -3970,6 +4281,328 @@ export class World {
     );
 
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE GLASS BOXES — scream therapy with a deductible       */
+  /* ---------------------------------------------------------- */
+  #buildRageRoom() {
+    const z = this.#newZone('rageRoom');
+    shell(z, { w: 24, d: 14, floorColor: 0x26282e, wallColor: 0x15171d, ceilColor: 0x0d0e12 });
+    z.spawn.set(-10.3, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x080a10, density: 0.026 };
+
+    const glass = new THREE.MeshPhysicalMaterial({
+      color: 0x9ad5e8, transparent: true, opacity: 0.16,
+      transmission: 0.28, roughness: 0.08, metalness: 0.08,
+      clearcoat: 0.8, clearcoatRoughness: 0.05,
+    });
+    const frameMat = mat(0x4a5362, { metalness: 0.82, roughness: 0.24 });
+    const breakables = [];
+    const shards = [];
+    const boothLabels = ['THE DEADLINE', 'THE BREAKUP', 'THE BOSS', 'THE BODY', 'THE FUTURE'];
+    const boothLines = [
+      ['“I am not behind. I am moving at a different speed.”', 'The clock is bolted down. The clock is still winning.'],
+      ['“I have deleted the number. The number remains.”', 'The glass sweats when someone says “closure.”'],
+      ['“I was promoted into a personality I do not recognize.”', 'A laminated policy explains that screaming is not feedback.'],
+      ['“The body is a room. The room has filed a complaint.”', 'A foam dummy has been punched into a more honest shape.'],
+      ['“One day I will be free. The booking system is unconvinced.”', 'The exit sign flickers like it has seen the future.'],
+    ];
+
+    const makeBreakable = (label, x, y, zz, geometry, material) => {
+      const group = new THREE.Group(); group.position.set(x, 0, zz);
+      const original = new THREE.Mesh(geometry, material);
+      original.position.y = y; original.castShadow = true; group.add(original); z.group.add(group);
+      const fragments = [];
+      for (let i = 0; i < 6; i++) {
+        const fragment = new THREE.Mesh(new THREE.BoxGeometry(0.11 + (i % 3) * 0.07, 0.08 + (i % 2) * 0.06, 0.06 + (i % 3) * 0.04), material.clone());
+        fragment.position.set(x, y, zz); fragment.visible = false; fragment.userData.noSplat = true; z.group.add(fragment);
+        fragments.push(fragment);
+      }
+      const target = { label, group, fragments, pos: new THREE.Vector3(x, y, zz), broken: false, brokenAt: 0, variant: breakables.length % 4 };
+      breakables.push(target); shards.push(...fragments); return target;
+    };
+
+    const makeFrame = (x, zz, i) => {
+      for (const [px, pz] of [[x - 1.75, zz - 2.55], [x + 1.75, zz - 2.55], [x - 1.75, zz + 2.55], [x + 1.75, zz + 2.55]]) {
+        box(z, { w: 0.09, h: 3.0, d: 0.09, x: px, z: pz, material: frameMat, solid: false, noSplat: true });
+      }
+      for (const y of [0.05, 2.95]) {
+        box(z, { w: 3.6, h: 0.09, d: 0.09, x, y, z: zz - 2.55, material: frameMat, solid: false, noSplat: true });
+        box(z, { w: 3.6, h: 0.09, d: 0.09, x, y, z: zz + 2.55, material: frameMat, solid: false, noSplat: true });
+        box(z, { w: 0.09, h: 0.09, d: 5.1, x: x - 1.75, y, z: zz, material: frameMat, solid: false, noSplat: true });
+        box(z, { w: 0.09, h: 0.09, d: 5.1, x: x + 1.75, y, z: zz, material: frameMat, solid: false, noSplat: true });
+      }
+      box(z, { w: 3.5, h: 2.82, d: 0.035, x, y: 0.08, z: zz - 2.53, material: glass, solid: false, noSplat: true, name: 'rage glass back' });
+      box(z, { w: 0.035, h: 2.82, d: 5.0, x: x - 1.73, y: 0.08, z: zz, material: glass, solid: false, noSplat: true, name: 'rage glass side' });
+      box(z, { w: 0.035, h: 2.82, d: 5.0, x: x + 1.73, y: 0.08, z: zz, material: glass, solid: false, noSplat: true, name: 'rage glass side' });
+      plane(z, {
+        w: 2.35, h: 0.34, x, y: 3.25, z: zz - 2.58,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(`BOX ${String(i + 1).padStart(2, '0')} · ${boothLabels[i]}`, { fg: '#ffcad2', bg: '#441722', size: 28, w: 900, h: 150, font: '900' }) }),
+        noSplat: true,
+      });
+    };
+
+    const boothX = [-8, -4, 0, 4, 8];
+    for (let i = 0; i < boothX.length; i++) {
+      const x = boothX[i]; const zz = 0.5; makeFrame(x, zz, i);
+      makeBreakable(`${boothLabels[i]} chair`, x - 0.72, 0.58, zz + 0.35, new THREE.BoxGeometry(0.9, 0.16, 0.82), mat([0x7c2737, 0x344e67, 0x6f5b2c, 0x536c5e, 0x6b3b62][i], { roughness: 0.76 }));
+      makeBreakable(`${boothLabels[i]} table`, x + 0.72, 0.7, zz - 0.45, new THREE.BoxGeometry(0.72, 0.14, 0.55), mat(0xb5a28c, { roughness: 0.82 }));
+      makeBreakable(`${boothLabels[i]} object`, x, 0.42, zz + 1.35, new THREE.SphereGeometry(0.34, 12, 8), mat(0xc3263e, { roughness: 0.42 }));
+      z.interactables.push({
+        id: `rage-booth-${i}`, type: 'flavor', label: `Scream into ${boothLabels[i]} box`,
+        title: `GLASS BOX ${String(i + 1).padStart(2, '0')}`, pos: new THREE.Vector3(x, 1.1, zz + 2.05), radius: 2.2,
+        lines: boothLines[i],
+      });
+    }
+
+    const dude = new THREE.Group(); dude.position.set(0, 0, 0.5);
+    const skin = mat(0xd19b7b, { roughness: 0.82 }); const shirt = mat(0x242936, { roughness: 0.72 });
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.5, 6, 10), shirt); torso.position.y = 1.03;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), skin); head.position.y = 1.69;
+    const makeArm = (side) => {
+      const pivot = new THREE.Group(); pivot.position.set(side * 0.34, 1.28, 0);
+      const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.36, 5, 8), skin); limb.position.y = -0.25;
+      const fist = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), skin); fist.position.y = -0.5;
+      pivot.add(limb, fist); dude.add(pivot); return pivot;
+    };
+    const armL = makeArm(-1); const armR = makeArm(1);
+    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.44, 5, 8), shirt); legL.position.set(-0.14, 0.38, 0);
+    const legR = legL.clone(); legR.position.x = 0.14;
+    dude.add(torso, head, legL, legR);
+    dude.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(dude);
+    dude.add(plane(z, { w: 2.25, h: 0.34, x: 0, y: 2.3, z: -0.02, material: new THREE.MeshBasicMaterial({ map: textTexture('MARTIN · NO ADVICE', { fg: '#fff0f3', bg: '#661c2b', size: 31, w: 900, h: 140, font: '900' }) }), noSplat: true }));
+
+    z.animated.rageRoom = {
+      breakables, shards, dude, torso, head, armL, armR, rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0,
+      lines: ['I AM PROCESSING IT.', 'THE CHAIR KNOWS WHAT IT DID.', 'THIS IS NOT ABOUT THE LAMP.', 'I HAVE REACHED A HEALTHY LEVEL OF DESTRUCTION.', 'NO NOTES. ONLY SPLINTERS.'],
+    };
+    plane(z, { w: 8.5, h: 0.55, x: 0, y: 3.35, z: -6.82, material: new THREE.MeshBasicMaterial({ map: textTexture('THE GLASS BOXES  ·  FEEL IT / BREAK IT / BILL IT', { fg: '#ffced4', bg: '#24121a', size: 37, w: 1600, h: 180, font: '900' }) }), noSplat: true });
+    plane(z, { w: 5.2, h: 0.28, x: 0, y: 2.82, z: -6.81, material: new THREE.MeshBasicMaterial({ map: textTexture('SCREAMING IS INCLUDED · REPLACEMENT ITEMS ARE NOT', { fg: '#a4e8f1', bg: '#101b28', size: 24, w: 1500, h: 120, font: '700' }) }), noSplat: true });
+    const red = new THREE.PointLight(0xe82d4f, 4.5, 12, 1.8); red.position.set(0, 3.0, 0.4); z.group.add(red); z.animated.rageLight = red; z.animated.rageRoom.rageLight = red;
+    z.group.add(new THREE.HemisphereLight(0x27334b, 0x090a0e, 0.72));
+    door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.waypoints = [new THREE.Vector3(-9, 0, -5), new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 0, -5), new THREE.Vector3(9, 0, -5)];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  BARBIE DEATH METAL — pink plastic, black eyeliner, no nuance */
+  /* ---------------------------------------------------------- */
+  #buildDeathMetal() {
+    const z = this.#newZone('deathMetal');
+    shell(z, { w: 26, d: 16, floorColor: 0x18151d, wallColor: 0x0d0b12, ceilColor: 0x09070c });
+    z.spawn.set(-10.7, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x09070f, density: 0.021 };
+
+    // Reuse the local Poly Haven studio library: worn wood under the crowd and
+    // damaged plaster behind the stage keep the room grounded in a real venue.
+    const textureLoader = new THREE.TextureLoader();
+    const loadPbr = (folder, file, repeatX, repeatY, srgb = false) => {
+      const tex = textureLoader.load(encodeURI(`puplic/polyhaven/studio/${folder}/${file}`));
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.anisotropy = 4;
+      if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const woodPbr = {
+      map: loadPbr('old_wood_floor', 'old_wood_floor_diff_1k.jpg', 8, 5, true),
+      normalMap: loadPbr('old_wood_floor', 'old_wood_floor_nor_gl_1k.jpg', 8, 5),
+      roughnessMap: loadPbr('old_wood_floor', 'old_wood_floor_rough_1k.jpg', 8, 5),
+    };
+    const plasterPbr = {
+      map: loadPbr('worn_plaster_wall', 'worn_plaster_wall_diff_1k.jpg', 4, 2, true),
+      normalMap: loadPbr('worn_plaster_wall', 'worn_plaster_wall_nor_gl_1k.jpg', 4, 2),
+      roughnessMap: loadPbr('worn_plaster_wall', 'worn_plaster_wall_rough_1k.jpg', 4, 2),
+    };
+    plane(z, { w: 25.7, h: 15.7, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2, material: new THREE.MeshStandardMaterial({ color: 0x5e344b, ...woodPbr, roughness: 0.76, normalScale: new THREE.Vector2(0.5, 0.5) }), noSplat: true, name: 'death metal wood floor' });
+    // The floor keeps full PBR detail. Walls retain the plaster albedo but skip
+    // normal/roughness maps: that cuts the room's heaviest fragment work.
+    plane(z, { w: 25.7, h: 3.35, x: 0, y: 1.75, z: -7.99, material: new THREE.MeshLambertMaterial({ color: 0x332036, map: plasterPbr.map }), noSplat: true, name: 'death metal plaster wall' });
+    plane(z, { w: 15.7, h: 3.35, x: -12.99, y: 1.75, z: 0, ry: Math.PI / 2, material: new THREE.MeshLambertMaterial({ color: 0x25172c, map: plasterPbr.map }), noSplat: true });
+    plane(z, { w: 15.7, h: 3.35, x: 12.99, y: 1.75, z: 0, ry: -Math.PI / 2, material: new THREE.MeshLambertMaterial({ color: 0x25172c, map: plasterPbr.map }), noSplat: true });
+
+    const black = mat(0x101018, { roughness: 0.72, metalness: 0.12 });
+    const iron = mat(0x26212e, { roughness: 0.35, metalness: 0.8 });
+    const pink = new THREE.MeshPhysicalMaterial({
+      color: 0xff2c9c, emissive: 0x6e0b47, emissiveIntensity: 0.65,
+      roughness: 0.28, metalness: 0.16, clearcoat: 0.7,
+    });
+    const acid = new THREE.MeshBasicMaterial({ color: 0xd8ff3e });
+    const white = mat(0xe7e0e8, { roughness: 0.88 });
+
+    // The stage is intentionally too small for the certainty of the opinions.
+    box(z, { w: 10.4, h: 0.42, d: 3.4, x: 1.1, y: 0, z: -5.15, material: black, solid: false, name: 'barbie death metal stage' });
+    for (const x of [-4.1, 6.3]) {
+      box(z, { w: 1.25, h: 3.1, d: 1.0, x, y: 0.42, z: -5.0, material: iron, solid: false, noSplat: true, name: 'death metal speaker' });
+      for (const y of [0.95, 1.65, 2.35]) {
+        cylinder(z, { rT: 0.24, rB: 0.24, h: 0.04, x, y, z: -5.53, material: black, seg: 16, solid: false, noSplat: true });
+      }
+    }
+
+    // A Barbie-like museum object: impossible waist, crown, hair, and a black
+    // metal halo. It is art because the room has installed enough cable around it.
+    const barbie = new THREE.Group(); barbie.position.set(1.1, 0.42, -4.05);
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 0.62, 6, 12), pink); body.position.y = 0.78;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 12), pink); head.position.y = 1.52;
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.29, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), black); hair.position.set(0, 1.58, -0.02);
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.52, 0.48, 12), pink); skirt.position.y = 0.32;
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.035, 8, 32), acid); halo.position.set(0, 1.6, -0.08); halo.rotation.x = Math.PI / 2;
+    barbie.add(body, head, hair, skirt, halo); barbie.traverse((o) => { o.userData.noSplat = true; }); z.group.add(barbie);
+    plane(z, {
+      w: 3.5, h: 0.42, x: 1.1, y: 2.45, z: -4.07,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('BARBIE · PLASTIC / POWER / APOCALYPSE', { fg: '#ffb6e3', bg: '#1a0715', size: 28, w: 1300, h: 160, font: '900' }) }),
+      noSplat: true,
+    });
+
+    // Flyer walls: the room's curatorial vocabulary is all eyeliner and footnotes.
+    for (const [x, text, color] of [
+      [-9.4, 'PUNK IS A COLOR OF PINK', '#ff4bb4'],
+      [-4.9, 'BARBIE HAS ENTERED THE MOSHPIT', '#d8ff3e'],
+      [7.8, 'NO HEELS · ONLY HEAVY RIFFS', '#ff4bb4'],
+    ]) {
+      plane(z, {
+        w: 3.25, h: 1.0, x, y: 1.72, z: 7.78, ry: Math.PI,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg: color, bg: '#120b16', size: 27, w: 900, h: 260, font: '900' }) }),
+        noSplat: true,
+      });
+    }
+    for (const x of [-8.5, -5.7, 6.5, 8.8]) {
+      box(z, { w: 0.12, h: 2.6, d: 0.12, x, y: 0.02, z: 4.8, material: iron, solid: false, noSplat: true });
+      box(z, { w: 0.12, h: 0.12, d: 3.4, x, y: 2.5, z: 4.8, material: iron, solid: false, noSplat: true });
+    }
+
+    // A tiny merch table: every revolution eventually acquires a tote bag.
+    box(z, { w: 2.2, h: 0.78, d: 0.8, x: -7.8, y: 0, z: -1.8, material: black, name: 'barbie death metal merch' });
+    for (let i = 0; i < 4; i++) {
+      box(z, { w: 0.34, h: 0.42, d: 0.05, x: -8.4 + i * 0.4, y: 0.78, z: -2.23, material: i % 2 ? pink : white, solid: false, noSplat: true });
+    }
+
+    // Full little club rig: two guitarists, a drummer, and an unreasonable
+    // amount of black cable. Instruments are deliberately readable at game scale.
+    const instrumentMat = mat(0x090910, { roughness: 0.3, metalness: 0.65 });
+    const chrome = mat(0xc9d1d7, { roughness: 0.2, metalness: 0.9 });
+    const makeMusician = (x, zz, shirtColor, kind) => {
+      const group = new THREE.Group(); group.position.set(x, 0.42, zz);
+      const shirt = mat(shirtColor, { roughness: 0.8 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.62, 0.25), shirt); body.position.y = 0.76;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), mat(0xc98f70, { roughness: 0.82 })); head.position.y = 1.35;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.7), black); hair.position.y = 1.42;
+      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.52, 0.12), shirt); armL.position.set(-0.27, 0.78, 0.02);
+      const armR = armL.clone(); armR.position.x = 0.27;
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.56, 0.14), black); legL.position.set(-0.11, 0.28, 0);
+      const legR = legL.clone(); legR.position.x = 0.11;
+      group.add(body, head, hair, armL, armR, legL, legR);
+      const guitar = new THREE.Group();
+      const guitarBody = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8), kind === 'bass' ? pink : instrumentMat); guitarBody.scale.set(1.0, 0.72, 0.34); guitarBody.position.set(0, 0.83, 0.22);
+      const guitarNeck = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.58, 0.06), chrome); guitarNeck.position.set(0, 1.12, 0.18); guitarNeck.rotation.z = kind === 'bass' ? -0.35 : 0.32;
+      const guitarHead = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.12, 0.06), chrome); guitarHead.position.set(kind === 'bass' ? -0.14 : 0.14, 1.39, 0.1);
+      guitar.add(guitarBody, guitarNeck, guitarHead); guitar.rotation.z = kind === 'bass' ? -0.22 : 0.22; group.add(guitar);
+      group.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(group);
+      return { group, body, head, armL, armR, guitar, kind };
+    };
+    const guitarist = makeMusician(-2.2, -5.18, 0x2a1027, 'guitar');
+    const bassist = makeMusician(4.15, -5.18, 0x141d32, 'bass');
+    const drumGroup = new THREE.Group(); drumGroup.position.set(1.15, 0.42, -5.42);
+    const drumKick = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.34, 18), pink); drumKick.rotation.x = Math.PI / 2; drumKick.position.y = 0.55;
+    const drumTop = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 16), white); drumTop.position.set(-0.55, 0.83, 0.08);
+    const cymbal = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.025, 24), chrome); cymbal.position.set(0.55, 1.36, 0);
+    const stickL = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.64, 7), chrome); stickL.position.set(-0.25, 1.13, 0.12); stickL.rotation.z = -0.7;
+    const stickR = stickL.clone(); stickR.position.x = 0.25; stickR.rotation.z = 0.7;
+    drumGroup.add(drumKick, drumTop, cymbal, stickL, stickR); drumGroup.traverse((o) => { o.userData.noSplat = true; }); z.group.add(drumGroup);
+
+    // Truss, beams, and a proper pit boundary give the room concert geometry.
+    box(z, { w: 12.4, h: 0.14, d: 0.14, x: 1.1, y: 3.22, z: -3.75, material: iron, solid: false, noSplat: true });
+    for (const x of [-4.8, 7.0]) box(z, { w: 0.14, h: 3.2, d: 0.14, x, y: 0.02, z: -3.75, material: iron, solid: false, noSplat: true });
+    const beamMeshes = [];
+    const concertLights = [];
+    for (const [x, color] of [[-4.2, 0xff187f], [-1.0, 0xd8ff3e], [2.4, 0x6f55ff], [5.6, 0xff187f]]) {
+      const spot = new THREE.SpotLight(color, 12, 15, 0.32, 0.72, 1.8); spot.position.set(x, 3.12, -3.6); spot.target.position.set(x * 0.32, 0, -1.6); z.group.add(spot, spot.target); concertLights.push(spot);
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(0.62, 5.8, 14, 1, true), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.075, depthWrite: false, side: THREE.DoubleSide }));
+      beam.position.set(x, 1.05, -2.5); beam.rotation.x = Math.PI; beam.userData.noSplat = true; z.group.add(beam); beamMeshes.push(beam);
+    }
+
+    const pitRing = new THREE.Mesh(new THREE.RingGeometry(3.1, 4.0, 64), new THREE.MeshBasicMaterial({ color: 0x7a163e, transparent: true, opacity: 0.62, side: THREE.DoubleSide }));
+    pitRing.rotation.x = -Math.PI / 2; pitRing.position.set(0, 0.026, 2.25); pitRing.userData.noSplat = true; z.group.add(pitRing);
+    plane(z, { w: 3.5, h: 0.78, x: 0, y: 0.035, z: 2.25, rx: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('MOSHPIT', { fg: '#d8ff3e', bg: '#251021', size: 58, w: 900, h: 220, font: '900' }), transparent: true, opacity: 0.7 }), noSplat: true });
+    for (const x of [-4.35, 4.35]) {
+      box(z, { w: 0.14, h: 0.85, d: 4.0, x, y: 0, z: 2.25, material: iron, solid: false, noSplat: true });
+      for (const zz of [0.7, 1.9, 3.1]) box(z, { w: 0.28, h: 0.08, d: 0.08, x, y: 0.65, z: zz, material: acid, solid: false, noSplat: true });
+    }
+
+    const makeMosher = (index) => {
+      const group = new THREE.Group();
+      const clothes = mat(index % 3 === 0 ? 0x17121d : index % 3 === 1 ? 0x2b1429 : 0x111820, { roughness: 0.88 });
+      const skinMat = mat(index % 2 ? 0xc98f70 : 0xd8a58d, { roughness: 0.86 });
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.48, 0.18), clothes); torso.position.y = 0.67;
+      const shirtGraphic = new THREE.Mesh(new THREE.PlaneGeometry(0.19, 0.12), new THREE.MeshBasicMaterial({ map: textTexture(index % 2 ? 'B' : 'PUNK', { fg: index % 2 ? '#ff83c8' : '#d8ff3e', bg: '#100b14', size: 17, w: 260, h: 150, font: '900' }) }));
+      shirtGraphic.position.set(0, 0.7, 0.101); shirtGraphic.userData.noSplat = true;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), skinMat); head.position.y = 1.08;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.72), index % 2 ? pink : black); hair.position.y = 1.15;
+      const spikes = [];
+      for (const x of [-0.09, 0, 0.09]) {
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.17, 6), index % 2 ? pink : acid);
+        spike.position.set(x, 1.29, 0); spike.rotation.z = x * 1.8; spikes.push(spike);
+      }
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.42, 0.1), skinMat); arm.position.set(-0.22, 0.74, 0.03);
+      const arm2 = arm.clone(); arm2.position.x = 0.22;
+      const fist = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), skinMat); fist.position.set(-0.22, 0.51, 0.03);
+      const fist2 = fist.clone(); fist2.position.x = 0.22;
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.42, 0.12), black); leg.position.set(-0.09, 0.25, 0);
+      const leg2 = leg.clone(); leg2.position.x = 0.09;
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.08, 0.2), iron); boot.position.set(-0.09, 0.035, 0.035);
+      const boot2 = boot.clone(); boot2.position.x = 0.09;
+      const prop = new THREE.Group();
+      const propBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.12, 4, 6), pink); propBody.position.y = 0.07;
+      const propHead = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), pink); propHead.position.y = 0.19;
+      const propHair = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.65), black); propHair.position.y = 0.21;
+      prop.add(propBody, propHead, propHair); prop.position.set(0.26, 0.91, 0.16);
+      group.add(torso, shirtGraphic, head, hair, ...spikes, arm, arm2, fist, fist2, leg, leg2, boot, boot2, prop); group.traverse((o) => { o.userData.noSplat = true; }); z.group.add(group);
+      return {
+        group, torso, head, arm, arm2, fist, fist2, leg, leg2, prop,
+        angle: index * (Math.PI * 2 / 12), radius: 3.35 + (index % 3) * 0.24,
+        speed: 0.55 + (index % 4) * 0.1, phase: index * 0.8,
+        style: index % 4 === 0 ? 'slam' : index % 4 === 1 ? 'surge' : 'circle',
+      };
+    };
+    const moshers = Array.from({ length: 12 }, (_, i) => makeMosher(i));
+    z.animated.deathMetal = { barbie, guitarist, bassist, drumGroup, drumKick, cymbal, stickL, stickR, concertLights, beamMeshes, moshers, pitRing, lastStep: -1 };
+
+    const wash = new THREE.PointLight(0xff218f, 9, 16, 1.7); wash.position.set(1.1, 3.0, -4.3); z.group.add(wash);
+    const green = new THREE.PointLight(0xd8ff3e, 5, 13, 1.8); green.position.set(-7.5, 2.8, 3.5); z.group.add(green);
+    z.group.add(new THREE.HemisphereLight(0x3b163b, 0x08070d, 0.64));
+    plane(z, { w: 6.8, h: 0.48, x: 0, y: 3.36, z: -7.82, material: new THREE.MeshBasicMaterial({ map: textTexture('BARBIE DEATH METAL  ·  ART IS A RIFF', { fg: '#ff9fd6', bg: '#180814', size: 40, w: 1500, h: 180, font: '900' }) }), noSplat: true });
+    plane(z, { w: 5.4, h: 0.28, x: 0, y: 2.82, z: -7.81, material: new THREE.MeshBasicMaterial({ map: textTexture('PUNKS AND DEATHMETAL GOTHS ONLY · NO CLEAN VERSIONS', { fg: '#d8ff3e', bg: '#0c1010', size: 23, w: 1500, h: 120, font: '800' }) }), noSplat: true });
+
+    z.interactables.push({
+      id: 'barbie-art', type: 'flavor', label: 'Inspect the Barbie artwork',
+      title: 'BARBIE, AFTER THE END OF THE WORLD', pos: new THREE.Vector3(1.1, 1.2, -3.85), radius: 2.2,
+      lines: [
+        'The figure is pink, crowned, and surrounded by enough black cable to qualify as a band.',
+        'A wall text asks whether Barbie is a feminist icon, a corporate ghost, or both on tour.',
+        'The halo is acid green. The label says “empowerment object.” The amp says nothing.',
+        'Someone has written PUNK IS A COLOR OF PINK across the catalogue in eyeliner.',
+      ],
+    });
+    door(z, { x: -12.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.anchors.razorKen = new THREE.Vector3(-6.2, 0, 1.0);
+    z.anchors.baronessBlastbeat = new THREE.Vector3(-1.7, 0, 2.5);
+    z.anchors.kikiKillswitch = new THREE.Vector3(4.0, 0, 2.3);
+    z.anchors.morticiaPlastic = new THREE.Vector3(7.8, 0, 0.3);
+    z.anchors.boneBarbie = new THREE.Vector3(1.2, 0, -1.3);
+    z.anchors.fatPunk = new THREE.Vector3(-8.5, 0, 1.1);
+    z.anchorYaws = {
+      razorKen: -0.4, baronessBlastbeat: 0.1, kikiKillswitch: -0.2,
+      morticiaPlastic: 1.1, boneBarbie: Math.PI, fatPunk: -0.3,
+    };
+    z.waypoints = [
+      new THREE.Vector3(-8, 0, 3.5), new THREE.Vector3(-3, 0, 4.8),
+      new THREE.Vector3(3, 0, 4.6), new THREE.Vector3(8, 0, 3.2),
+      new THREE.Vector3(-7, 0, -0.4), new THREE.Vector3(6, 0, -1.2),
+    ];
   }
 
   /* ---------------------------------------------------------- */
@@ -4550,6 +5183,28 @@ export class World {
       pos: new THREE.Vector3(0, 2.9, -5.3), radius: 2.35,
     });
 
+    // Doctor Drug keeps to the sink-side corner where the magenta fixture
+    // light can catch the visor of his strange black helmet.
+    z.anchors.doctorDrug = new THREE.Vector3(4.55, 0, 3.45);
+    z.anchorYaws = { doctorDrug: -2.26 };
+    const drugLight = new THREE.PointLight(0xa24cff, 5.8, 4.6, 1.8);
+    drugLight.position.set(4.5, 2.35, 3.35);
+    z.group.add(drugLight);
+    // Doctor Drug's counter is a tiny point-of-view mission station: buy the
+    // sealed supplies from him, then assemble the Muscle Mania delivery here.
+    const drugCounter = mat(0x191321, { roughness: 0.5, metalness: 0.24 });
+    box(z, { w: 1.65, h: 0.88, d: 0.58, x: 6.0, y: 0, z: 3.85, material: drugCounter, solid: false, noSplat: true, name: 'doctor drug counter' });
+    const drugPackColors = [0xa24cff, 0xff5da9, 0xc9d7e6];
+    for (let i = 0; i < 3; i++) {
+      const packet = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.2, 0.08), new THREE.MeshStandardMaterial({ color: drugPackColors[i], emissive: drugPackColors[i], emissiveIntensity: 0.32, roughness: 0.35 }));
+      packet.position.set(5.52 + i * 0.47, 0.99, 3.66); packet.rotation.y = 0.12 - i * 0.1; packet.userData.noSplat = true; z.group.add(packet);
+    }
+    plane(z, { w: 1.9, h: 0.26, x: 6.0, y: 1.47, z: 3.54, material: new THREE.MeshBasicMaterial({ map: textTexture('DOCTOR DRUG · SEALED SUPPLIES', { fg: '#e6d5ff', bg: '#2a1640', size: 21, w: 900, h: 130, font: '800' }) }), noSplat: true });
+    z.interactables.push({
+      id: 'doctor-drug-packing', type: 'drugPacking', label: 'Pack the Muscle Mania delivery',
+      pos: new THREE.Vector3(6.0, 1.0, 3.72), radius: 2.0,
+    });
+
     z.waypoints = [
       new THREE.Vector3(-4.6, 0, 3.3), new THREE.Vector3(-2.1, 0, 1.0),
       new THREE.Vector3(1.2, 0, 3.4), new THREE.Vector3(4.4, 0, 0.4),
@@ -4903,6 +5558,77 @@ export class World {
     if (z) z.animated.churchCrackleT = 0.4;
   }
 
+  resetRageRoom() {
+    const z = this.zones.get('rageRoom');
+    const rage = z?.animated.rageRoom;
+    if (!rage) return;
+    for (const target of rage.breakables) {
+      target.broken = false;
+      target.brokenAt = 0;
+      target.group.visible = true;
+      for (const fragment of target.fragments) {
+        fragment.visible = false;
+        delete fragment.userData.velocity;
+        delete fragment.userData.spin;
+        delete fragment.userData.brokenAt;
+      }
+    }
+    rage.timer = 1.5;
+    rage.nextIndex = 0;
+    rage.shoutIndex = 0;
+    rage.lastBreak = 0;
+    if (rage.dude) rage.dude.position.set(0, 0, 0.5);
+    if (rage.rageLight) rage.rageLight.intensity = 4.5;
+  }
+
+  #breakRageTarget(target, t) {
+    if (!target || target.broken) return null;
+    target.broken = true;
+    target.brokenAt = t;
+    target.group.visible = false;
+    for (let i = 0; i < target.fragments.length; i++) {
+      const fragment = target.fragments[i];
+      const angle = (i / target.fragments.length) * Math.PI * 2 + target.variant * 0.7;
+      fragment.visible = true;
+      fragment.position.set(
+        target.pos.x + Math.cos(angle) * (0.12 + (i % 3) * 0.07),
+        target.pos.y + 0.08 + (i % 2) * 0.1,
+        target.pos.z + Math.sin(angle) * (0.12 + (i % 2) * 0.08),
+      );
+      fragment.rotation.set(Math.sin(angle), angle, Math.cos(angle) * 0.5);
+      fragment.userData.velocity = new THREE.Vector3(
+        Math.cos(angle) * (0.65 + (i % 3) * 0.18),
+        1.35 + (i % 2) * 0.4,
+        Math.sin(angle) * (0.65 + (i % 2) * 0.2),
+      );
+      fragment.userData.spin = new THREE.Vector3(2.1 + i * 0.18, -1.4 + i * 0.2, 1.2 - i * 0.12);
+      fragment.userData.brokenAt = t;
+    }
+    return { label: target.label, variant: target.variant };
+  }
+
+  breakRageObject(playerPos, forward) {
+    if (this.current !== 'rageRoom') return { broken: false };
+    const rage = this.zone('rageRoom')?.animated.rageRoom;
+    if (!rage) return { broken: false };
+    const fwd = new THREE.Vector2(forward.x, forward.z).normalize();
+    let nearest = null;
+    let nearestDistance = Infinity;
+    for (const target of rage.breakables) {
+      if (target.broken) continue;
+      const dx = target.pos.x - playerPos.x;
+      const dz = target.pos.z - playerPos.z;
+      const distance = Math.hypot(dx, dz);
+      if (distance > 2.8 || distance >= nearestDistance) continue;
+      const direction = new THREE.Vector2(dx, dz).normalize();
+      if (fwd.dot(direction) < 0.38) continue;
+      nearest = target;
+      nearestDistance = distance;
+    }
+    const result = this.#breakRageTarget(nearest, this.#t);
+    return result ? { broken: true, ...result } : { broken: false };
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -4977,11 +5703,15 @@ export class World {
 
   /* ---- the gallery display slot ---- */
 
-  hangOnDisplay(texture, title) {
+  hangOnDisplay(texture, title, lotNumber = lotNumberFor(1)) {
     const z = this.zones.get('galleria');
     z.displayArt.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.85 });
     z.displaySign.material.map = textTexture(`“${title}” — THE ARTIST`, { fg: '#e8c15a', size: 30 });
     z.displaySign.material.needsUpdate = true;
+    z.archiveDot.material.opacity = 1;
+    z.archiveLabel.material.map = textTexture(`${lotNumber} · FOR THE ARCHIVE`, { fg: '#c3263e', bg: '#f0ede6', size: 23, w: 820, h: 130, font: '800' });
+    z.archiveLabel.material.opacity = 1;
+    z.archiveLabel.material.needsUpdate = true;
     z.displayOccupied = true;
   }
 
@@ -4990,7 +5720,20 @@ export class World {
     z.displayArt.material = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.9 });
     z.displaySign.material.map = textTexture('RESERVED — “THE ARTIST”', { fg: '#8f8a7a', size: 34 });
     z.displaySign.material.needsUpdate = true;
+    z.archiveDot.material.opacity = 0;
+    z.archiveLabel.material.opacity = 0;
+    z.archiveLabel.material.map = null;
+    z.archiveLabel.material.needsUpdate = true;
     z.displayOccupied = false;
+  }
+
+  setVaultArchive(title = 'THE ARTIST', lotNumber = lotNumberFor(1)) {
+    const z = this.zones.get('vault');
+    if (!z?.archivePlate) return;
+    z.archivePlate.material.map = textTexture(`ARCHIVE · ${lotNumber} · “${title}”`, {
+      fg: '#e8c15a', bg: '#17151b', size: 28, w: 1050, h: 140, font: '800',
+    });
+    z.archivePlate.material.needsUpdate = true;
   }
 
   /** Your own poster, bought at the gift shop, hung with tape. Forever. */
@@ -5028,10 +5771,131 @@ export class World {
   update(dt, t, beatPhase = -1) {
     const z = this.zone();
     if (!z) return;
+    this.#t = t;
     let event = null;
     const beat = beatPhase >= 0;
     // a sharp percussive envelope: full on the kick, decays through the beat
     const kick = beat ? Math.pow(1 - beatPhase, 2.6) : 0;
+
+    if (z.animated.rageRoom) {
+      const rage = z.animated.rageRoom;
+      const frenzy = 0.7 + Math.sin(t * 5.8) * 0.3;
+      rage.dude.position.y = Math.abs(Math.sin(t * 8.4)) * 0.035;
+      rage.dude.rotation.y = Math.sin(t * 5.1) * 0.16;
+      rage.torso.rotation.z = Math.sin(t * 11.5) * 0.08;
+      rage.torso.rotation.x = -0.08 - frenzy * 0.08;
+      rage.head.rotation.y = Math.sin(t * 13.2) * 0.32;
+      rage.head.rotation.z = Math.sin(t * 7.7) * 0.12;
+      rage.armL.rotation.z = -0.55 - Math.abs(Math.sin(t * 7.1)) * 1.05;
+      rage.armR.rotation.z = 0.55 + Math.abs(Math.sin(t * 8.2 + 0.8)) * 1.12;
+      rage.armL.rotation.x = Math.sin(t * 4.6) * 0.32;
+      rage.armR.rotation.x = Math.sin(t * 5.2 + 1.2) * -0.28;
+
+      for (const fragment of rage.shards) {
+        if (!fragment.visible || !fragment.userData.velocity) continue;
+        const velocity = fragment.userData.velocity;
+        velocity.y -= dt * 6.2;
+        fragment.position.addScaledVector(velocity, dt);
+        fragment.rotation.x += fragment.userData.spin.x * dt;
+        fragment.rotation.y += fragment.userData.spin.y * dt;
+        fragment.rotation.z += fragment.userData.spin.z * dt;
+        if (fragment.position.y < 0.04 || t - fragment.userData.brokenAt > 2.8) {
+          fragment.visible = false;
+        }
+      }
+
+      rage.timer -= dt;
+      if (rage.timer <= 0) {
+        const next = rage.breakables.find((target) => !target.broken);
+        if (next) {
+          const result = this.#breakRageTarget(next, t);
+          rage.nextIndex++;
+          rage.shoutIndex++;
+          rage.timer = 1.55 + (rage.nextIndex % 3) * 0.34;
+          rage.lastBreak = t;
+          event = { type: 'rageBreak', variant: result.variant, line: rage.lines[(rage.shoutIndex - 1) % rage.lines.length] };
+        } else {
+          rage.timer = 3.2;
+          rage.shoutIndex++;
+          event = { type: 'rageBreak', variant: rage.shoutIndex % 4, line: 'THE ROOM HAS RUN OUT OF OBJECTS. I AM NOT DONE.' };
+        }
+      }
+      const breakAge = t - (rage.lastBreak ?? 0);
+      rage.rageLight.intensity = 4.5 + (breakAge >= 0 && breakAge < 0.45 ? (1 - breakAge / 0.45) * 10 : 0);
+    }
+
+    if (z.animated.deathMetal) {
+      const concert = z.animated.deathMetal;
+      const pulse = beat ? kick : 0.15 + Math.max(0, Math.sin(t * 7.4)) * 0.12;
+      concert.barbie.rotation.y += dt * 0.7;
+      concert.barbie.position.y = 0.42 + Math.abs(Math.sin(t * 3.2)) * 0.018;
+      concert.guitarist.group.position.y = 0.42 + Math.abs(Math.sin(t * 6.8)) * 0.035 + pulse * 0.025;
+      concert.bassist.group.position.y = 0.42 + Math.abs(Math.sin(t * 7.4 + 0.7)) * 0.04 + pulse * 0.028;
+      for (const musician of [concert.guitarist, concert.bassist]) {
+        musician.head.rotation.y = Math.sin(t * 12.5 + musician.group.position.x) * 0.22;
+        musician.body.rotation.z = Math.sin(t * 9.5 + musician.group.position.x) * 0.06;
+        musician.armL.rotation.z = -0.28 - Math.abs(Math.sin(t * 11.5 + musician.group.position.x)) * 0.7;
+        musician.armR.rotation.z = 0.28 + Math.abs(Math.sin(t * 13.1 + musician.group.position.x)) * 0.68;
+        musician.guitar.rotation.x = Math.sin(t * 10.5 + musician.group.position.x) * 0.06;
+      }
+      concert.drumGroup.position.y = 0.42 + Math.abs(Math.sin(t * 7.0)) * 0.026;
+      concert.drumKick.scale.z = 1 + pulse * 0.06;
+      concert.cymbal.rotation.z = Math.sin(t * 5.4) * 0.16 + pulse * 0.22;
+      concert.stickL.rotation.z = -0.62 - Math.abs(Math.sin(t * 14.3)) * 0.9;
+      concert.stickR.rotation.z = 0.62 + Math.abs(Math.sin(t * 15.1 + 0.4)) * 0.9;
+      for (let i = 0; i < concert.concertLights.length; i++) {
+        const light = concert.concertLights[i];
+        light.intensity = 7 + pulse * (i % 2 ? 22 : 28);
+        light.target.position.x = Math.sin(t * 0.9 + i * 1.7) * 4.6;
+        concert.beamMeshes[i].material.opacity = 0.045 + pulse * 0.12;
+        concert.beamMeshes[i].rotation.z = Math.sin(t * 0.8 + i) * 0.12;
+      }
+      concert.pitRing.material.opacity = 0.5 + pulse * 0.34;
+      for (const mosher of concert.moshers) {
+        let x;
+        let zz;
+        let yaw;
+        if (mosher.style === 'slam') {
+          // The inner bodies cut across the pit instead of orbiting it: short,
+          // violent lanes make the space read as a moshpit rather than a dance ring.
+          const lane = Math.sin(t * (1.05 + mosher.speed * 0.1) + mosher.phase);
+          x = lane * 2.85 + Math.sin(t * 4.7 + mosher.phase) * 0.22;
+          zz = 2.25 + Math.cos(t * 1.55 + mosher.phase) * 2.05;
+          yaw = Math.atan2(Math.cos(t * 1.55 + mosher.phase) * 2.05, Math.cos(t * 1.05 + mosher.phase) * 2.85);
+        } else if (mosher.style === 'surge') {
+          const surge = Math.sin(t * 0.82 + mosher.phase);
+          x = surge * 3.55;
+          zz = 2.25 + Math.sin(t * 1.7 + mosher.phase) * 1.12 + (mosher.angle > Math.PI ? 0.7 : -0.7);
+          yaw = Math.atan2(Math.cos(t * 0.82 + mosher.phase), Math.cos(t * 1.7 + mosher.phase));
+        } else {
+          const angle = mosher.angle + t * mosher.speed + Math.sin(t * 2.7 + mosher.phase) * 0.23;
+          const radius = mosher.radius + Math.sin(t * 3.1 + mosher.phase) * 0.18;
+          x = Math.cos(angle) * radius;
+          zz = 2.25 + Math.sin(angle) * radius;
+          yaw = angle + Math.PI / 2;
+        }
+        const jump = Math.abs(Math.sin(t * (mosher.style === 'slam' ? 11.5 : 8.3) + mosher.phase)) * 0.09;
+        mosher.group.position.set(x, jump, zz);
+        mosher.group.rotation.y = yaw;
+        mosher.torso.rotation.z = Math.sin(t * 10.2 + mosher.phase) * (mosher.style === 'slam' ? 0.28 : 0.18);
+        mosher.head.rotation.y = Math.sin(t * 8.8 + mosher.phase) * 0.42;
+        mosher.arm.rotation.z = -0.42 - Math.abs(Math.sin(t * 9.1 + mosher.phase)) * (mosher.style === 'slam' ? 1.2 : 0.92);
+        mosher.arm2.rotation.z = 0.42 + Math.abs(Math.sin(t * 10.4 + mosher.phase)) * (mosher.style === 'slam' ? 1.1 : 0.85);
+        mosher.fist.position.y = 0.51 + Math.abs(Math.sin(t * 9.1 + mosher.phase)) * 0.08;
+        mosher.fist2.position.y = 0.51 + Math.abs(Math.sin(t * 10.4 + mosher.phase)) * 0.08;
+        mosher.leg.rotation.z = Math.sin(t * 8.4 + mosher.phase) * 0.12;
+        mosher.leg2.rotation.z = -Math.sin(t * 8.4 + mosher.phase) * 0.12;
+        mosher.prop.position.y = 0.99 + Math.abs(Math.sin(t * 7.2 + mosher.phase)) * 0.13;
+        mosher.prop.rotation.z = Math.sin(t * 5.6 + mosher.phase) * 0.55;
+      }
+      if (beat) {
+        const step = Math.floor(t * 176 / 60 * 4);
+        if (step !== concert.lastStep) {
+          concert.lastStep = step;
+          if (step % 4 === 0) event = { type: 'deathMetalHit', variant: (step / 4) % 4 };
+        }
+      }
+    }
 
     for (const c of z.animated.candles) {
       const b = c.userData.base ?? 0.45;
@@ -5181,7 +6045,11 @@ export class World {
         b.torso.rotation.x = attacking ? -extend * 0.12 : impact * 0.16;
         b.head.rotation.y = Math.sin(t * 1.7 + b.phase) * 0.1 + (!attacking ? b.direction * impact * 0.34 : 0);
         b.head.rotation.z = !attacking ? -b.direction * impact * 0.12 : 0;
+        b.head.position.z = !attacking ? -impact * 0.055 : 0;
         b.shortsBody.rotation.y = Math.sin(pulse * 0.5) * 0.04;
+        b.mouth.scale.y = 1 + (!attacking ? impact * 4.8 : 0);
+        b.mouthguard.position.y = -0.096 - (!attacking ? impact * 0.022 : 0);
+        b.mouthguard.rotation.z = !attacking ? b.direction * impact * 0.12 : 0;
 
         for (let armIndex = 0; armIndex < b.arms.length; armIndex++) {
           const arm = b.arms[armIndex];
@@ -5190,6 +6058,8 @@ export class World {
           arm.position.y = 1.34 + (throwing ? extend * 0.04 : (!attacking ? impact * 0.08 : 0));
           arm.rotation.x = throwing ? -extend * 0.22 : -0.08;
           arm.rotation.y = throwing ? (armIndex ? -1 : 1) * extend * 0.16 : 0;
+          const glovePulse = throwing ? extend * 0.1 : (!attacking ? impact * 0.06 : 0);
+          b.gloves[armIndex].scale.setScalar(1 + glovePulse);
         }
         for (let legIndex = 0; legIndex < b.legs.length; legIndex++) {
           b.legs[legIndex].rotation.z = (legIndex ? 1 : -1) * (0.05 + Math.sin(pulse) * 0.035);
@@ -5199,7 +6069,7 @@ export class World {
 
       if (attackTime >= 0.94 && attackTime < 1.12 && z.animated.boxing?.lastImpactSlot !== slot) {
         z.animated.boxing.lastImpactSlot = slot;
-        event = { type: 'boxingImpact', variant: slot % 3 };
+        event = { type: 'boxingImpact', variant: slot % 3, victim: 1 - attackerIndex };
       }
     }
     if (z.animated.iceClusters) {

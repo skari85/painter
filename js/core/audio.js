@@ -584,10 +584,10 @@ export class AudioEngine {
 
   /** Broadband stream plus individual ceramic-bowl droplets. All harmonic
       content is confined to short water-drop chirps; there is no instrument. */
-  #scoreRestroomPiss(t, bus, variant = 0, stream = false) {
+  #scoreRestroomPiss(t, bus, variant = 0, stream = false, mix = {}) {
     if (!this.#ctx) return;
     const dur = stream ? 1.18 + (variant % 3) * 0.16 : 0.085 + (variant % 4) * 0.025;
-    const peak = stream ? 0.115 : 0.092;
+    const peak = stream ? (mix.streamLevel ?? 0.115) : (mix.splashLevel ?? 0.092);
     const output = this.#ctx.createGain();
     const panner = this.#ctx.createStereoPanner?.() ?? this.#ctx.createGain();
     if (panner.pan) panner.pan.value = ((variant % 7) - 3) * 0.14;
@@ -598,10 +598,10 @@ export class AudioEngine {
     spray.buffer = this.#noiseBuffer;
     spray.loop = true;
     const high = this.#ctx.createBiquadFilter();
-    high.type = 'highpass'; high.frequency.value = stream ? 850 : 1250;
+    high.type = 'highpass'; high.frequency.value = stream ? (mix.streamHighpass ?? 850) : 1250;
     const splash = this.#ctx.createBiquadFilter();
     splash.type = 'bandpass';
-    splash.frequency.value = 2450 + (variant % 5) * 310;
+    splash.frequency.value = (mix.sprayCenter ?? 2450) + (variant % 5) * 310;
     splash.Q.value = stream ? 0.72 : 1.25;
     const sprayGain = this.#ctx.createGain();
     sprayGain.gain.setValueAtTime(0.0001, t);
@@ -617,9 +617,9 @@ export class AudioEngine {
     if (stream) {
       // A second, narrow stream carries the bright granular detail.
       const needle = this.#ctx.createBiquadFilter();
-      needle.type = 'bandpass'; needle.frequency.value = 5900; needle.Q.value = 2.4;
+      needle.type = 'bandpass'; needle.frequency.value = mix.needleFrequency ?? 5900; needle.Q.value = 2.4;
       const needleGain = this.#ctx.createGain();
-      needleGain.gain.value = 0.23;
+      needleGain.gain.value = mix.needleLevel ?? 0.23;
       high.connect(needle).connect(needleGain).connect(sprayGain);
     }
 
@@ -648,9 +648,13 @@ export class AudioEngine {
     const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
     if (r.floor.includes(pos)) this.#scoreRestroomFart(swung, s.bus, Math.floor(step / 4), false);
     if (r.accents.includes(pos)) this.#scoreRestroomFart(swung, s.bus, step + 2, true);
-    if (r.splashes.includes(pos)) this.#scoreRestroomPiss(swung, s.bus, step, false);
-    // One changing urinal stream per bar supplies the sustained shuffle layer.
-    if (pos === 0) this.#scoreRestroomPiss(swung + s.stepDur * 0.42, s.bus, step / 16, true);
+    if (r.splashes.includes(pos)) this.#scoreRestroomPiss(swung, s.bus, step, false, r);
+    // A quieter urinal stream every other bar keeps the shuffle without
+    // turning the entire room score into a continuous sheet of white noise.
+    const bar = Math.floor(step / 16);
+    if (pos === 0 && bar % (r.streamEveryBars ?? 1) === 0) {
+      this.#scoreRestroomPiss(swung + s.stepDur * 0.42, s.bus, bar, true, r);
+    }
   }
 
   #roomScoreStep16(step, t, s) {
@@ -759,8 +763,66 @@ export class AudioEngine {
     this.#tone({ freq: 380, freqEnd: 760, type: 'sine', peak: 0.1, decay: 0.18 });
   }
 
-  /** MAX PRO's ring: glove thud, synthetic bell and an inhuman little grunt. */
-  boxingImpact(variant = 0) {
+  /** A short two-formant boxer moan. It is fully synthesized: pitched throat,
+      vowel resonances, breath, pitch drop and an uneven vibrato after impact. */
+  #boxingMoan(voice = 0, hard = false) {
+    if (!this.#ctx) return;
+    const t = this.#ctx.currentTime + 0.006;
+    const dur = hard ? 0.58 : 0.42;
+    const base = voice % 2 ? 126 : 102;
+    const throat = this.#ctx.createOscillator();
+    throat.type = voice % 2 ? 'triangle' : 'sawtooth';
+    throat.frequency.setValueAtTime(base * 1.12, t);
+    throat.frequency.exponentialRampToValueAtTime(base * 0.78, t + dur * 0.48);
+    throat.frequency.exponentialRampToValueAtTime(base * 0.9, t + dur);
+
+    const vibrato = this.#ctx.createOscillator();
+    vibrato.type = 'sine';
+    vibrato.frequency.value = 5.1 + voice * 0.7;
+    const vibratoDepth = this.#ctx.createGain();
+    vibratoDepth.gain.setValueAtTime(3, t);
+    vibratoDepth.gain.linearRampToValueAtTime(hard ? 12 : 8, t + dur * 0.7);
+    vibrato.connect(vibratoDepth).connect(throat.frequency);
+
+    const mouth = this.#ctx.createGain();
+    mouth.gain.setValueAtTime(0.0001, t);
+    mouth.gain.exponentialRampToValueAtTime(hard ? 0.072 : 0.056, t + 0.045);
+    mouth.gain.setValueAtTime(hard ? 0.064 : 0.048, t + dur * 0.55);
+    mouth.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    mouth.connect(this.#master);
+
+    const vowels = voice % 2
+      ? [[610, 720], [1080, 920]]
+      : [[480, 620], [890, 1040]];
+    for (let i = 0; i < vowels.length; i++) {
+      const formant = this.#ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.setValueAtTime(vowels[i][0], t);
+      formant.frequency.exponentialRampToValueAtTime(vowels[i][1], t + dur * 0.82);
+      formant.Q.value = i ? 7.2 : 5.1;
+      const formantGain = this.#ctx.createGain();
+      formantGain.gain.value = i ? 0.58 : 1;
+      throat.connect(formant).connect(formantGain).connect(mouth);
+    }
+
+    const breath = this.#ctx.createBufferSource();
+    breath.buffer = this.#noiseBuffer;
+    const breathFilter = this.#ctx.createBiquadFilter();
+    breathFilter.type = 'bandpass';
+    breathFilter.frequency.value = voice % 2 ? 1180 : 880;
+    breathFilter.Q.value = 1.1;
+    const breathGain = this.#ctx.createGain();
+    breathGain.gain.setValueAtTime(0.0001, t);
+    breathGain.gain.exponentialRampToValueAtTime(hard ? 0.026 : 0.018, t + 0.025);
+    breathGain.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.72);
+    breath.connect(breathFilter).connect(breathGain).connect(this.#master);
+
+    throat.start(t); vibrato.start(t); breath.start(t, rand(0, 0.8));
+    throat.stop(t + dur + 0.02); vibrato.stop(t + dur + 0.02); breath.stop(t + dur + 0.02);
+  }
+
+  /** MAX PRO's ring: leather glove thud, broadcast chirp and a hit moan. */
+  boxingImpact(variant = 0, victim = 0) {
     if (!this.#ctx) return;
     const hard = variant % 3 === 2;
     this.#noise({
@@ -775,9 +837,38 @@ export class AudioEngine {
     this.#tone({ freq: hard ? 132 : 168, freqEnd: 54, type: 'triangle', peak: 0.2, decay: 0.15 });
     this.#tone({ freq: 620 + variant * 137, freqEnd: 310 + variant * 41, type: 'square', peak: 0.035, attack: 0.008, decay: 0.12 });
     setTimeout(() => {
-      this.talkBlip(variant % 2 ? 0.58 : 0.76);
+      this.#boxingMoan(victim, hard);
       if (hard) this.#tone({ freq: 74, freqEnd: 118, type: 'sawtooth', peak: 0.06, attack: 0.03, decay: 0.24 });
-    }, 35);
+    }, 32);
+  }
+
+  /** A cheap, ugly impact for the room where emotional regulation goes to die. */
+  rageBreak(variant = 0) {
+    if (!this.#ctx) return;
+    this.#noise({
+      peak: 0.28 + (variant % 3) * 0.03,
+      decay: 0.22,
+      filterFreq: 4200,
+      filterEnd: 180,
+      q: 1.2,
+      type: 'highpass',
+    });
+    this.#tone({ freq: 210 + variant * 40, freqEnd: 72, type: 'triangle', peak: 0.16, decay: 0.22 });
+  }
+
+  /** Live death-metal punctuation: kick, amp feedback, and a tiny pink alarm. */
+  deathMetalHit(variant = 0) {
+    if (!this.#ctx) return;
+    this.#noise({ peak: 0.12, attack: 0.001, decay: 0.075, filterFreq: 5400, filterEnd: 900, q: 1.3, type: 'highpass' });
+    this.#tone({ freq: 52 + (variant % 2) * 9, freqEnd: 36, type: 'sawtooth', peak: 0.15, decay: 0.14 });
+    if (variant % 3 === 0) this.#tone({ freq: 1480, freqEnd: 720, type: 'square', peak: 0.022, attack: 0.002, decay: 0.08 });
+  }
+
+  /** The roaming punk's deliberate, low-frequency social intervention. */
+  punkFart(variant = 0) {
+    if (!this.#ctx) return;
+    this.#scoreRestroomFart(this.#ctx.currentTime + 0.012, this.#master, variant, false);
+    this.#tone({ freq: 118 + (variant % 3) * 11, freqEnd: 54, type: 'triangle', peak: 0.045, decay: 0.24 });
   }
 
   /** The forest boars sound less like animals than wet kitchen sponges being
