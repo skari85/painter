@@ -21,6 +21,7 @@ const KEY_ACTIONS = {
   KeyQ: 'appraise',
   KeyN: 'arti',
   KeyM: 'map',
+  KeyP: 'records',
   Escape: 'pause',
 
   Tab: 'codex',
@@ -81,9 +82,16 @@ export class InputManager extends Emitter {
 
   requestLock() {
     if (this.locked) return;
-    const p = this.#canvas.requestPointerLock({ unadjustedMovement: true });
-    // Older browsers return undefined; newer ones a Promise that can reject.
-    if (p?.catch) p.catch(() => this.#canvas.requestPointerLock());
+    try {
+      const p = this.#canvas.requestPointerLock({ unadjustedMovement: true });
+      // Older browsers return undefined; newer ones a Promise that can reject.
+      if (p?.catch) p.catch(() => {
+        try {
+          const fallback = this.#canvas.requestPointerLock();
+          fallback?.catch?.(() => {});
+        } catch { /* pointer lock is optional outside a focused game document */ }
+      });
+    } catch { /* pointer lock is optional outside a focused game document */ }
   }
 
   exitLock() {

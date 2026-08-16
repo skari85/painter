@@ -65,9 +65,9 @@
 
     <!-- Now playing chip -->
     <div id="now-playing" class="hidden">
-      <span class="np-icon">◉</span><span id="np-title">…</span>
+      <button id="np-open" class="np-open" aria-label="Open the communal vinyl collection" title="Records — P"><span class="np-icon">◉</span><span id="np-title">…</span></button>
       <button id="np-next" aria-label="Play the next record" title="Next record">▶│</button>
-      <button id="np-stop" aria-label="Stop the music">■</button>
+      <button id="np-stop" aria-label="Stop the record and return to the room score" title="Stop record">■</button>
     </div>
 
     <!-- ARTI chip — the phone is watching -->
@@ -273,6 +273,7 @@
       <nav class="title-menu" aria-label="Main menu">
         <button class="btn primary xl hidden" id="btn-resume">Resume Night One</button>
         <button class="btn primary xl" id="btn-begin">Begin Night One</button>
+        <button class="btn ghost" id="btn-share-title">Share This Game</button>
         <button class="btn ghost" id="btn-howto">How to Play</button>
         <button class="btn ghost" id="btn-settings">Settings</button>
       </nav>
@@ -322,6 +323,7 @@
         <div><kbd>M</kbd></div><p>The map. Click a studio, appear there. Cheaper than a cab.</p>
         <div><kbd>Q</kbd></div><p>Appraise. Everything has a price. Ask politely.</p>
         <div><kbd>N</kbd></div><p>ARTI. The app. Do not check it. You will check it.</p>
+        <div><kbd>P</kbd></div><p>Open the communal record case. A chosen record follows you through every room.</p>
 
         <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><p>In dialogue: Kind, Witty or Brutal comebacks. Everyone has a weakness.</p>
         <div><kbd>Tab</kbd></div><p>Meditate on the Eight Virtues — and what The Market made of them.</p>
@@ -384,8 +386,42 @@
       <p class="modal-note">The artworld waits. It is very patient and slightly drunk.</p>
       <div class="modal-actions col">
         <button class="btn primary" id="pause-resume">Resume</button>
+        <button class="btn ghost" id="btn-share-pause">Share This Game</button>
         <button class="btn ghost" id="pause-settings">Settings</button>
         <button class="btn ghost" id="pause-quit">Abandon the night</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- The communal record case -->
+  <section id="records" class="hidden" role="dialog" aria-modal="true" aria-labelledby="records-title">
+    <div class="record-case">
+      <header class="record-case-head">
+        <div>
+          <p class="record-kicker">THE COMMUNAL RECORD PLAYER</p>
+          <h2 id="records-title">CHOOSE THE SOUND OF THE ROOM</h2>
+        </div>
+        <button class="record-close" id="records-close" aria-label="Close record collection">CLOSE <kbd>P</kbd></button>
+      </header>
+      <p class="record-note">One record. Every room. No acoustic arguments.</p>
+      <div id="record-grid" class="record-grid" role="group" aria-label="Available records"></div>
+      <div class="record-case-foot">
+        <span id="record-room-source">ROOM SCORE READY</span>
+        <button class="btn ghost" id="record-stop">Stop record · return to room</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Last-resort sharing fallback when native share and clipboard are unavailable. -->
+  <section id="share-fallback" class="hidden" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <div class="modal-card">
+      <h2 class="modal-title" id="share-title">SHARE THIS GAME</h2>
+      <p class="modal-note" id="share-note">Copy this link and send it to someone with excellent judgement.</p>
+      <label class="share-label" for="share-url">GAME LINK</label>
+      <input id="share-url" class="share-url" type="text" readonly />
+      <div class="modal-actions">
+        <button class="btn ghost" id="share-close">Close</button>
+        <button class="btn primary" id="share-copy">Copy link</button>
       </div>
     </div>
   </section>

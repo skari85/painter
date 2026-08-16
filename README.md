@@ -49,11 +49,37 @@ each tilts the virtues.
 
 Four endings. Dots on the title screen track which you've found.
 
-## Soundtrack & the radio
+## Soundtrack, vinyl & the radio
 
-Warm songs from `puplic/songs/` play on the title screen, in the garret, and
-over the endings — the market spaces get coded procedural room scores. (The folder
-is spelled `puplic`; left as found.)
+Warm songs from `puplic/songs/` play on the title screen, over the endings, and
+through the communal record collection; every room also has a coded procedural
+score of its own. (The folder is spelled `puplic`; left as found.)
+The original three records—*Alt er tungt alt er fint 2*, *Sa sliten*, and *Jeg
+liker deg (demo)*—are credited to **Usrname** in the collection.
+Procedural room scores use a shared calmer feel: roughly ten percent slower
+tempo, softer percussion and bass, quieter lead voices, and substantially less
+noise texture. These settings do not alter the Usrname or Ullabjakk recordings.
+
+Press **P** anywhere during exploration to open the communal record case, or
+press **E** at one of its turntables. Choosing a vinyl starts it immediately and
+keeps the same playback position while travelling between rooms. A record has
+exclusive control of the music bus—including inside the Dildo Ball and Public
+Restroom—so procedural scores never clash with it. Stopping the vinyl returns
+control to the current room after a short serialized fade. The now-playing chip
+shows whether the travelling record or the local room score owns the speakers.
+
+The record case also includes eight tracks by **Ullabjakk**: *Bara einu sinni
+enn*, *Fyrirgefðu geimverur 2*, *Geðveikur af sjálfum mér 1*, *Hel sjúkur í
+þig (demo)*, *Íslenskt skammdegi*, *Kjarnorkusprengja (demo 1)*, *Passa þig á
+mér*, and *Þykist ekki þekkja mig 1*. Their local MP3 assets live in
+`puplic/songs/ullabjakk/`, and every record carries an explicit artist credit in
+the collection UI.
+
+The title and pause menus include **Share This Game**. Supporting browsers open
+their native share sheet; other browsers copy a clean page URL with no query,
+hash, save, or room state. If clipboard access is unavailable, the game exposes
+the link in a selectable fallback dialog. Sharing adds no account or referral
+tracking.
 
 ### Church Burning Fire Sensation Cockburn
 
@@ -86,6 +112,63 @@ values from Poly Haven's asset API are recorded in
 `puplic/polyhaven/daylight-garden/CHECKSUMS.md5` so local copies can be checked
 without relying on filenames or file sizes alone.
 
+### The Listening Room and Wall of Fame
+
+Galleria Bianca now leads into a purpose-built walnut-and-felt listening room:
+two full-range reference speakers, one communal turntable, and a detailed live
+four-piece with singer, guitar, bass, and full drum kit. Press `E` at the player
+to open the record case, or `P` to choose one directly. Approximate tempo
+metadata keeps the performers related to the selected record: slow music gives
+them restrained sway, while faster tracks increase head movement, strumming,
+stick travel, jumps, cymbal vibration, and stage-light punch. The recordings
+themselves are never time-stretched or altered.
+
+Twelve original canvas-coded portraits line the side walls—Pablo Picasso, Frida
+Kahlo, Jean-Michel Basquiat, Georgia O’Keeffe, Louise Bourgeois, David Hockney,
+Faith Ringgold, Henri Matisse, Francis Bacon, Jackson Pollock, Lee Krasner, and
+Yayoi Kusama. Each face is drawn procedurally at runtime with modeled ears,
+cheeks, eyes, irises, brows, noses, lips, age lines, hair, and artist-specific
+background language. Every frame can be inspected for a short sourced artist
+quotation. Quote references:
+[Picasso](https://www.moma.org/artists/4609-pablo-picasso),
+[Kahlo](https://www.moma.org/artists/2963-frida-kahlo),
+[Basquiat](https://www.moma.org/artists/370-jean-michel-basquiat),
+[O’Keeffe](https://www.nga.gov/artworks/70182-line-and-curve),
+[Bourgeois](https://www.moma.org/louise_bourgeois/lb_essay_2017.pdf),
+[Hockney](https://shop.tate.org.uk/david-hockney-hardback/19303.html),
+[Ringgold](https://www.moma.org/collection/artists/7066),
+[Matisse](https://www.moma.org/collection/artists/3832),
+[Bacon](https://www.francis-bacon.com/chronology),
+[Pollock](https://www.moma.org/interactives/exhibitions/1998/pollock/website100/txt_possibilities_drip.html),
+[Krasner](https://www.moma.org/audio/playlist/297/3821), and
+[Kusama](https://www.moma.org/audio/3110).
+
+### MTV Cribs: Baby Money
+
+The Listening Room opens into a deliberately non-sexual reality-TV satire
+about four spoiled adult heirs dressed in oversized bib couture and boasting
+about their trust funds. A camera operator, boom operator, host, and director
+walk continuous overlapping routes around the set while the adult cast delivers
+ambient wealth monologues. The room includes a gold formula fridge, sectional,
+money fountain, bottle-service table, moving broadcast light, and a clear
+on-set notice that every cast member is an adult.
+
+### MAX PRO KUNST 2000 boxing broadcast
+
+The MAX PRO ring now has a stitched leather apron and canvas, four rope levels,
+padded turnbuckles, corner equipment, access steps, a broadcast truss, targeted
+fight lighting, ringside cameras, and a weathered concrete broadcast wall. The
+two articulated boxers have modeled faces, mouths and mouthguards, chest and ab
+definition, stitched trunks, side trim, taped wrists, detailed gloves with
+thumbs and seams, and leather boots. Their hit reactions open the mouth, shake
+the mouthguard, recoil through the head and torso, and trigger distinct
+procedural two-formant moans for each fighter.
+
+The room uses Poly Haven's CC0 [Concrete Floor Painted](https://polyhaven.com/a/concrete_floor_painted)
+and [Fabric Leather 02](https://polyhaven.com/a/fabric_leather_02) 1K diffuse,
+OpenGL normal, and roughness maps. API-provided MD5 values and source details
+live under `puplic/polyhaven/max-pro/`.
+
 ### Up and Cumming remix
 
 Up and Cumming Artist has an original procedural woozy-trap room remix: sliding
@@ -113,6 +196,10 @@ has defeated the flush, while a uniformed Toilet Guard points at it and cycles
 through silent threats to arrest whoever produced it. Two patrons keep using the
 urinals, one washes their hands with suspicious commitment, and another waits
 outside the stalls while trying not to look implicated.
+In the sink-side corner, **Doctor Drug** wears black beneath a geometric signal
+helmet. He is a fully interactive, deeply paranoid drug dealer whose political
+and climate-change monologues can be challenged through a dedicated **Talk to
+Drugdealer** prompt.
 
 The room enforces a literal acoustic policy. Its original 132 BPM **Techno
 Zamba** score contains only procedural urine streams, splashes, droplets, and

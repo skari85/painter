@@ -344,7 +344,7 @@ kbd {
 /* ============================================================
    MODALS
    ============================================================ */
-#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #arti, #seance {
+#howto, #settings, #pause, #naming, #codex, #night-end, #fatal, #map, #arti, #seance, #records, #share-fallback {
 
 
 
@@ -353,6 +353,62 @@ kbd {
   background: rgba(5, 5, 8, 0.6);
   animation: fade var(--dur-med) ease both;
 }
+
+/* ============================================================
+   THE COMMUNAL RECORD CASE
+   ============================================================ */
+#records { z-index: 56; background: rgba(4, 3, 5, 0.82); }
+.record-case {
+  width: min(920px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px); overflow: auto;
+  padding: clamp(24px, 4vw, 48px);
+  color: #1b1711;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,0.22), transparent 28%),
+    repeating-linear-gradient(8deg, rgba(74,45,21,0.045) 0 1px, transparent 1px 5px),
+    #d7c29b;
+  border: 1px solid rgba(255,255,255,0.26);
+  border-radius: 8px;
+  box-shadow: 0 34px 100px rgba(0,0,0,0.72), inset 0 0 0 8px rgba(73,48,25,0.09);
+  animation: pop var(--dur-med) var(--ease-out) both;
+}
+.record-case-head { display: flex; justify-content: space-between; gap: var(--s3); align-items: flex-start; }
+.record-kicker { color: #7c261f; font-size: 10px; font-weight: 900; letter-spacing: 0.24em; margin-bottom: 7px; }
+.record-case h2 { font-family: Georgia, serif; font-size: clamp(22px, 4vw, 38px); line-height: 1; letter-spacing: -0.025em; }
+.record-note { margin-top: 10px; color: rgba(27,23,17,0.62); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; }
+.record-close { color: #30261c; font-size: 10px; font-weight: 900; letter-spacing: 0.16em; padding: 8px; white-space: nowrap; }
+.record-close kbd { background: rgba(27,23,17,0.1); border-color: rgba(27,23,17,0.14); color: inherit; }
+.record-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(18px, 4vw, 42px); margin: clamp(28px, 5vw, 52px) 0 30px; }
+.record-choice { display: grid; justify-items: center; gap: 15px; min-width: 0; color: #1b1711; }
+.record-disc {
+  position: relative; width: min(22vw, 210px); aspect-ratio: 1; border-radius: 50%;
+  background:
+    radial-gradient(circle at center, transparent 0 4%, #e7d5a9 4.5% 17%, transparent 17.5%),
+    repeating-radial-gradient(circle at center, #171619 0 4px, #252329 5px 7px, #111013 8px 10px);
+  box-shadow: 0 18px 25px rgba(35,20,8,0.32), inset -16px -12px 30px rgba(0,0,0,0.32);
+  transition: transform var(--dur-med) var(--ease-out), box-shadow var(--dur-med) ease;
+}
+.record-disc::before {
+  content: ''; position: absolute; inset: 8%; border-radius: 50%;
+  background: conic-gradient(from 35deg, transparent, rgba(255,255,255,0.12), transparent 24%, rgba(255,255,255,0.08), transparent 54%);
+}
+.record-disc::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #111; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.record-label { position: absolute; inset: 37%; border-radius: 50%; background: var(--record-color, #b94a3b); display: grid; place-items: center; color: #f6ead4; font: 900 11px/1 var(--font-mono); z-index: 1; }
+.record-choice:hover .record-disc { transform: translateY(-7px) rotate(5deg); box-shadow: 0 25px 35px rgba(35,20,8,0.4); }
+.record-choice.active .record-disc { animation: vinylSpin 4s linear infinite; box-shadow: 0 0 0 5px #d14a35, 0 22px 34px rgba(35,20,8,0.4); }
+.record-copy { display: grid; gap: 3px; text-align: center; width: 100%; }
+.record-copy strong { font-size: 12px; letter-spacing: 0.09em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.record-copy small { color: #7c261f; font: 900 9px var(--font-mono); letter-spacing: 0.18em; }
+.record-copy span { color: rgba(27,23,17,0.58); font: 10px var(--font-mono); letter-spacing: 0.12em; }
+.record-choice.active .record-copy span { color: #a52620; font-weight: 900; }
+@keyframes vinylSpin { to { transform: rotate(360deg); } }
+.record-case-foot { border-top: 1px solid rgba(27,23,17,0.18); padding-top: var(--s2); display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.record-case-foot > span { font: 10px var(--font-mono); letter-spacing: 0.12em; color: rgba(27,23,17,0.62); }
+.record-case-foot .btn { color: #241b13; border-color: rgba(27,23,17,0.22); }
+.record-case-foot .btn:disabled { opacity: 0.42; cursor: default; transform: none; }
+
+.share-label { display: block; margin-bottom: 7px; color: var(--ink-faint); font-size: 10px; font-weight: 800; letter-spacing: 0.18em; }
+.share-url { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,0.25); color: var(--ink); user-select: text; }
 .modal-card {
   width: min(480px, calc(100vw - 48px));
   padding: var(--s4);
@@ -946,6 +1002,7 @@ kbd {
   border-radius: 3px; backdrop-filter: blur(6px);
   font-size: 13px; letter-spacing: 0.08em;
 }
+#now-playing .np-open { display: flex; align-items: center; gap: 0.55em; min-width: 0; }
 #now-playing .np-icon { color: var(--accent); animation: np-bob 1.2s ease-in-out infinite; }
 @keyframes np-bob { 50% { transform: translateY(-2px); } }
 #np-title {
@@ -1080,4 +1137,8 @@ kbd {
   .easel-stage { flex-direction: column; align-items: center; }
   .easel-tools { width: min(72vw, 340px); flex-direction: row; flex-wrap: wrap; align-items: center; }
   #codex-grid { grid-template-columns: 1fr; }
+  .record-grid { grid-template-columns: 1fr; }
+  .record-disc { width: min(52vw, 190px); }
+  .record-case-head, .record-case-foot { align-items: stretch; flex-direction: column; }
+  .record-close { align-self: flex-end; }
 }

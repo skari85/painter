@@ -89,12 +89,23 @@ export const ZONES = {
   deathMetal: { name: 'BARBIE DEATH METAL', mood: 'deathMetal' },
   blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
   publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },
+  listeningRoom: { name: 'THE LISTENING ROOM', mood: 'galleria' },
+  mtvCribs: { name: 'MTV CRIBS: BABY MONEY', mood: 'leatherLatex' },
 };
 
 /**
  * Coded room identities. Patterns are one 16-step bar; bass values are
  * semitone offsets from root and lead values are indexes into scale.
  */
+export const ROOM_SCORE_FEEL = {
+  tempoScale: 0.9,
+  levelScale: 0.92,
+  percussionScale: 0.84,
+  bassScale: 0.9,
+  leadScale: 0.78,
+  textureScale: 0.55,
+};
+
 export const ROOM_SCORES = {
   garret: {
     bpm: 82, level: 0.28, root: 55, scale: [0, 3, 5, 7, 10, 12],
@@ -287,6 +298,25 @@ export const ROOM_SCORES = {
       leadAttack: 0.02, leadDecay: 1.4, cutoffScale: 1.2,
     },
   },
+  listeningRoom: {
+    // Near-silent audiophile soul: soft brushes, a patient sub and just enough
+    // electric piano to make the empty chair feel occupied.
+    bpm: 74, level: 0.22, root: 49, scale: [0, 2, 4, 7, 9, 11, 14],
+    wave: 'sine', bassWave: 'sine', cutoff: 1180, pad: [0, 4, 7, 11],
+    bass: [0, null, null, 7, null, 4, null, 9], lead: [null, 4, null, null, 2, null, null, 5, null, null, 1, null, null, 3, null, null],
+    kick: [0, 8], snare: [4, 12], hats: [3, 7, 11, 15], swing: 0.13, texture: 0.08,
+    kickLevel: 0.24, snareLevel: 0.038, hatLevel: 0.012,
+    bassLevel: 0.075, bassDecay: 2.6, leadLevel: 0.015,
+  },
+  mtvCribs: {
+    // Glossy reality-TV electro with a waddling low end and camera-flash hats.
+    bpm: 108, level: 0.27, root: 43.65, scale: [0, 3, 5, 7, 10, 12, 15],
+    wave: 'square', bassWave: 'sine', cutoff: 2300, pad: [0, 3, 7, 10],
+    bass: [0, 0, 7, null, 3, 3, 10, null], lead: [5, null, 2, null, 4, null, 1, 3, null, 6, null, 2, 5, null, 1, null],
+    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14, 15], swing: 0.05, texture: 0.16,
+    kickLevel: 0.38, snareLevel: 0.074, hatLevel: 0.024,
+    bassLevel: 0.13, bassDecay: 1.65, leadLevel: 0.025,
+  },
   publicRestroom: {
     // Techno Zamba, built under the room's strict acoustic policy: every
     // transient is either a synthesized urine stream / splash or a layered
@@ -379,6 +409,14 @@ export const MUSIC = {
   title: 'puplic/songs/Alt er tungt alt er fint 2.mp3',
   garret: 'puplic/songs/sa sliten.mp3',
   ending: 'puplic/songs/jeg liker deg demo.mp3',
+  ullabjakkBaraEinuSinniEnn: 'puplic/songs/ullabjakk/bara-einu-sinni-enn.mp3',
+  ullabjakkFyrirgefduGeimverur: 'puplic/songs/ullabjakk/fyrirgefdu-geimverur-2.mp3',
+  ullabjakkGedveikurAfSjalfumMer: 'puplic/songs/ullabjakk/gedveikur-af-sjalfum-mer-1.mp3',
+  ullabjakkHelSjukurIThig: 'puplic/songs/ullabjakk/hel-sjukur-i-thig-demo.mp3',
+  ullabjakkIslensktSkammdegi: 'puplic/songs/ullabjakk/islenskt-skammdegi.mp3',
+  ullabjakkKjarnorkusprengja: 'puplic/songs/ullabjakk/kjarnorkusprengja-demo1.mp3',
+  ullabjakkPassaThigAMer: 'puplic/songs/ullabjakk/passa-thig-a-mer.mp3',
+  ullabjakkThykistEkkiThekkjaMig: 'puplic/songs/ullabjakk/thykist-ekki-thekkja-mig-1.mp3',
 };
 export const MUSIC_LEVEL = 0.42;   // fraction of master volume
 
@@ -387,4 +425,43 @@ export const MUSIC_TITLES = {
   title: 'ALT ER TUNGT ALT ER FINT 2',
   garret: 'SA SLITEN',
   ending: 'JEG LIKER DEG (DEMO)',
+  ullabjakkBaraEinuSinniEnn: 'BARA EINU SINNI ENN',
+  ullabjakkFyrirgefduGeimverur: 'FYRIRGEFÐU GEIMVERUR 2',
+  ullabjakkGedveikurAfSjalfumMer: 'GEÐVEIKUR AF SJÁLFUM MÉR 1',
+  ullabjakkHelSjukurIThig: 'HEL SJÚKUR Í ÞIG (DEMO)',
+  ullabjakkIslensktSkammdegi: 'ÍSLENSKT SKAMMDEGI',
+  ullabjakkKjarnorkusprengja: 'KJARNORKUSPRENGJA (DEMO 1)',
+  ullabjakkPassaThigAMer: 'PASSA ÞIG Á MÉR',
+  ullabjakkThykistEkkiThekkjaMig: 'ÞYKIST EKKI ÞEKKJA MIG 1',
+};
+
+/** Artist credits shown in the communal record case. */
+export const MUSIC_ARTISTS = {
+  title: 'Usrname',
+  garret: 'Usrname',
+  ending: 'Usrname',
+  ullabjakkBaraEinuSinniEnn: 'Ullabjakk',
+  ullabjakkFyrirgefduGeimverur: 'Ullabjakk',
+  ullabjakkGedveikurAfSjalfumMer: 'Ullabjakk',
+  ullabjakkHelSjukurIThig: 'Ullabjakk',
+  ullabjakkIslensktSkammdegi: 'Ullabjakk',
+  ullabjakkKjarnorkusprengja: 'Ullabjakk',
+  ullabjakkPassaThigAMer: 'Ullabjakk',
+  ullabjakkThykistEkkiThekkjaMig: 'Ullabjakk',
+};
+
+/** Approximate performance tempos used by the Listening Room's live band.
+ * They affect only stage motion; the recordings themselves are never altered. */
+export const MUSIC_BPMS = {
+  title: 82,
+  garret: 61,
+  ending: 114,
+  ullabjakkBaraEinuSinniEnn: 88,
+  ullabjakkFyrirgefduGeimverur: 126,
+  ullabjakkGedveikurAfSjalfumMer: 141,
+  ullabjakkHelSjukurIThig: 180,
+  ullabjakkIslensktSkammdegi: 77,
+  ullabjakkKjarnorkusprengja: 126,
+  ullabjakkPassaThigAMer: 77,
+  ullabjakkThykistEkkiThekkjaMig: 104,
 };

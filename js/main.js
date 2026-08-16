@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { inject } from '@vercel/analytics';
 
-import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, DAILY_PHENOMENA } from './core/config.js';
+import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, MUSIC_ARTISTS, DAILY_PHENOMENA } from './core/config.js';
 
 inject();
 
@@ -77,6 +77,8 @@ class Game {
   #callRound = 0;
   #callUnhappy = 0;
   #recordKey = null;
+  #soundtrackGeneration = 0;
+  #soundtrackTarget = null;
   #runActive = false;
   #saveTimer = 0;
   #savedRun = null;
@@ -212,12 +214,14 @@ class Game {
     click('btn-howto', () => this.ui.show('howto'));
     click('howto-close', () => this.ui.hide('howto'));
     click('btn-settings', () => this.ui.show('settings'));
+    click('btn-share-title', () => this.#shareGame());
     click('settings-close', () => { this.ui.hide('settings'); saveSettings(this.settings); });
     click('btn-privacy', () => this.ui.show('privacy'));
     click('privacy-close', () => this.ui.hide('privacy'));
     click('btn-terms', () => this.ui.show('terms'));
     click('terms-close', () => this.ui.hide('terms'));
     click('pause-resume', () => this.#resume());
+    click('btn-share-pause', () => this.#shareGame());
     click('pause-settings', () => this.ui.show('settings'));
     click('pause-quit', () => this.#quitToTitle());
     click('codex-close', () => {
@@ -228,6 +232,10 @@ class Game {
       }
     });
     click('map-close', () => this.#closeMap());
+    click('records-close', () => this.#closeRecords());
+    click('record-stop', () => this.#stopRecord());
+    click('share-close', () => this.ui.closeShareFallback());
+    click('share-copy', () => this.#copyShareFallback());
     click('arti-close', () => this.#closeArti());
     click('call-end', () => this.#closeCollectorCall());
     click('seance-leave', () => this.#closeSeance());
@@ -236,17 +244,15 @@ class Game {
 
     click('ending-again', () => this.#startRun());
 
-    // now-playing chip — the kill switch for the room's record
+    // The chip and every physical turntable open the same communal record case.
     this.ui.bindNowPlaying(() => {
+      this.#openRecords();
+    }, () => {
       this.audio.ensure();
       this.audio.uiConfirm();
       this.#playNextRecord();
     }, () => {
-      this.audio.uiConfirm();
-      this.#recordKey = null;
-      this.audio.setMusic(null);
-      this.world.setRecordPlayerState(null);
-      if (this.world.current) this.#applyZoneAtmosphere(this.world.current);
+      this.#stopRecord();
     });
 
     this.ui.bindSettings(this.settings, (key) => {
@@ -258,6 +264,7 @@ class Game {
     // ---- global keys ----
     this.input.on('press:pause', () => this.#onEscape());
     this.input.on('press:map', () => this.#toggleMap());
+    this.input.on('press:records', () => this.#toggleRecords());
     this.input.on('press:arti', () => this.#toggleArti());
     this.input.on('press:codex', () => this.#toggleCodex());
 
@@ -524,6 +531,9 @@ class Game {
     this.pendingAppraisal = null;
     this.#dailyProgress = 0;
     this.#cowVisitedThisRun = false;
+    this.#recordKey = null;
+    this.#soundtrackTarget = null;
+    this.#soundtrackGeneration++;
     this.ui.toast(this.#daily.title, this.#daily.desc);
     const ec = this.world.zone('garret').easelCanvas;
     ec.material = new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.85 });
@@ -647,7 +657,7 @@ class Game {
     this.#runActive = true;
     this.ui.show('hud');
     this.ui.setHotkeys('playing');
-    this.ui.hint('WASD · E use · LMB brush · Q appraise · N arti · M map · Tab virtues');
+    this.ui.hint('WASD · E use · LMB brush · Q appraise · N arti · M map · P records · Tab virtues');
 
     setTimeout(() => this.ui.hint(null), 9000);
     this.quests.startNight(n);
@@ -662,10 +672,10 @@ class Game {
     this.ui.renderEndingsStrip(loadEndings());
     this.mode = 'title';
     this.ui.hideHotkeys();
-    this.audio.setMood('off');
-    this.audio.stopRoomScore();
-    this.audio.stopTechno();
-    this.audio.stopJazz();
+    this.#recordKey = null;
+    this.#soundtrackTarget = null;
+    this.#soundtrackGeneration++;
+    this.audio.fadeOutSoundtrack(0);
     this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
     this.#clearSavedRun();
@@ -677,10 +687,9 @@ class Game {
     unlockEnding(key);
     this.mode = 'transition';              // suppress auto-pause on unlock
     this.input.exitLock();
-    this.audio.setMood('off');
-    this.audio.stopRoomScore();
-    this.audio.stopTechno();
-    this.audio.stopJazz();
+    this.#soundtrackTarget = null;
+    this.#soundtrackGeneration++;
+    this.audio.fadeOutSoundtrack(0);
     this.audio.setMusic('ending', MUSIC);
     this.#clearSavedRun();
 
@@ -708,6 +717,10 @@ class Game {
      ============================================================ */
 
   #onEscape() {
+    if (!document.getElementById('share-fallback').classList.contains('hidden')) {
+      this.ui.closeShareFallback();
+      return;
+    }
     switch (this.mode) {
       case 'playing': this.#pause(); break;
       case 'paused': this.#resume(); break;
@@ -717,6 +730,9 @@ class Game {
 
       case 'map':
         this.#closeMap();
+        break;
+      case 'records':
+        this.#closeRecords();
         break;
       case 'arti':
         this.#closeArti();
@@ -817,6 +833,129 @@ class Game {
       this.#travelTo(zone);
     }
     this.input.requestLock();
+  }
+
+  /* ---- the communal record case ---- */
+
+  #toggleRecords() {
+    if (this.mode === 'playing') this.#openRecords();
+    else if (this.mode === 'records') this.#closeRecords();
+  }
+
+  #openRecords() {
+    if (this.mode !== 'playing' || !this.world.current) return;
+    this.mode = 'records';
+    this.player.setFrozen(true);
+    this.ui.interactPrompt(null);
+    this.input.exitLock();
+    this.ui.openRecords({
+      tracks: Object.keys(MUSIC).map((key) => ({
+        key,
+        title: MUSIC_TITLES[key] ?? key,
+        artist: MUSIC_ARTISTS[key] ?? 'UNKNOWN ARTIST',
+      })),
+      currentKey: this.#recordKey,
+      roomName: ZONES[this.world.current].name,
+    }, (key) => this.#selectRecord(key));
+    this.ui.setHotkeys('records');
+    this.audio.uiMove();
+  }
+
+  #closeRecords() {
+    if (this.mode !== 'records') return;
+    this.ui.closeRecords();
+    this.player.setFrozen(false);
+    this.mode = 'playing';
+    this.ui.setHotkeys('playing');
+    this.input.requestLock();
+  }
+
+  #selectRecord(key) {
+    if (!MUSIC[key]) return;
+    this.audio.ensure();
+    this.audio.uiConfirm();
+    if (this.#recordKey !== key) {
+      this.#recordKey = key;
+      this.#syncSoundtrack(this.world.current);
+      this.ui.toast('THE COMMUNAL RECORD PLAYER', `Now spinning: ${MUSIC_ARTISTS[key]} — ${MUSIC_TITLES[key]}. Every room hears it.`, 'good');
+    }
+    this.ui.updateRecords(this.#recordKey, ZONES[this.world.current].name);
+  }
+
+  #stopRecord() {
+    this.audio.ensure();
+    this.audio.uiConfirm();
+    if (!this.#recordKey) return;
+    this.#recordKey = null;
+    this.#syncSoundtrack(this.world.current);
+    this.ui.updateRecords(null, ZONES[this.world.current].name);
+    this.ui.toast('BACK TO THE ROOM', `${this.#roomScoreTitle(this.world.current)} resumes.`, 'good');
+  }
+
+  /* ---- sharing ---- */
+
+  #shareUrl() {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  }
+
+  #isLocalShareUrl(url) {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  }
+
+  async #shareGame() {
+    const url = this.#shareUrl();
+    const isLocal = this.#isLocalShareUrl(url);
+    const payload = {
+      title: 'PAINTER: ASCENSION',
+      text: 'Enter the artworld. Bring a brush, a grudge, and headphones.',
+      url,
+    };
+
+    if (!isLocal && navigator.share) {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      this.ui.toast(
+        isLocal ? 'LOCAL LINK COPIED' : 'GAME LINK COPIED',
+        isLocal ? 'Friends cannot open this development address until the game is deployed.' : 'Send it to someone with excellent judgement.',
+        isLocal ? 'bad' : 'good'
+      );
+    } catch {
+      this.ui.openShareFallback(url, isLocal);
+    }
+  }
+
+  async #copyShareFallback() {
+    const input = document.getElementById('share-url');
+    input.focus();
+    input.select();
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(input.value);
+      copied = true;
+    } catch {
+      copied = document.execCommand?.('copy') ?? false;
+    }
+    if (!copied) {
+      this.ui.toast('SELECT THE LINK', 'Press Command-C or Control-C to copy it.', 'bad');
+      return;
+    }
+    this.ui.closeShareFallback();
+    const local = this.#isLocalShareUrl(input.value);
+    this.ui.toast(local ? 'LOCAL LINK COPIED' : 'GAME LINK COPIED', local
+      ? 'Friends cannot open this development address until the game is deployed.'
+      : 'Send it to someone with excellent judgement.', local ? 'bad' : 'good');
   }
 
   /* ---- the séance ---- */
@@ -1251,7 +1390,7 @@ class Game {
       case 'recordPlayer':
         this.audio.ensure();
         this.audio.uiConfirm();
-        this.#playNextRecord();
+        this.#openRecords();
         break;
 
 
@@ -1480,6 +1619,8 @@ class Game {
         rageRoom: 'Five daylight glass boxes turn panic into architecture. MC Freeglass is inside one, rapping liberation over crooked jazz and a dusty beat.',
         deathMetal: 'Pink lights, black amps, and five punks arguing that Barbie is the loudest death-metal artist alive.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
+        listeningRoom: 'A four-piece band follows the selected record in real time while two reference speakers and twelve art legends hold the room.',
+        mtvCribs: 'The camera is rolling. Four unmistakably adult spoiled heirs explain why their gold sippy cups are appreciating assets.',
       }[zoneKey]);
       if (fromZone && fromZone !== zoneKey) {
         this.ui.toast('BETWEEN ROOMS', transitionLine(fromZone, zoneKey));
@@ -1498,32 +1639,57 @@ class Game {
     this.scene.fog.density = z.fog.density;
     this.scene.background.set(z.fog.color);
     this.audio.setMood(ZONES[zoneKey].mood);
+    this.#syncSoundtrack(zoneKey);
+  }
 
-    // The royal combo is acoustically sealed inside the Dildo Ball. It never
-    // leaks into another room and no communal record may talk over the band.
-    if (zoneKey === 'dildoBall') {
-      this.audio.setMusic(null);
-      this.audio.setRoomScore(null, false);
-      this.audio.startJazz();
-      this.world.setRecordPlayerState(null);
-      return;
-    }
+  #soundtrackFor(zoneKey) {
+    if (this.#recordKey) return { id: `record:${this.#recordKey}`, kind: 'record', key: this.#recordKey };
+    if (zoneKey === 'dildoBall') return { id: 'room:dildoBall:jazz', kind: 'jazz', key: zoneKey };
+    return { id: `room:${zoneKey}`, kind: 'room', key: zoneKey };
+  }
 
-    // The restroom is even stricter than the royal court: communal records,
-    // ambient drones and the jazz combo stay outside. Its entire score is made
-    // from synthesized urine and fart sounds.
-    if (zoneKey === 'publicRestroom') {
-      this.audio.stopJazz(true);
-      this.audio.cutMusic();
-      this.audio.setRoomScore(zoneKey, true, true);
-      this.world.setRecordPlayerState(null);
-      return;
-    }
+  #roomScoreTitle(zoneKey) {
+    if (zoneKey === 'dildoBall') return 'THE ROYAL JAZZ COMBO';
+    if (zoneKey === 'publicRestroom') return 'TECHNO ZAMBA';
+    return `${ZONES[zoneKey]?.name ?? 'THE ROOM'} · ROOM SCORE`;
+  }
 
-    this.audio.stopJazz();
-    this.audio.setMusic(this.#recordKey, MUSIC);
-    this.audio.setRoomScore(zoneKey, !this.#recordKey);
+  #updateSoundtrackUI(zoneKey = this.world.current) {
+    if (!zoneKey) return;
     this.world.setRecordPlayerState(this.#recordKey);
+    this.ui.setNowPlaying(this.#recordKey
+      ? { kind: 'record', title: MUSIC_TITLES[this.#recordKey] ?? this.#recordKey }
+      : { kind: 'room', title: this.#roomScoreTitle(zoneKey) });
+    if (this.mode === 'records') this.ui.updateRecords(this.#recordKey, ZONES[zoneKey].name);
+  }
+
+  /** One serialized handoff owns all continuous gameplay music. */
+  #syncSoundtrack(zoneKey, immediate = false) {
+    const target = this.#soundtrackFor(zoneKey);
+    this.#updateSoundtrackUI(zoneKey);
+    if (target.id === this.#soundtrackTarget) return; // travelling records never restart
+
+    this.#soundtrackTarget = target.id;
+    const generation = ++this.#soundtrackGeneration;
+    const wait = this.audio.fadeOutSoundtrack(immediate ? 0 : 180);
+    setTimeout(() => {
+      if (generation !== this.#soundtrackGeneration || target.id !== this.#soundtrackTarget) return;
+      if (target.kind === 'record') {
+        this.audio.setMusic(target.key, MUSIC, (failedKey) => this.#onRecordError(failedKey));
+      } else if (target.kind === 'jazz') {
+        this.audio.startJazz();
+      } else {
+        this.audio.setRoomScore(target.key, true, true);
+      }
+    }, wait);
+  }
+
+  #onRecordError(key) {
+    if (this.#recordKey !== key) return;
+    this.#recordKey = null;
+    this.#soundtrackTarget = null;
+    this.ui.toast('THE RECORD SKIPPED', `${MUSIC_TITLES[key] ?? key} could not be loaded. The room takes back the speakers.`, 'bad');
+    if (this.world.current) this.#syncSoundtrack(this.world.current, true);
   }
 
 
@@ -1636,7 +1802,7 @@ class Game {
         : this.audio.roomBeatPhase;
       this.player.setBeat(beatPhase);
 
-      const worldEvent = this.world.update(dt, now, beatPhase);
+      const worldEvent = this.world.update(dt, now, beatPhase, this.audio.soundtrackBpm);
       if (worldEvent?.type === 'boxingImpact') {
         this.audio.boxingImpact(worldEvent.variant, worldEvent.victim);
       }
@@ -1652,6 +1818,9 @@ class Game {
       }
       if (worldEvent?.type === 'deathMetalHit') {
         this.audio.deathMetalHit(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'cribsLine') {
+        this.ui.subtitle(worldEvent.speaker, worldEvent.line, 0.88, this.audio);
       }
 
       this.npcs.update(dt, now, this.player.position);
@@ -1688,9 +1857,6 @@ class Game {
 
       this.#updateInteractPrompt();
     }
-
-    // the chip: whatever the room's record is playing
-    this.ui.setNowPlaying(MUSIC_TITLES[this.audio.musicKey] ?? null);
 
     this.renderer.render(this.scene, this.camera);
   }
@@ -1733,24 +1899,7 @@ class Game {
   #playNextRecord() {
     const keys = Object.keys(MUSIC);
     const current = keys.indexOf(this.#recordKey);
-    this.#recordKey = keys[(current + 1 + keys.length) % keys.length];
-    if (this.world.current === 'dildoBall' || this.world.current === 'publicRestroom') {
-      this.world.setRecordPlayerState(null);
-      const royal = this.world.current === 'dildoBall';
-      this.ui.toast(
-        royal ? 'THE ROYAL SOUND POLICY' : 'THE RESTROOM SOUND POLICY',
-        royal
-          ? `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`
-          : `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here: piss, fart, Techno Zamba.`,
-        'good'
-      );
-      return;
-    }
-    this.audio.setMusic(this.#recordKey, MUSIC);
-    this.audio.setRoomScore(this.world.current, false);
-    this.world.setRecordPlayerState(this.#recordKey);
-    this.ui.setNowPlaying(MUSIC_TITLES[this.#recordKey]);
-    this.ui.toast('THE COMMUNAL RECORD PLAYER', `Now spinning: ${MUSIC_TITLES[this.#recordKey]}. Every room hears it.`, 'good');
+    this.#selectRecord(keys[(current + 1 + keys.length) % keys.length]);
   }
 }
 

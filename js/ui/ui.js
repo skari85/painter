@@ -319,12 +319,13 @@ export class UIManager {
         items: [
           ['WASD / arrows', 'move'], ['Shift', 'sprint'], ['Mouse', 'look'],
           ['LMB', 'paint / swing'], ['E', 'talk / use'], ['Q', 'appraise'],
-          ['N', 'ARTI'], ['M', 'map'], ['Tab', 'virtues'], ['Esc', 'pause'],
+          ['N', 'ARTI'], ['M', 'map'], ['P', 'records'], ['Tab', 'virtues'], ['Esc', 'pause'],
         ],
       },
       dialogue: { title: 'CONVERSATION', items: [['1', 'kind'], ['2', 'witty'], ['3', 'brutal']] },
       easel: { title: 'EASEL', items: [['Mouse drag', 'paint'], ['[ / ]', 'brush size'], ['Esc', 'step back']] },
       map: { title: 'MAP', items: [['Mouse', 'choose room'], ['M / Esc', 'close']] },
+      records: { title: 'RECORD CASE', items: [['Mouse', 'choose record'], ['P / Esc', 'close']] },
       codex: { title: 'VIRTUES', items: [['Tab / Esc', 'close']] },
       arti: { title: 'ARTI', items: [['Mouse', 'use phone'], ['N / Esc', 'close']] },
       'arti-call': { title: 'LIVE CALL', items: [['1', 'answer'], ['2', 'answer'], ['3', 'answer'], ['Esc', 'end call']] },
@@ -423,20 +424,71 @@ export class UIManager {
     this.#subtitleTimer = setTimeout(() => this.hide('subtitle'), 4200);
   }
 
-  /** Now-playing chip: pass a title to show it, null to hide. */
-  setNowPlaying(title) {
-    if (title === this.#nowPlaying) return;
-    this.#nowPlaying = title;
+  /** Now-playing chip reflects either the travelling record or the local room score. */
+  setNowPlaying(state) {
+    const signature = state ? `${state.kind}:${state.title}` : null;
+    if (signature === this.#nowPlaying) return;
+    this.#nowPlaying = signature;
     const chip = $('now-playing');
-    if (!title) { chip.classList.add('hidden'); return; }
-    $('np-title').textContent = title;
+    if (!state?.title) { chip.classList.add('hidden'); return; }
+    const isRecord = state.kind === 'record';
+    $('np-title').textContent = state.title;
+    $('np-next').classList.toggle('hidden', !isRecord);
+    $('np-stop').classList.toggle('hidden', !isRecord);
+    chip.classList.toggle('room-score', !isRecord);
     chip.classList.remove('hidden');
   }
 
-  bindNowPlaying(onNext, onStop) {
+  bindNowPlaying(onOpen, onNext, onStop) {
+    $('np-open').addEventListener('click', () => onOpen());
     $('np-next').addEventListener('click', () => onNext());
     $('np-stop').addEventListener('click', () => onStop());
   }
+
+  openRecords({ tracks, currentKey, roomName }, onSelect) {
+    const colors = ['#b43c32', '#315d78', '#6f4b87'];
+    const grid = $('record-grid');
+    grid.innerHTML = tracks.map(({ key, title, artist }, index) => {
+      const active = key === currentKey;
+      const initials = title.split(/\s+/).map((word) => word[0]).join('').slice(0, 3);
+      return `<button class="record-choice${active ? ' active' : ''}" data-record-key="${escapeHtml(key)}" aria-pressed="${active}">` +
+        `<span class="record-disc" style="--record-color:${colors[index % colors.length]}"><span class="record-label">${escapeHtml(initials)}</span></span>` +
+        `<span class="record-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(artist)}</small><span>${active ? 'NOW SPINNING' : 'PLAY RECORD'}</span></span></button>`;
+    }).join('');
+    grid.querySelectorAll('.record-choice').forEach((button) => {
+      button.addEventListener('click', () => onSelect(button.dataset.recordKey));
+    });
+    this.updateRecords(currentKey, roomName);
+    this.show('records');
+    (grid.querySelector('.active') ?? grid.querySelector('.record-choice'))?.focus();
+  }
+
+  updateRecords(currentKey, roomName) {
+    document.querySelectorAll('#record-grid .record-choice').forEach((button) => {
+      const active = button.dataset.recordKey === currentKey;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+      const status = button.querySelector('.record-copy span');
+      if (status) status.textContent = active ? 'NOW SPINNING' : 'PLAY RECORD';
+    });
+    $('record-stop').disabled = !currentKey;
+    $('record-stop').textContent = currentKey ? `Stop record · return to ${roomName}` : `${roomName} is playing`;
+    $('record-room-source').textContent = currentKey ? `${roomName} · ROOM SCORE WAITING` : `${roomName} · ROOM SCORE PLAYING`;
+  }
+
+  closeRecords() { this.hide('records'); }
+
+  openShareFallback(url, isLocal) {
+    $('share-url').value = url;
+    $('share-note').textContent = isLocal
+      ? 'This is a local development address. Friends cannot open it until the game is deployed.'
+      : 'Copy this link and send it to someone with excellent judgement.';
+    this.show('share-fallback');
+    $('share-url').focus();
+    $('share-url').select();
+  }
+
+  closeShareFallback() { this.hide('share-fallback'); }
 
   /** Tabloid slam: a full-frontal SCANDAL! headline. */
   scandal(headline) {
@@ -948,6 +1000,8 @@ const MAP_ZONES = [
   { key: 'deathMetal', name: 'BARBIE DEATH METAL', desc: 'Punks, death-metal goths, pink amps, and an argument about whether Barbie is a product or a survivor.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
   { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },
+  { key: 'listeningRoom', name: 'THE LISTENING ROOM', desc: 'A tempo-reactive live band, two monumental speakers, a switchable player, and twelve coded portraits.' },
+  { key: 'mtvCribs', name: 'MTV CRIBS: BABY MONEY', desc: 'Four spoiled adult heirs, a gold formula fridge, and a full camera crew forever chasing the money shot.' },
 ];
 
 

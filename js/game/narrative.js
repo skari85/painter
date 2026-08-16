@@ -94,6 +94,10 @@ const TRANSITIONS = {
   'rageRoom>galleria': 'The glass doors close behind you. The red dot is still waiting in the gallery.',
   'galleria>deathMetal': 'The gallery calls it a theme. The basement calls it a riff. Barbie gets the better entrance.',
   'deathMetal>galleria': 'The amps keep arguing behind you. The white cube is waiting to call the argument context.',
+  'galleria>listeningRoom': 'The white cube lowers its voice. Two speakers take over the argument.',
+  'listeningRoom>galleria': 'The last note follows you out and becomes market ambience.',
+  'listeningRoom>mtvCribs': 'The sweet spot opens into a money shot. Someone yells rolling.',
+  'mtvCribs>listeningRoom': 'The crew keeps filming. The listening room remembers how silence works.',
 };
 
 const DEFAULT_TRANSITION = 'The scene rearranges itself around you. It calls this movement.';

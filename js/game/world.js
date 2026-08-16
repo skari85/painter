@@ -82,6 +82,194 @@ export function artworkTexture(seed) {
   });
 }
 
+const ART_LEGENDS = [
+  { id: 'picasso', name: 'PABLO PICASSO', years: '1881—1973', quote: '“To me, there is no past or present in art.”', colors: ['#d7b55b', '#244a66', '#d45b44'], style: 0 },
+  { id: 'kahlo', name: 'FRIDA KAHLO', years: '1907—1954', quote: '“I never painted dreams. I painted my own reality.”', colors: ['#173f38', '#b8373f', '#efb13c'], style: 1 },
+  { id: 'basquiat', name: 'JEAN-MICHEL BASQUIAT', years: '1960—1988', quote: '“I cross out words so you will see them more.”', colors: ['#1f1d1a', '#d8aa32', '#b54435'], style: 2 },
+  { id: 'okeeffe', name: 'GEORGIA O’KEEFFE', years: '1887—1986', quote: '“The abstraction is often the most definite form for the intangible thing in myself.”', colors: ['#d6d0c6', '#5f8290', '#9d493a'], style: 3 },
+  { id: 'bourgeois', name: 'LOUISE BOURGEOIS', years: '1911—2010', quote: '“Art is a guaranty of sanity.”', colors: ['#ede5d9', '#bd2d3e', '#252126'], style: 4 },
+  { id: 'hockney', name: 'DAVID HOCKNEY', years: '1937—2026', quote: '“I paint what I like, when I like, and where I like.”', colors: ['#65b9d1', '#f0d33f', '#e86443'], style: 5 },
+  { id: 'ringgold', name: 'FAITH RINGGOLD', years: '1930—2024', quote: '“It is powerful to know who you are.”', colors: ['#542f72', '#e29632', '#2e6d67'], style: 6 },
+  { id: 'matisse', name: 'HENRI MATISSE', years: '1869—1954', quote: '“What I dream of is an art of balance, of purity and serenity.”', colors: ['#b3262e', '#24499a', '#e8c544'], style: 7 },
+  { id: 'bacon', name: 'FRANCIS BACON', years: '1909—1992', quote: '“I think art is an obsession with life.”', colors: ['#311f29', '#8e243e', '#d6a35d'], style: 8 },
+  { id: 'pollock', name: 'JACKSON POLLOCK', years: '1912—1956', quote: '“The painting has a life of its own.”', colors: ['#e0d5bd', '#1c2528', '#b83e31'], style: 9 },
+  { id: 'krasner', name: 'LEE KRASNER', years: '1908—1984', quote: '“I like a canvas to breathe and be alive.”', colors: ['#d67842', '#4e236f', '#258a83'], style: 10 },
+  { id: 'kusama', name: 'YAYOI KUSAMA', years: '1929—', quote: '“I paint the work imagining the vastness of the universe.”', colors: ['#e62e35', '#f3d739', '#241d22'], style: 11 },
+];
+
+/** Coded portraits with artist-specific graphic signatures. They stay original
+ * and painterly while carrying enough facial structure to read from the aisle. */
+function legendPortraitTexture(legend) {
+  const [ground, accent, spark] = legend.colors;
+  return canvasTexture(512, 640, (ctx, w, h) => {
+    const rng = mulberry32(8100 + legend.style * 977);
+    const ellipse = (x, y, rx, ry, color, rotation = 0) => {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, rotation, 0, Math.PI * 2); ctx.fill();
+    };
+    ctx.fillStyle = ground; ctx.fillRect(0, 0, w, h);
+
+    // A distinct visual rhythm for every legend: references to their language,
+    // never copies of a specific work.
+    ctx.globalAlpha = 0.88;
+    if (legend.style === 0) {
+      for (let i = 0; i < 14; i++) {
+        ctx.fillStyle = i % 2 ? accent : spark;
+        ctx.beginPath(); ctx.moveTo(rng() * w, rng() * h); ctx.lineTo(rng() * w, rng() * h); ctx.lineTo(rng() * w, rng() * h); ctx.fill();
+      }
+    } else if (legend.style === 1) {
+      for (let i = 0; i < 20; i++) {
+        const a = i / 20 * Math.PI * 2;
+        ellipse(w / 2 + Math.cos(a) * 190, 104 + Math.sin(a) * 48, 13 + (i % 3) * 5, 13 + (i % 3) * 5, i % 3 ? spark : accent);
+      }
+    } else if (legend.style === 2) {
+      ctx.strokeStyle = spark; ctx.lineWidth = 13;
+      for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.moveTo(rng() * w, rng() * h); ctx.lineTo(rng() * w, rng() * h); ctx.stroke(); }
+      ctx.beginPath(); ctx.moveTo(176, 118); ctx.lineTo(206, 50); ctx.lineTo(256, 104); ctx.lineTo(306, 50); ctx.lineTo(338, 118); ctx.stroke();
+    } else if (legend.style === 3) {
+      ctx.fillStyle = spark; ctx.fillRect(0, 398, w, 242);
+      ctx.fillStyle = accent; ctx.beginPath(); ctx.moveTo(0, 430); ctx.quadraticCurveTo(170, 310, 330, 450); ctx.quadraticCurveTo(420, 505, w, 390); ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.fill();
+    } else if (legend.style === 4) {
+      ctx.strokeStyle = accent; ctx.lineWidth = 4;
+      for (let r = 26; r < 250; r += 28) { ctx.beginPath(); ctx.arc(w / 2, 265, r, Math.PI, Math.PI * 2); ctx.stroke(); }
+      for (let a = 0; a <= Math.PI; a += Math.PI / 10) { ctx.beginPath(); ctx.moveTo(w / 2, 265); ctx.lineTo(w / 2 + Math.cos(a) * 250, 265 - Math.sin(a) * 250); ctx.stroke(); }
+    } else if (legend.style === 5) {
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 9;
+      for (let x = -40; x < w + 80; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 140, h); ctx.stroke(); }
+      for (let y = 0; y < h; y += 58) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    } else if (legend.style === 6) {
+      const cols = [ground, accent, spark, '#d2c17b'];
+      for (let y = 0; y < h; y += 72) for (let x = 0; x < w; x += 72) {
+        ctx.fillStyle = cols[(x / 72 + y / 72) % cols.length | 0]; ctx.fillRect(x + 5, y + 5, 62, 62);
+      }
+    } else if (legend.style === 7) {
+      for (let i = 0; i < 16; i++) ellipse(80 + rng() * 350, 80 + rng() * 460, 20 + rng() * 32, 70 + rng() * 55, i % 2 ? accent : spark, rng() * Math.PI);
+    } else if (legend.style === 8) {
+      // Bacon: a dark stage, triptych rails and dragged, fleshy passages.
+      ctx.strokeStyle = spark; ctx.lineWidth = 7; ctx.strokeRect(44, 45, 128, 520); ctx.strokeRect(192, 45, 128, 520); ctx.strokeRect(340, 45, 128, 520);
+      for (let i = 0; i < 11; i++) ellipse(80 + rng() * 360, 100 + rng() * 390, 28 + rng() * 70, 9 + rng() * 24, i % 2 ? accent : '#c98d75', rng() * Math.PI);
+    } else if (legend.style === 9) {
+      // Pollock: looping enamel trajectories and suspended drops.
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 20; i++) {
+        ctx.strokeStyle = [accent, spark, '#f4eee1'][i % 3]; ctx.lineWidth = 2 + rng() * 7;
+        ctx.beginPath(); ctx.moveTo(-30, rng() * h); ctx.bezierCurveTo(rng() * w, rng() * h, rng() * w, rng() * h, w + 30, rng() * h); ctx.stroke();
+        ellipse(rng() * w, rng() * h, 2 + rng() * 8, 2 + rng() * 8, ctx.strokeStyle);
+      }
+    } else if (legend.style === 10) {
+      // Krasner: muscular, breathing arcs with shifting interiors.
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 13; i++) {
+        ctx.strokeStyle = [accent, spark, '#e9caa1'][i % 3]; ctx.lineWidth = 15 + rng() * 22;
+        ctx.beginPath(); ctx.moveTo(-60 + rng() * 160, 80 + rng() * 520); ctx.bezierCurveTo(140, rng() * h, 360, rng() * h, 560, 80 + rng() * 520); ctx.stroke();
+      }
+    } else {
+      // Kusama: an optically dense field of hand-shifted dots.
+      for (let y = 20; y < h; y += 34) for (let x = 18; x < w; x += 34) {
+        const r = 7 + ((x + y) / 34 % 3) * 2;
+        ellipse(x + (rng() - 0.5) * 8, y + (rng() - 0.5) * 8, r, r, (x + y) % 68 ? spark : accent);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    const skins = ['#d1a47f', '#b86f4f', '#8a5337', '#d3b092', '#d0aa8d', '#d6a57e', '#8a553a', '#d2aa83', '#d2a080', '#c99c7c', '#d3aa8f', '#e0b18e'];
+    const skin = skins[legend.style];
+    const shadow = ['#9a6854', '#7e4336', '#573224', '#a27e68', '#9a7763', '#a4775e', '#5f3729', '#a27a60', '#94634f', '#8e624f', '#9b7565', '#aa775e'][legend.style];
+    const ink = '#171515';
+    const faceTilt = legend.style === 8 ? -0.09 : (legend.style % 2 ? -0.035 : 0.035);
+
+    // Shoulders and neck sit behind the head, replacing the old blocky bust.
+    ctx.fillStyle = accent;
+    ctx.beginPath(); ctx.moveTo(70, 640); ctx.quadraticCurveTo(90, 500, 205, 476); ctx.lineTo(307, 476); ctx.quadraticCurveTo(422, 500, 442, 640); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = skin; ctx.fillRect(215, 415, 82, 104);
+    ellipse(215, 426, 30, 44, shadow, -0.2); ellipse(297, 426, 30, 44, shadow, 0.2);
+
+    // Ears, face volume, cheek planes and jaw shading.
+    ellipse(132, 310, 27, 52, skin, -0.08); ellipse(380, 310, 27, 52, skin, 0.08);
+    ctx.strokeStyle = ink; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(137, 313, 12, -1.2, 1.15); ctx.moveTo(375, 296); ctx.arc(375, 313, 12, -1.95, 1.95); ctx.stroke();
+    const faceGradient = ctx.createLinearGradient(150, 190, 350, 430);
+    faceGradient.addColorStop(0, skin); faceGradient.addColorStop(0.72, skin); faceGradient.addColorStop(1, shadow);
+    ctx.fillStyle = faceGradient; ctx.beginPath(); ctx.ellipse(256, 300, 125, 154, faceTilt, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 10; ctx.stroke();
+    ctx.globalAlpha = 0.23;
+    ellipse(198, 345, 46, 36, shadow, -0.2); ellipse(319, 345, legend.style === 8 ? 68 : 43, legend.style === 8 ? 50 : 34, shadow, 0.18);
+    ctx.globalAlpha = 1;
+
+    // Hair silhouettes and internal strands carry the quickest likeness cues.
+    let hair = '#211a18';
+    if ([3, 4].includes(legend.style)) hair = '#ece6db';
+    if (legend.style === 5) hair = '#d8cfb0';
+    if (legend.style === 11) hair = '#d93935';
+    ctx.fillStyle = hair;
+    if (legend.style === 2) {
+      for (let i = 0; i < 20; i++) {
+        const a = i / 20 * Math.PI * 2; ellipse(256 + Math.cos(a) * 128, 215 + Math.sin(a) * 101, 17, 58, hair, a);
+      }
+    } else if (legend.style === 11) {
+      ctx.beginPath(); ctx.arc(256, 252, 145, Math.PI, Math.PI * 2); ctx.lineTo(397, 360); ctx.quadraticCurveTo(360, 445, 326, 437); ctx.lineTo(326, 242); ctx.lineTo(186, 242); ctx.lineTo(186, 437); ctx.quadraticCurveTo(145, 436, 116, 360); ctx.closePath(); ctx.fill();
+      ctx.fillRect(151, 198, 210, 62);
+    } else if (legend.style === 10) {
+      ctx.beginPath(); ctx.arc(256, 246, 142, Math.PI, Math.PI * 2); ctx.lineTo(389, 353); ctx.quadraticCurveTo(350, 418, 325, 390); ctx.quadraticCurveTo(371, 226, 255, 176); ctx.quadraticCurveTo(132, 224, 184, 408); ctx.quadraticCurveTo(132, 411, 120, 350); ctx.closePath(); ctx.fill();
+    } else if (legend.style === 9) {
+      for (let i = 0; i < 13; i++) ellipse(151 + i * 17, 207 + Math.sin(i * 1.7) * 22, 25, 52, hair, -0.5 + i * 0.09);
+    } else if (legend.style === 8) {
+      ctx.beginPath(); ctx.moveTo(132, 260); ctx.quadraticCurveTo(158, 161, 282, 170); ctx.quadraticCurveTo(350, 177, 385, 248); ctx.quadraticCurveTo(302, 210, 213, 221); ctx.quadraticCurveTo(164, 230, 132, 260); ctx.fill();
+      ctx.strokeStyle = '#4c3932'; ctx.lineWidth = 8;
+      for (let x = 155; x < 365; x += 24) { ctx.beginPath(); ctx.moveTo(x, 214); ctx.quadraticCurveTo(x + 18, 178, x + 40, 204); ctx.stroke(); }
+    } else if (![0, 5].includes(legend.style)) {
+      ctx.beginPath(); ctx.arc(256, 250, 137, Math.PI, Math.PI * 2); ctx.lineTo(388, 306); ctx.quadraticCurveTo(345, 180, 256, 174); ctx.quadraticCurveTo(160, 184, 126, 310); ctx.closePath(); ctx.fill();
+    } else if (legend.style === 5) {
+      ctx.beginPath(); ctx.arc(256, 235, 134, Math.PI, Math.PI * 2); ctx.lineTo(370, 250); ctx.quadraticCurveTo(256, 176, 142, 250); ctx.closePath(); ctx.fill();
+    }
+
+    // Brows, eyelids, whites, irises and highlights give the faces an actual gaze.
+    ctx.strokeStyle = ink; ctx.lineCap = 'round'; ctx.lineWidth = legend.style === 10 ? 14 : 10;
+    ctx.beginPath(); ctx.moveTo(174, 270); ctx.quadraticCurveTo(209, 250, 239, 271); ctx.moveTo(274, 271); ctx.quadraticCurveTo(308, 249, 344, 269); ctx.stroke();
+    if (legend.style === 1) { ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(178, 253); ctx.quadraticCurveTo(254, 235, 340, 254); ctx.stroke(); }
+    const leftEyeY = legend.style === 8 ? 295 : 292;
+    const rightEyeY = legend.style === 8 ? 286 : 292;
+    ellipse(211, leftEyeY, 30, 15, '#f3eadc', -0.04); ellipse(306, rightEyeY, 30, 15, '#f3eadc', 0.04);
+    ctx.strokeStyle = ink; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(180, leftEyeY); ctx.quadraticCurveTo(211, leftEyeY - 19, 241, leftEyeY); ctx.moveTo(276, rightEyeY); ctx.quadraticCurveTo(306, rightEyeY - 19, 337, rightEyeY); ctx.stroke();
+    const iris = legend.style === 5 ? '#426f83' : legend.style === 1 ? '#513424' : '#332a26';
+    ellipse(214, leftEyeY, 11, 11, iris); ellipse(303, rightEyeY, 11, 11, iris);
+    ellipse(214, leftEyeY, 5, 6, ink); ellipse(303, rightEyeY, 5, 6, ink);
+    ellipse(218, leftEyeY - 4, 2.5, 2.5, '#ffffff'); ellipse(307, rightEyeY - 4, 2.5, 2.5, '#ffffff');
+
+    if (legend.style === 5) {
+      ctx.strokeStyle = '#3b2632'; ctx.lineWidth = 11; ctx.strokeRect(165, 257, 86, 64); ctx.strokeRect(264, 257, 86, 64); ctx.beginPath(); ctx.moveTo(251, 282); ctx.lineTo(264, 282); ctx.stroke();
+    }
+
+    // Nose, nostrils, philtrum, lips, chin and age lines.
+    ctx.strokeStyle = ink; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(257, 302); ctx.quadraticCurveTo(245, 331, 244, 353); ctx.quadraticCurveTo(258, 365, 276, 353); ctx.stroke();
+    ellipse(247, 356, 5, 3, ink); ellipse(272, 356, 5, 3, ink);
+    ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(258, 366); ctx.lineTo(258, 379); ctx.stroke();
+    const lip = [1, 4, 6, 10, 11].includes(legend.style) ? '#7d2939' : '#5b302b';
+    ctx.fillStyle = lip; ctx.beginPath(); ctx.moveTo(204, 399); ctx.quadraticCurveTo(240, 381, 258, 394); ctx.quadraticCurveTo(278, 381, 316, 398); ctx.quadraticCurveTo(263, 433, 204, 399); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(205, 399); ctx.quadraticCurveTo(258, 411, 315, 398); ctx.stroke();
+    ctx.globalAlpha = 0.45; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(199, 431); ctx.quadraticCurveTo(258, 448, 316, 429); ctx.moveTo(165, 333); ctx.quadraticCurveTo(183, 346, 194, 358); ctx.moveTo(349, 331); ctx.quadraticCurveTo(331, 346, 322, 358); ctx.stroke();
+    if ([3, 4, 7, 8].includes(legend.style)) {
+      ctx.beginPath(); ctx.moveTo(174, 244); ctx.quadraticCurveTo(205, 229, 238, 245); ctx.moveTo(277, 244); ctx.quadraticCurveTo(310, 227, 341, 243); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    if (legend.style === 9) {
+      // Pollock's rough stubble, kept subtle enough not to flatten the face.
+      ctx.fillStyle = '#493b35'; ctx.globalAlpha = 0.56;
+      for (let i = 0; i < 56; i++) ellipse(178 + rng() * 158, 365 + rng() * 85, 1.5, 1.5, '#493b35');
+      ctx.globalAlpha = 1;
+    }
+    if ([0, 5, 7].includes(legend.style)) {
+      ctx.strokeStyle = spark; ctx.lineWidth = 15;
+      for (let y = 522; y < 640; y += 34) { ctx.beginPath(); ctx.moveTo(82, y); ctx.lineTo(430, y); ctx.stroke(); }
+    } else if (legend.style === 11) {
+      for (let y = 530; y < 640; y += 30) for (let x = 110; x < 410; x += 30) ellipse(x, y, 6, 6, spark);
+    }
+  });
+}
+
 function textTexture(text, { fg = '#efe9dc', bg = 'rgba(0,0,0,0)', size = 44, w = 512, h = 96, font = '700' } = {}) {
   return canvasTexture(w, h, (ctx) => {
     ctx.clearRect(0, 0, w, h);
@@ -514,6 +702,8 @@ export class World {
     this.#buildDeathMetal();
     this.#buildPublicRestroom();
     this.#buildBlackForest();
+    this.#buildListeningRoom();
+    this.#buildMtvCribs();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -553,6 +743,7 @@ export class World {
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
       vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
       rageRoom: { x: 9.1, z: 5.1, ry: Math.PI },
+      listeningRoom: { x: 0, z: -1.85, ry: 0 },
     };
 
     for (const [key, p] of Object.entries(placements)) {
@@ -577,7 +768,7 @@ export class World {
       g.traverse((o) => { o.userData.noSplat = true; });
       z.group.add(g);
       z.colliders.push({ minX: p.x - 0.58, maxX: p.x + 0.58, minZ: p.z - 0.42, maxZ: p.z + 0.42 });
-      z.interactables.push({ id: `record-player-${key}`, type: 'recordPlayer', label: 'Change the record', pos: new THREE.Vector3(p.x, 0.9, p.z), radius: 2.05 });
+      z.interactables.push({ id: `record-player-${key}`, type: 'recordPlayer', label: 'Open the record case', pos: new THREE.Vector3(p.x, 0.9, p.z), radius: 2.05 });
       z.animated.recordPlayer = { platter, label, lamp, playing: false };
     }
   }
@@ -965,6 +1156,7 @@ export class World {
     door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
     door(z, { x: 6.8, z: -6.62, ry: 0, label: 'THE GLASS BOXES →', to: 'rageRoom' });
     door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
+    door(z, { x: 3.45, z: -6.62, ry: 0, label: 'THE LISTENING ROOM →', to: 'listeningRoom' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -5546,6 +5738,334 @@ export class World {
     });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  THE LISTENING ROOM — live band, two speakers, twelve witnesses */
+  /* ---------------------------------------------------------- */
+  #buildListeningRoom() {
+    const z = this.#newZone('listeningRoom');
+    const roomH = 5.4;
+    shell(z, { w: 18, d: 15, h: roomH, floorColor: 0x4a3023, wallColor: 0x191d22, ceilColor: 0x0c0e12 });
+    z.spawn.set(0, 0, 6.05);
+    z.spawnYaw = Math.PI;
+    z.fog = { color: 0x11161b, density: 0.018 };
+
+    // Oiled walnut underfoot and vertical felt/slat absorption make the room
+    // read as serious hi-fi architecture without adding furniture clutter.
+    const walnut = mat(0x6f472d, { roughness: 0.58, metalness: 0.02 });
+    plane(z, { w: 17.7, h: 14.7, y: 0.012, rx: -Math.PI / 2, material: walnut, noSplat: true, name: 'listening walnut floor' });
+    const felt = mat(0x20272e, { roughness: 0.98 });
+    const slat = mat(0x8a5d3d, { roughness: 0.62 });
+    for (let i = 0; i < 31; i++) {
+      const x = -8.45 + i * 0.56;
+      box(z, { w: 0.075, h: 4.75, d: 0.11, x, y: 0.18, z: -7.42, material: slat, solid: false, noSplat: true });
+    }
+    plane(z, { w: 17.4, h: 4.8, x: 0, y: 2.65, z: -7.45, material: felt, noSplat: true });
+
+    // Exactly two full-range speakers frame the live stage. The communal
+    // turntable stays forward in the room where it remains easy to reach.
+    const speakerCabinet = new THREE.MeshPhysicalMaterial({ color: 0x161719, roughness: 0.24, metalness: 0.2, clearcoat: 0.72, clearcoatRoughness: 0.12 });
+    const driverMat = mat(0xb89552, { roughness: 0.32, metalness: 0.72 });
+    const coneMat = mat(0x0a0b0c, { roughness: 0.48, metalness: 0.18 });
+    z.animated.listeningDrivers = [];
+    for (const sx of [-6.15, 6.15]) {
+      const cabinet = box(z, { w: 1.55, h: 3.35, d: 1.05, x: sx, y: 0.12, z: -5.75, material: speakerCabinet, name: 'reference speaker' });
+      cabinet.castShadow = true;
+      for (const [y, r] of [[0.86, 0.42], [1.82, 0.36], [2.78, 0.19]]) {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.055, 12, 36), driverMat);
+        rim.position.set(sx, y, -5.205); rim.rotation.x = Math.PI / 2; rim.userData.noSplat = true; z.group.add(rim);
+        const cone = new THREE.Mesh(new THREE.CircleGeometry(r * 0.82, 36), coneMat);
+        cone.position.set(sx, y, -5.15); cone.rotation.y = Math.PI; cone.userData.noSplat = true; z.group.add(cone);
+        z.animated.listeningDrivers.push({ mesh: cone, base: cone.scale.clone(), phase: y + sx });
+      }
+      const plinth = box(z, { w: 1.82, h: 0.09, d: 1.32, x: sx, y: 0.02, z: -5.75, material: mat(0xa78951, { metalness: 0.75, roughness: 0.23 }), solid: false, noSplat: true });
+      plinth.castShadow = true;
+    }
+
+    // The record is embodied by a four-piece band. Small joints, instrument
+    // hardware, cables and a proper backline keep the figures readable as a
+    // performance rather than four decorative mannequins.
+    const stageBlack = mat(0x101216, { roughness: 0.46, metalness: 0.16 });
+    const stageGold = mat(0xc7a35b, { roughness: 0.24, metalness: 0.84 });
+    const chrome = mat(0xcbd2d7, { roughness: 0.17, metalness: 0.92 });
+    const instrumentBlack = mat(0x111319, { roughness: 0.23, metalness: 0.42 });
+    box(z, { w: 10.65, h: 0.3, d: 3.15, x: 0, y: 0, z: -5.35, material: stageBlack, solid: false, noSplat: true, name: 'listening live stage' });
+    box(z, { w: 10.65, h: 0.055, d: 0.09, x: 0, y: 0.3, z: -3.79, material: stageGold, solid: false, noSplat: true });
+    for (const x of [-4.8, -1.6, 1.6, 4.8]) {
+      const foot = new THREE.PointLight(0xffc76e, 1.2, 3.8, 1.9); foot.position.set(x, 0.42, -3.72); foot.userData.base = 1.2; z.group.add(foot);
+    }
+
+    const makePerformer = ({ x, zz, shirt, skin, hair, role, seated = false }) => {
+      const group = new THREE.Group(); group.position.set(x, 0.3, zz);
+      const shirtMat = mat(shirt, { roughness: 0.75 });
+      const skinMat = mat(skin, { roughness: 0.82 });
+      const hairMat = mat(hair, { roughness: 0.92 });
+      const trousers = mat(0x171a20, { roughness: 0.76 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.25, 0.52, 6, 12), shirtMat); torso.position.y = seated ? 0.96 : 1.05;
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 7, 18, Math.PI), stageBlack); collar.position.set(0, torso.position.y + 0.35, 0.19); collar.rotation.z = Math.PI;
+      const headPivot = new THREE.Group(); headPivot.position.y = seated ? 1.48 : 1.62;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.205, 18, 14), skinMat); head.scale.set(0.9, 1.12, 0.92);
+      const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.63), hairMat); hairCap.position.set(0, 0.055, -0.018);
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.09, 8), skinMat); nose.position.set(0, -0.005, 0.202); nose.rotation.x = Math.PI / 2;
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x171515 });
+      const eyes = [-0.066, 0.066].map((ex) => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), eyeMat); eye.position.set(ex, 0.04, 0.185); headPivot.add(eye); return eye;
+      });
+      const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.092, 0.018, 0.015), new THREE.MeshBasicMaterial({ color: role === 'singer' ? 0x8d2942 : 0x48231f })); mouth.position.set(0, -0.09, 0.206);
+      headPivot.add(head, hairCap, nose, mouth);
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const pivot = new THREE.Group(); pivot.position.set(side * 0.32, torso.position.y + 0.25, 0.01);
+        const upper = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.38, 5, 8), shirtMat); upper.position.y = -0.23;
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), skinMat); hand.position.set(0, -0.49, 0.02);
+        pivot.add(upper, hand); group.add(pivot); arms.push(pivot);
+      }
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const pivot = new THREE.Group(); pivot.position.set(side * 0.13, seated ? 0.72 : 0.55, 0);
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, seated ? 0.3 : 0.48, 5, 8), trousers); leg.position.y = seated ? -0.12 : -0.27; if (seated) leg.rotation.x = -0.72;
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.29), stageBlack); shoe.position.set(0, seated ? -0.34 : -0.58, seated ? 0.18 : 0.07);
+        pivot.add(leg, shoe); group.add(pivot); legs.push(pivot);
+      }
+      group.add(torso, collar, headPivot);
+      group.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(group);
+      return { group, torso, headPivot, head, mouth, arms, legs, eyes, role, instrument: null, phase: x * 0.73 + zz * 0.17 };
+    };
+
+    const addGuitar = (performer, color, bass = false) => {
+      const guitar = new THREE.Group(); guitar.position.set(0, 0.91, 0.31); guitar.rotation.z = bass ? -0.18 : 0.17;
+      const lacquer = new THREE.MeshPhysicalMaterial({ color, roughness: 0.2, metalness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.1 });
+      const lower = new THREE.Mesh(new THREE.SphereGeometry(bass ? 0.23 : 0.26, 18, 12), lacquer); lower.scale.set(1.0, 0.82, 0.26); lower.position.y = -0.08;
+      const upper = new THREE.Mesh(new THREE.SphereGeometry(bass ? 0.17 : 0.19, 18, 12), lacquer); upper.scale.set(1.0, 0.78, 0.25); upper.position.set(bass ? -0.06 : 0.07, 0.16, 0);
+      const neck = new THREE.Mesh(new THREE.BoxGeometry(0.085, bass ? 0.88 : 0.72, 0.055), mat(0x6b462e, { roughness: 0.55 })); neck.position.y = bass ? 0.63 : 0.54;
+      const headstock = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.19, 0.07), stageGold); headstock.position.y = bass ? 1.11 : 0.94;
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.045, 0.045), chrome); bridge.position.set(0, -0.08, 0.145);
+      const pickups = [-0.01, 0.16].map((yy) => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.04, 0.035), instrumentBlack); p.position.set(0, yy, 0.15); return p; });
+      guitar.add(lower, upper, neck, headstock, bridge, ...pickups);
+      for (let i = 0; i < (bass ? 4 : 6); i++) {
+        const string = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, bass ? 1.17 : 1.02, 4), chrome); string.position.set((i - (bass ? 1.5 : 2.5)) * 0.009, 0.48, 0.165); guitar.add(string);
+      }
+      const strap = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.018, 6, 28, Math.PI * 1.25), stageBlack); strap.position.set(0, 0.2, -0.06); strap.rotation.z = 0.95; guitar.add(strap);
+      guitar.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); performer.group.add(guitar); performer.instrument = guitar;
+      performer.arms[0].rotation.set(-0.62, 0, bass ? -0.54 : -0.36);
+      performer.arms[1].rotation.set(-0.84, 0, bass ? 0.28 : 0.48);
+    };
+
+    const guitarist = makePerformer({ x: -2.85, zz: -4.95, shirt: 0x804d35, skin: 0xb97858, hair: 0x241812, role: 'guitar' });
+    const bassist = makePerformer({ x: 2.85, zz: -4.98, shirt: 0x284f5c, skin: 0x7e4d39, hair: 0x17151a, role: 'bass' });
+    const singer = makePerformer({ x: 0, zz: -4.18, shirt: 0x9d354b, skin: 0xd09a78, hair: 0x1d1717, role: 'singer' });
+    const drummer = makePerformer({ x: 0, zz: -6.2, shirt: 0x3d4056, skin: 0xc58c6e, hair: 0x39231b, role: 'drums', seated: true });
+    addGuitar(guitarist, 0xc76d38, false); addGuitar(bassist, 0x315f72, true);
+
+    // Vocal mic, coiled cable and floor monitor.
+    const micStand = new THREE.Group(); micStand.position.set(0, 0.31, -3.94);
+    const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 1.5, 8), chrome); standPole.position.y = 0.75;
+    const standBase = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.035, 20), stageBlack); standBase.position.y = 0.02;
+    const microphone = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.14, 5, 8), instrumentBlack); microphone.position.set(0, 1.52, 0.02); microphone.rotation.x = Math.PI / 2;
+    micStand.add(standPole, standBase, microphone); micStand.traverse((o) => { o.userData.noSplat = true; }); z.group.add(micStand);
+    const cablePoints = [new THREE.Vector3(0, 0.34, -3.94), new THREE.Vector3(0.55, 0.34, -3.7), new THREE.Vector3(0.28, 0.34, -3.46), new THREE.Vector3(0.9, 0.34, -3.35)];
+    const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(cablePoints), 32, 0.012, 6, false), instrumentBlack); cable.userData.noSplat = true; z.group.add(cable);
+    box(z, { w: 0.86, h: 0.34, d: 0.6, x: 0, y: 0.3, z: -3.45, material: instrumentBlack, solid: false, noSplat: true });
+
+    // Complete drum kit: kick, snare, rack toms, floor tom, hi-hat and crash.
+    const drumShell = new THREE.MeshPhysicalMaterial({ color: 0x764833, roughness: 0.24, metalness: 0.16, clearcoat: 0.82 });
+    const drumHead = mat(0xe7e0d5, { roughness: 0.62 });
+    const kit = new THREE.Group(); kit.position.set(0, 0.31, -5.62);
+    const kickDrum = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.48, 24), drumShell); kickDrum.rotation.x = Math.PI / 2; kickDrum.position.set(0, 0.49, 0);
+    const kickHead = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), drumHead); kickHead.position.set(0, 0.49, 0.245);
+    const snare = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.16, 20), chrome); snare.position.set(-0.55, 0.79, 0.05);
+    const toms = [-0.26, 0.26].map((x) => { const d = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.27, 20), drumShell); d.position.set(x, 0.96, -0.08); d.rotation.x = 0.16; return d; });
+    const floorTom = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.48, 20), drumShell); floorTom.position.set(0.7, 0.57, -0.05);
+    const cymbals = [];
+    for (const [x, y, r] of [[-0.83, 1.22, 0.3], [0.84, 1.46, 0.4], [0.64, 1.1, 0.27]]) {
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, y, 7), chrome); stand.position.set(x, y / 2, -0.08);
+      const cymbal = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.91, 0.024, 28), stageGold); cymbal.position.set(x, y, -0.08); cymbal.rotation.z = x * 0.035; kit.add(stand, cymbal); cymbals.push(cymbal);
+    }
+    kit.add(kickDrum, kickHead, snare, ...toms, floorTom); kit.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(kit);
+    const sticks = drummer.arms.map((arm, i) => {
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.62, 7), mat(0xd2a768, { roughness: 0.62 })); stick.position.set(0, -0.63, 0.12); stick.rotation.x = 0.32; arm.add(stick); arm.rotation.z = i ? 0.58 : -0.58; arm.rotation.x = -0.62; return stick;
+    });
+
+    // Restrained gallery lighting at low BPM; increasingly theatrical as the
+    // selected track gets faster.
+    const bandLights = [];
+    for (const [x, color] of [[-4.2, 0xffb85c], [-1.4, 0xe76f51], [1.4, 0x66b7d3], [4.2, 0xffd994]]) {
+      const spot = new THREE.SpotLight(color, 4.5, 10, 0.34, 0.72, 1.7); spot.position.set(x, 4.75, -4.0); spot.target.position.set(x * 0.55, 1.0, -5.1); spot.userData.base = 3.8; z.group.add(spot, spot.target); bandLights.push(spot);
+    }
+    z.animated.listeningBand = { performers: [guitarist, bassist, singer, drummer], guitarist, bassist, singer, drummer, kit, kickDrum, cymbals, sticks, bandLights };
+    z.colliders.push({ minX: -5.35, maxX: 5.35, minZ: -6.95, maxZ: -3.72 });
+    z.interactables.push({
+      id: 'listening-live-band', type: 'flavor', label: 'Watch the live take', title: 'THE HOUSE BAND',
+      pos: new THREE.Vector3(0, 1.1, -3.55), radius: 2.2,
+      lines: [
+        'They do not know which record comes next. The player changes; their hands find it anyway.',
+        'At slow tempos they breathe with the room. At fast tempos the drummer begins negotiating directly with gravity.',
+        'The portraits watch the band. The band refuses to look back.',
+      ],
+    });
+
+    plane(z, {
+      w: 7.6, h: 0.58, x: 0, y: 4.72, z: -7.38,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('THE LISTENING ROOM  ·  TWO SPEAKERS / NO SMALL TALK', { fg: '#f0d79e', bg: '#161b20', size: 36, w: 1500, h: 170, font: '900' }) }), noSplat: true,
+    });
+    z.interactables.push({
+      id: 'listening-speakers', type: 'flavor', label: 'Stand in the sweet spot', title: 'THE SWEET SPOT',
+      pos: new THREE.Vector3(0, 1.2, -0.7), radius: 2.25,
+      lines: [
+        'Two speakers. One chair-shaped absence. The room has removed everything that could pretend to be the point.',
+        'The left speaker knows what the right speaker means. You stand between them and briefly do too.',
+        'Press E at the player to switch songs. The walls have agreed not to review your choice.',
+      ],
+    });
+
+    // Six women and six men, each rendered as a coded portrait rather than
+    // archival photography. The centre gap keeps the MTV doorway unobstructed.
+    const wallZ = [-6.15, -4, -1.85, 1.85, 4, 6.15];
+    const positions = [
+      ...wallZ.map((wallPos) => ({ x: -8.78, z: wallPos, ry: Math.PI / 2 })),
+      ...[...wallZ].reverse().map((wallPos) => ({ x: 8.78, z: wallPos, ry: -Math.PI / 2 })),
+    ];
+    ART_LEGENDS.forEach((legend, i) => {
+      const p = positions[i];
+      const g = new THREE.Group(); g.position.set(p.x, 2.72, p.z); g.rotation.y = p.ry;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.05, 2.58, 0.12), mat(i % 2 ? 0xc5a15f : 0x121419, { roughness: 0.28, metalness: i % 2 ? 0.72 : 0.34 }));
+      const portrait = new THREE.Mesh(new THREE.PlaneGeometry(1.86, 2.32), new THREE.MeshStandardMaterial({ map: legendPortraitTexture(legend), roughness: 0.76 }));
+      portrait.position.z = 0.067; portrait.userData.noSplat = true;
+      const label = new THREE.Mesh(new THREE.PlaneGeometry(2.05, 0.34), new THREE.MeshBasicMaterial({ map: textTexture(`${legend.name}  ·  ${legend.years}`, { fg: '#15171a', bg: '#efe7d5', size: 25, w: 1000, h: 150, font: '900' }) }));
+      label.position.set(0, -1.49, 0.07); label.userData.noSplat = true;
+      g.add(frame, portrait, label); g.traverse((o) => { if (o.isMesh) o.castShadow = true; }); z.group.add(g);
+      z.interactables.push({
+        id: `legend-${legend.id}`, type: 'flavor', label: `Look closer — ${legend.name}`,
+        title: `${legend.name} · WALL OF FAME`, pos: new THREE.Vector3(p.x * 0.93, 1.65, p.z), radius: 2.15,
+        lines: [legend.quote],
+      });
+      const spot = new THREE.SpotLight(0xffe3ae, 17, 6.5, 0.52, 0.7);
+      spot.position.set(p.x * 0.72, 4.8, p.z); spot.target.position.set(p.x, 2.2, p.z); z.group.add(spot, spot.target);
+    });
+
+    const ceilingGlow = plane(z, { w: 8.8, h: 2.2, x: 0, y: roomH - 0.08, z: -2.2, rx: Math.PI / 2, material: new THREE.MeshBasicMaterial({ color: 0xf7dab0, transparent: true, opacity: 0.88, side: THREE.DoubleSide }), noSplat: true });
+    ceilingGlow.userData.noSplat = true;
+    z.group.add(new THREE.HemisphereLight(0xd9e8f0, 0x1c1612, 0.78));
+    const warm = new THREE.PointLight(0xffc781, 8, 11, 1.7); warm.position.set(0, 3.8, -2.1); z.group.add(warm);
+    door(z, { x: 0, z: 7.32, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    door(z, { x: 8.78, z: 0, ry: -Math.PI / 2, label: 'MTV CRIBS: BABY MONEY →', to: 'mtvCribs' });
+    z.waypoints = [new THREE.Vector3(-5.8, 0, 4.8), new THREE.Vector3(-5.8, 0, -3), new THREE.Vector3(5.8, 0, -3), new THREE.Vector3(5.8, 0, 4.8)];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  MTV CRIBS: BABY MONEY — a grown-up tantrum in gold leaf   */
+  /* ---------------------------------------------------------- */
+  #buildMtvCribs() {
+    const z = this.#newZone('mtvCribs');
+    const roomH = 6.2;
+    shell(z, { w: 27, d: 18, h: roomH, floorColor: 0xede5d9, wallColor: 0xf2c8d8, ceilColor: 0x201522 });
+    z.spawn.set(-11.9, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x6a3f56, density: 0.012 };
+
+    const gold = mat(0xd5a63d, { roughness: 0.22, metalness: 0.86 });
+    const pink = new THREE.MeshPhysicalMaterial({ color: 0xf17aac, roughness: 0.24, clearcoat: 0.74, clearcoatRoughness: 0.13 });
+    const cream = mat(0xfff1dc, { roughness: 0.72 });
+    const black = mat(0x17131b, { roughness: 0.35, metalness: 0.2 });
+    plane(z, { w: 26.7, h: 17.7, y: 0.012, rx: -Math.PI / 2, material: new THREE.MeshPhysicalMaterial({ color: 0xe5d7ca, roughness: 0.18, metalness: 0.08, clearcoat: 0.5 }), noSplat: true, name: 'cribs marble floor' });
+    plane(z, { w: 11.2, h: 3.1, x: 2.5, y: 0.025, z: 0, rx: -Math.PI / 2, material: pink, noSplat: true, name: 'cribs pink carpet' });
+
+    // The set: one enormous sectional, a gold bottle-service table, trophy
+    // fridge and a money fountain. Luxury is framed as a television prop.
+    box(z, { w: 7.8, h: 0.52, d: 2.35, x: 4.2, z: -5.75, material: cream, name: 'cloud sectional' });
+    box(z, { w: 7.8, h: 1.15, d: 0.42, x: 4.2, y: 0.35, z: -6.73, material: cream, name: 'cloud sectional back' });
+    for (const [i, x] of [1.2, 3.2, 5.2, 7.2].entries()) {
+      const cushion = new THREE.Mesh(new THREE.SphereGeometry(0.72, 18, 12), i % 2 ? pink : cream);
+      cushion.position.set(x, 0.78, -5.72); cushion.scale.set(1.25, 0.62, 0.7); cushion.userData.noSplat = true; z.group.add(cushion);
+    }
+    cylinder(z, { rT: 1.25, rB: 0.86, h: 0.56, x: 3.2, z: -1.65, material: gold });
+    const ice = new THREE.Mesh(new THREE.IcosahedronGeometry(0.46, 1), new THREE.MeshPhysicalMaterial({ color: 0xbceeff, transparent: true, opacity: 0.7, transmission: 0.45, roughness: 0.06 }));
+    ice.position.set(3.2, 1.16, -1.65); ice.userData.noSplat = true; z.group.add(ice);
+    box(z, { w: 2.65, h: 4.5, d: 1.25, x: 10.9, z: -5.8, material: gold, name: 'formula fridge' });
+    plane(z, { w: 2.15, h: 3.9, x: 10.24, y: 2.35, z: -5.8, ry: Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('FORMULA · RESERVE', { fg: '#f7d9e6', bg: '#211821', size: 46, w: 700, h: 1000, font: '900' }) }), noSplat: true });
+    z.interactables.push({ id: 'cribs-fridge', type: 'flavor', label: 'Open the trophy fridge', title: 'THE FORMULA FRIDGE', pos: new THREE.Vector3(10.1, 1.2, -5.8), radius: 2.25, lines: ['Every bottle has a vintage. None has a nipple. The insurance company insisted.', 'The host whispers that the fridge is rented. The owner whispers that ownership is for people without liquidity.'] });
+
+    const fountain = new THREE.Group(); fountain.position.set(8.5, 0, 4.75);
+    const basin = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.7, 0.42, 32), gold); basin.position.y = 0.21;
+    const column = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.42, 2.5, 18), gold); column.position.y = 1.4;
+    const dollar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.12, 10, 28), gold); dollar.position.y = 2.95;
+    fountain.add(basin, column, dollar); fountain.traverse((o) => { o.userData.noSplat = true; }); z.group.add(fountain);
+    z.animated.cribsMoney = dollar;
+
+    plane(z, { w: 12.8, h: 0.9, x: 1.5, y: 5.25, z: -8.75, material: new THREE.MeshBasicMaterial({ map: textTexture('MTV CRIBS: BABY MONEY', { fg: '#fff4ce', bg: '#7b1d4e', size: 72, w: 1800, h: 190, font: '900' }) }), noSplat: true });
+    plane(z, { w: 8.1, h: 0.42, x: 1.5, y: 4.47, z: -8.73, material: new THREE.MeshBasicMaterial({ map: textTexture('ALL CAST MEMBERS ARE ADULTS  ·  ALL TANTRUMS ARE LEVERAGED', { fg: '#54243f', bg: '#ffd8e8', size: 30, w: 1600, h: 150, font: '900' }) }), noSplat: true });
+
+    const makePerson = ({ skin, suit, x, zz, scale = 1, bib = false, cap = false }) => {
+      const group = new THREE.Group(); group.position.set(x, 0, zz); group.scale.setScalar(scale);
+      const skinMat = mat(skin, { roughness: 0.76 }); const suitMat = mat(suit, { roughness: 0.48 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.58, 6, 10), suitMat); torso.position.y = 1.08;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 10), skinMat); head.position.y = 1.78;
+      const legs = [];
+      for (const side of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.48, 5, 8), black); leg.position.set(side * 0.15, 0.42, 0); legs.push(leg); group.add(leg); }
+      const arms = [];
+      for (const side of [-1, 1]) { const pivot = new THREE.Group(); pivot.position.set(side * 0.37, 1.35, 0); const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.38, 5, 8), skinMat); arm.position.y = -0.25; pivot.add(arm); arms.push(pivot); group.add(pivot); }
+      group.add(torso, head);
+      if (bib) {
+        const bibMesh = new THREE.Mesh(new THREE.CircleGeometry(0.26, 18), pink); bibMesh.scale.set(1, 1.15, 1); bibMesh.position.set(0, 1.28, 0.31); bibMesh.userData.noSplat = true; group.add(bibMesh);
+        const chain = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 8, 24, Math.PI), gold); chain.position.set(0, 1.48, 0.28); chain.rotation.x = Math.PI / 2; group.add(chain);
+        const sippy = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.34, 12), gold); sippy.position.set(0.44, 1.13, 0.12); sippy.rotation.z = -0.25; group.add(sippy);
+        const pacifier = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 8, 18), pink); pacifier.position.set(0, 1.68, 0.225); pacifier.rotation.x = Math.PI / 2; group.add(pacifier);
+      }
+      if (cap) { const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.12, 14), black); hat.position.y = 1.98; group.add(hat); }
+      group.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(group);
+      return { group, torso, head, arms, legs, baseX: x, baseZ: zz };
+    };
+
+    const heirs = [
+      makePerson({ skin: 0x8b5538, suit: 0x722d62, x: 1.15, zz: -4.55, scale: 1.08, bib: true }),
+      makePerson({ skin: 0xd2a07d, suit: 0x2f5577, x: 3.55, zz: -4.6, bib: true }),
+      makePerson({ skin: 0x6e412d, suit: 0xa43e48, x: 5.9, zz: -4.5, scale: 1.04, bib: true }),
+      makePerson({ skin: 0xe0b395, suit: 0x594079, x: 8.0, zz: -4.45, bib: true }),
+    ];
+    const heirLines = [
+      'My first word was offshore.',
+      'This bib is archival. The stains are provenance.',
+      'I do not throw tantrums. I trigger liquidity events.',
+      'The sippy cup is solid gold. It is terrible at being a cup.',
+      'We bought the view so nobody else could look at it.',
+      'My trust fund has a trust fund. They are not speaking.',
+      'The formula fridge is invite-only. Even I am on the list.',
+      'Everything here is custom, including the childhood.',
+    ];
+    heirs.forEach((heir, i) => z.interactables.push({ id: `cribs-heir-${i}`, type: 'flavor', label: `Meet grown-up heir ${i + 1}`, title: `BABY MONEY · ADULT HEIR ${i + 1}`, pos: new THREE.Vector3(heir.baseX, 1.1, heir.baseZ), radius: 2.0, lines: [heirLines[i], heirLines[i + 4]] }));
+
+    // Full moving crew: camera operator, boom operator, host and director.
+    const cameraOp = makePerson({ skin: 0x9b6849, suit: 0x20242b, x: -5.3, zz: 3.4, cap: true });
+    const cameraRig = new THREE.Group(); cameraRig.position.set(0.42, 1.45, 0.24);
+    const cameraBody = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.38, 0.72), black);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.18, 0.32, 16), black); lens.rotation.x = Math.PI / 2; lens.position.z = 0.48;
+    const tally = new THREE.PointLight(0xff2738, 1.8, 2.2); tally.position.set(0.22, 0.25, 0.1); cameraRig.add(cameraBody, lens, tally); cameraOp.group.add(cameraRig);
+    const boomOp = makePerson({ skin: 0xc59172, suit: 0x30323a, x: -2.2, zz: 4.1 });
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 3.7, 8), black); pole.position.set(0.2, 2.3, 0); pole.rotation.z = 1.08; boomOp.group.add(pole);
+    const mic = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.38, 5, 8), black); mic.position.set(1.75, 3.15, 0); mic.rotation.z = Math.PI / 2; boomOp.group.add(mic);
+    const host = makePerson({ skin: 0x7a4932, suit: 0xffd7e6, x: -6.2, zz: -1.2 });
+    const hostMic = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.18, 5, 8), black); hostMic.position.set(0.42, 1.45, 0.18); hostMic.rotation.z = -0.7; host.group.add(hostMic);
+    const director = makePerson({ skin: 0xe0b295, suit: 0x1e1c22, x: -4.9, zz: 5.7, cap: true });
+    const clipboard = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.48, 0.035), cream); clipboard.position.set(-0.42, 1.26, 0.18); clipboard.rotation.z = 0.25; director.group.add(clipboard);
+    z.animated.mtvCribs = {
+      heirs, heirLines, lineTimer: 1.8, lineIndex: 0, tally,
+      crew: [
+        { ...cameraOp, radiusX: 5.2, radiusZ: 3.3, centerX: 1.2, centerZ: 1.0, speed: 0.22, phase: 0, role: 'CAMERA' },
+        { ...boomOp, radiusX: 5.9, radiusZ: 3.9, centerX: 1.0, centerZ: 0.7, speed: 0.19, phase: 1.5, role: 'BOOM' },
+        { ...host, radiusX: 4.4, radiusZ: 2.7, centerX: 1.8, centerZ: 0.3, speed: 0.16, phase: 3.1, role: 'HOST' },
+        { ...director, radiusX: 6.7, radiusZ: 4.8, centerX: 0.8, centerZ: 0.6, speed: 0.12, phase: 4.7, role: 'DIRECTOR' },
+      ],
+    };
+    z.interactables.push({ id: 'cribs-crew', type: 'flavor', label: 'Step into the shot', title: 'MTV CREW · ROLLING', pos: new THREE.Vector3(-3.6, 1.1, 1.8), radius: 3.0, lines: ['The camera operator tracks wealth in its natural habitat. The boom operator catches every compound interest.', 'The director shouts “organic!” and the four adult heirs immediately repeat the entrance.'] });
+
+    z.group.add(new THREE.HemisphereLight(0xffdbea, 0x2b1730, 2.0));
+    for (const [x, color] of [[-7, 0xff5b9a], [0, 0xffd36a], [8, 0x66c7ff]]) {
+      const spot = new THREE.SpotLight(color, 28, 15, 0.7, 0.55); spot.position.set(x, 5.8, 4.5); spot.target.position.set(x * 0.35, 0, -2); z.group.add(spot, spot.target);
+    }
+    door(z, { x: -13.3, z: 0, ry: Math.PI / 2, label: '← THE LISTENING ROOM', to: 'listeningRoom' });
+    z.waypoints = [new THREE.Vector3(-8, 0, 6), new THREE.Vector3(-2, 0, 6), new THREE.Vector3(5, 0, 5), new THREE.Vector3(10, 0, 2), new THREE.Vector3(8, 0, -5)];
+  }
+
   primeForestChurch(index) {
     const church = this.zones.get('blackForest')?.animated.forestChurches?.[index];
     if (!church) return { status: 'missing' };
@@ -5819,12 +6339,13 @@ export class World {
   /** Keep every physical copy visually synchronized with the selected record. */
   setRecordPlayerState(trackKey) {
     const colors = { title: 0xff5bcb, garret: 0xe8c15a, ending: 0x8a5cf6 };
+    const color = trackKey?.startsWith('ullabjakk') ? 0xf05a35 : (colors[trackKey] ?? 0x6b6872);
     for (const z of this.zones.values()) {
       const r = z.animated.recordPlayer;
       if (!r) continue;
       r.playing = !!trackKey;
-      r.label.material.color.set(colors[trackKey] ?? 0x6b6872);
-      r.lamp.color.set(colors[trackKey] ?? 0xe8c15a);
+      r.label.material.color.set(color);
+      r.lamp.color.set(trackKey ? color : 0xe8c15a);
       r.lamp.intensity = trackKey ? r.lamp.userData.base : 0;
     }
   }
@@ -5893,10 +6414,10 @@ export class World {
   /* ---- ambient life ---- */
 
   /**
-   * @param beatPhase 0..1 within the current beat, or -1 when the room is
-   * silent. When the house rig plays, every lamp in here snaps on the kick.
+   * @param beatPhase 0..1 within the current beat, or -1 when the room is silent.
+   * @param soundtrackBpm current record/room tempo for performance intensity.
    */
-  update(dt, t, beatPhase = -1) {
+  update(dt, t, beatPhase = -1, soundtrackBpm = 0) {
     const z = this.zone();
     if (!z) return;
     this.#t = t;
@@ -5904,6 +6425,113 @@ export class World {
     const beat = beatPhase >= 0;
     // a sharp percussive envelope: full on the kick, decays through the beat
     const kick = beat ? Math.pow(1 - beatPhase, 2.6) : 0;
+
+    if (z.animated.listeningDrivers) {
+      const breathe = beat ? kick : Math.max(0, Math.sin(t * 2.15)) * 0.018;
+      for (const d of z.animated.listeningDrivers) {
+        const pulse = breathe * (0.022 + (d.phase % 1) * 0.008);
+        d.mesh.scale.set(d.base.x * (1 + pulse), d.base.y * (1 + pulse), d.base.z);
+      }
+    }
+
+    if (z.animated.listeningBand) {
+      const band = z.animated.listeningBand;
+      const bpm = soundtrackBpm || 66.6;
+      const intensity = clamp((bpm - 64) / 112, 0, 1);
+      const beatRate = bpm / 60;
+      const fallbackPhase = (t * beatRate) % 1;
+      const phase = beat ? beatPhase : fallbackPhase;
+      const downbeat = Math.pow(1 - phase, 2.35);
+      const eighth = Math.pow(1 - ((phase * 2) % 1), 3.1);
+      const travel = 0.45 + intensity * 1.45;
+
+      for (let i = 0; i < band.performers.length; i++) {
+        const p = band.performers[i];
+        const looseness = Math.sin(t * beatRate * Math.PI * 2 + p.phase);
+        const headbang = Math.sin(t * beatRate * Math.PI * (2 + intensity * 2.2) + p.phase);
+        p.group.position.y = 0.3 + downbeat * (0.018 + intensity * 0.085) + Math.abs(looseness) * intensity * 0.018;
+        p.torso.rotation.z = looseness * (0.025 + intensity * 0.075);
+        p.torso.rotation.x = -downbeat * (0.025 + intensity * 0.12);
+        p.headPivot.rotation.x = -0.07 - downbeat * (0.09 + intensity * 0.42) + headbang * intensity * 0.08;
+        p.headPivot.rotation.z = looseness * (0.025 + intensity * 0.08);
+        p.legs[0].rotation.x = looseness * intensity * 0.08;
+        p.legs[1].rotation.x = -looseness * intensity * 0.08;
+      }
+
+      // Guitar and bass respond differently: one attacks fast eighths, the
+      // other leans into quarter notes with heavier body movement.
+      band.guitarist.arms[0].rotation.x = -0.62 - eighth * (0.18 + intensity * 0.72);
+      band.guitarist.arms[0].rotation.z = -0.36 - Math.sin(t * beatRate * Math.PI * 4) * intensity * 0.14;
+      band.guitarist.arms[1].rotation.x = -0.84 + Math.sin(t * beatRate * Math.PI) * 0.08;
+      band.guitarist.instrument.rotation.y = Math.sin(t * beatRate * Math.PI) * intensity * 0.08;
+      band.bassist.arms[0].rotation.x = -0.62 - downbeat * (0.12 + intensity * 0.36);
+      band.bassist.arms[1].rotation.x = -0.84 - eighth * (0.08 + intensity * 0.28);
+      band.bassist.instrument.rotation.y = -Math.sin(t * beatRate * Math.PI) * intensity * 0.055;
+
+      // The vocalist opens up and begins leaving the floor as the tempo rises.
+      band.singer.mouth.scale.y = 1 + downbeat * (1.2 + intensity * 4.2);
+      band.singer.arms[0].rotation.z = -0.22 - intensity * 0.65 - Math.abs(Math.sin(t * beatRate * Math.PI)) * intensity * 0.42;
+      band.singer.arms[1].rotation.z = 0.18 + downbeat * (0.16 + intensity * 0.72);
+      band.singer.arms[1].rotation.x = -0.55 - downbeat * intensity * 0.5;
+      band.singer.group.rotation.y = Math.sin(t * beatRate * Math.PI) * (0.03 + intensity * 0.13);
+
+      // Alternating stick travel lands snare/hat gestures between the kicks.
+      band.drummer.arms[0].rotation.x = -0.48 - downbeat * travel;
+      band.drummer.arms[1].rotation.x = -0.48 - eighth * travel * 0.86;
+      band.drummer.arms[0].rotation.z = -0.58 - Math.sin(t * beatRate * Math.PI * 2) * intensity * 0.16;
+      band.drummer.arms[1].rotation.z = 0.58 + Math.sin(t * beatRate * Math.PI * 2) * intensity * 0.16;
+      band.kickDrum.scale.set(1 + downbeat * 0.035, 1 + downbeat * 0.035, 1 + downbeat * 0.075);
+      for (let i = 0; i < band.cymbals.length; i++) {
+        const cymbal = band.cymbals[i];
+        cymbal.rotation.x = Math.sin(t * (8 + i * 1.7)) * downbeat * (0.025 + intensity * 0.11);
+        cymbal.rotation.z = (i - 1) * 0.035 + Math.sin(t * (6.5 + i)) * downbeat * intensity * 0.08;
+      }
+      for (let i = 0; i < band.bandLights.length; i++) {
+        const light = band.bandLights[i];
+        const accentHit = i % 2 ? eighth : downbeat;
+        light.intensity = light.userData.base * (0.62 + intensity * 0.28) + accentHit * (1.8 + intensity * 10.5);
+        light.target.position.x = (i - 1.5) * 0.8 + Math.sin(t * (0.32 + intensity * 0.48) + i) * intensity * 1.6;
+      }
+    }
+
+    if (z.animated.mtvCribs) {
+      const cribs = z.animated.mtvCribs;
+      if (z.animated.cribsMoney) z.animated.cribsMoney.rotation.y += dt * 0.65;
+      for (let i = 0; i < cribs.heirs.length; i++) {
+        const heir = cribs.heirs[i];
+        const bounce = Math.abs(Math.sin(t * (1.8 + i * 0.12) + i * 0.9));
+        heir.group.position.y = bounce * 0.018 + kick * 0.035;
+        heir.head.rotation.y = Math.sin(t * 0.75 + i) * 0.2;
+        heir.head.rotation.z = Math.sin(t * 0.52 + i * 1.3) * 0.045;
+        heir.torso.rotation.z = Math.sin(t * 1.2 + i * 0.8) * 0.025;
+        heir.arms[0].rotation.z = -0.28 - Math.abs(Math.sin(t * 2.2 + i)) * 0.38;
+        heir.arms[1].rotation.z = 0.28 + Math.abs(Math.sin(t * 2.5 + i * 0.7)) * 0.46;
+      }
+      for (const member of cribs.crew) {
+        const a = t * member.speed + member.phase;
+        const x = member.centerX + Math.cos(a) * member.radiusX;
+        const zz = member.centerZ + Math.sin(a) * member.radiusZ;
+        const dx = -Math.sin(a) * member.radiusX * member.speed;
+        const dz = Math.cos(a) * member.radiusZ * member.speed;
+        const step = Math.sin(t * 7.4 + member.phase);
+        member.group.position.set(x, Math.abs(step) * 0.025, zz);
+        member.group.rotation.y = Math.atan2(dx, dz);
+        member.torso.rotation.z = step * 0.035;
+        member.head.rotation.y = Math.sin(t * 0.9 + member.phase) * 0.13;
+        member.legs[0].rotation.x = step * 0.2;
+        member.legs[1].rotation.x = -step * 0.2;
+        member.arms[0].rotation.z = -0.18 - step * 0.08;
+        member.arms[1].rotation.z = 0.18 + step * 0.08;
+      }
+      cribs.tally.intensity = 1.2 + Math.pow(Math.max(0, Math.sin(t * 5.2)), 7) * 5.4;
+      cribs.lineTimer -= dt;
+      if (cribs.lineTimer <= 0) {
+        const i = cribs.lineIndex % cribs.heirLines.length;
+        cribs.lineIndex++;
+        cribs.lineTimer = 4.2 + (i % 3) * 0.55;
+        event = { type: 'cribsLine', speaker: `BABY MONEY · ADULT HEIR ${(i % cribs.heirs.length) + 1}`, line: cribs.heirLines[i] };
+      }
+    }
 
     if (z.animated.rageRoom) {
       const rage = z.animated.rageRoom;
