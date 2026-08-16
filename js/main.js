@@ -1143,6 +1143,7 @@ class Game {
         dildoBall: 'The bass is wearing a crown. The court is in session. Wobble accordingly.',
         daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
         upAndCumming: 'Five enormous works, two red dots, seven coded birds, one desk, and an argument strong enough to move inventory.',
+        vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
       }[zoneKey]);
 
       if (zoneKey === 'maxPro') this.debate.enter();

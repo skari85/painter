@@ -239,7 +239,7 @@ export function buildBody(def) {
   if (def.cutout) {
     // a WALKING PHOTOGRAPH — no procedural body, the picture is the person.
     // flat card with a dark back; alpha-cut if the png has transparency.
-    const H = def.cutoutHeight ?? 1.55, W = H * (2 / 3);
+    const H = def.cutoutHeight ?? 1.55, W = H * (def.cutoutAspect ?? (2 / 3));
     const card = new THREE.Group();
     const back = new THREE.Mesh(
       new THREE.BoxGeometry(W + 0.06, H + 0.06, 0.02),
@@ -595,6 +595,8 @@ export class NPCManager extends Emitter {
   #forkFight = null;
   #upFightT = 1.8;
   #upFight = null;
+  #vacantTalkT = 2.4;
+  #vacantTalk = null;
 
   constructor(world, audio) {
     super();
@@ -609,6 +611,8 @@ export class NPCManager extends Emitter {
     this.#forkFightT = rand(14, 22);
     this.#upFight = null;
     this.#upFightT = 1.8;
+    this.#vacantTalk = null;
+    this.#vacantTalkT = 2.4;
   }
 
   spawn(cast, zoneKey) {
@@ -682,12 +686,12 @@ export class NPCManager extends Emitter {
 
     this.#updateForkFight(dt);
     this.#updateUpAndCummingFight(dt);
+    this.#updateVacantEditionsTalk(dt);
 
-    // ambient barks — subtitles from whoever is near enough to overhear. The
-    // Up and Cumming argument owns the room while it is rolling, so a random
-    // crowd bark cannot step on the authored exchange.
+    // Ambient barks — subtitles from whoever is near enough to overhear. Long
+    // authored room exchanges own their subtitles while they are rolling.
     this.#barkT -= dt;
-    if (this.#barkT <= 0 && !this.#upFight) {
+    if (this.#barkT <= 0 && !this.#upFight && !this.#vacantTalk && this.world.current !== 'vacantEditions') {
       this.#barkT = this.world.current === 'daylightClub' ? rand(24, 34) : rand(7, 15);
       const near = this.inCurrentZone.filter(
         (n) => n.state !== 'meltdown' && n.state !== 'leaving' &&
@@ -821,5 +825,71 @@ export class NPCManager extends Emitter {
       ],
     };
     this.#barkT = Math.max(this.#barkT, 10);
+  }
+
+  /** Vincent and Eddie conduct an endlessly specific dildo surface seminar. */
+  #updateVacantEditionsTalk(dt) {
+    if (this.world.current !== 'vacantEditions') {
+      this.#vacantTalk = null;
+      this.#vacantTalkT = Math.max(this.#vacantTalkT, 2.4);
+      return;
+    }
+
+    const vincent = this.byId('vacantVincent');
+    const eddie = this.byId('editionEddie');
+    if (!vincent || !eddie || vincent.dead || eddie.dead) return;
+
+    if (this.#vacantTalk) {
+      // A player conversation gets the floor; the seminar resumes afterward.
+      if (vincent.state === 'talk' || eddie.state === 'talk') return;
+      const c = this.#vacantTalk;
+      c.t += dt;
+      while (c.nextBeat < c.beats.length && c.t >= c.beats[c.nextBeat].at) {
+        const beat = c.beats[c.nextBeat++];
+        const speaker = beat.speaker === 'vincent' ? vincent : eddie;
+        this.emit('bark', { name: speaker.def.name, text: beat.text, pitch: speaker.def.pitch });
+      }
+      const last = c.beats[c.beats.length - 1];
+      if (c.nextBeat >= c.beats.length && c.t > last.at + 5.6) {
+        const zone = this.world.zone('vacantEditions');
+        vincent.place(zone.anchors.vacantVincent.clone(), zone.anchorYaws.vacantVincent);
+        eddie.place(zone.anchors.editionEddie.clone(), zone.anchorYaws.editionEddie);
+        vincent.homeYaw = zone.anchorYaws.vacantVincent;
+        eddie.homeYaw = zone.anchorYaws.editionEddie;
+        this.#vacantTalk = null;
+        this.#vacantTalkT = rand(8, 12);
+      }
+      return;
+    }
+
+    this.#vacantTalkT -= dt;
+    if (this.#vacantTalkT > 0 || vincent.state !== 'idle' || eddie.state !== 'idle') return;
+
+    const zone = this.world.zone('vacantEditions');
+    vincent.group.rotation.y = zone.anchorYaws.vacantVincent;
+    eddie.group.rotation.y = zone.anchorYaws.editionEddie;
+    this.#vacantTalk = {
+      t: 0,
+      nextBeat: 0,
+      beats: [
+        { at: 0.0, speaker: 'vincent', text: 'There are schools of sucking cock. I favor the slow seal: soft lips, patient suction, no panic.' },
+        { at: 4.2, speaker: 'eddie', text: 'Too classical. I begin with shallow teasing and let the tongue circle the head like a tiny curator.' },
+        { at: 8.4, speaker: 'vincent', text: 'The tongue should travel underneath as well. That sensitive line deserves its own retrospective.' },
+        { at: 12.6, speaker: 'eddie', text: 'Yes, but no teeth unless explicitly invited. Teeth are an intervention, not a default medium.' },
+        { at: 16.8, speaker: 'vincent', text: 'For rhythm, use one hand with the mouth. Two motions, one tempo, no conceptual gap.' },
+        { at: 21.0, speaker: 'eddie', text: 'And change the pressure. Constant suction becomes institutional after the first minute.' },
+        { at: 25.2, speaker: 'vincent', text: 'Some like deep-throating. Breathe, relax, go slowly, and stop if the body votes no.' },
+        { at: 29.4, speaker: 'eddie', text: 'Exactly. Gagging is not a funding requirement. The cock does not award endurance grants.' },
+        { at: 33.6, speaker: 'vincent', text: 'Others want the head focused on: tongue, lips, tiny pauses, then suction returning with purpose.' },
+        { at: 37.8, speaker: 'eddie', text: 'Some prefer a wet, messy blowjob. More saliva, louder rhythm, absolutely no minimalist restraint.' },
+        { at: 42.0, speaker: 'vincent', text: 'Eye contact can be hot, but it is optional. Nobody needs a performance review while sucking cock.' },
+        { at: 46.2, speaker: 'eddie', text: 'The best method is feedback. Ask what feels good, then actually listen instead of defending the technique.' },
+        { at: 50.4, speaker: 'vincent', text: 'Now texture: velvet dildo for looking, silicone dildo for practice, chrome dildo for alarming reflections.' },
+        { at: 54.6, speaker: 'eddie', text: 'Never put the sandblasted dildo in a mouth. It is sculpture. Even sculpture should understand consent.' },
+        { at: 58.8, speaker: 'vincent', text: 'The pearlescent dildo suits slow mouth work. It changes color as if receiving excellent news.' },
+        { at: 63.0, speaker: 'eddie', text: 'So: vary depth, tongue, suction, hand rhythm, and pace. The cock is the audience. Read the room.' },
+      ],
+    };
+    this.#barkT = Math.max(this.#barkT, 12);
   }
 }

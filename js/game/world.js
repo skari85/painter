@@ -503,6 +503,7 @@ export class World {
     this.#buildDildoBall();
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
+    this.#buildVacantEditions();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -540,6 +541,7 @@ export class World {
       dildoBall:    { x: -6.35, z: 4.75,  ry: Math.PI },
       daylightClub: { x: 8.4,   z: 5.25,  ry: Math.PI },
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
+      vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
     };
 
     for (const [key, p] of Object.entries(placements)) {
@@ -3061,11 +3063,106 @@ export class World {
       });
       sky.userData.noSplat = true;
     }
-    // Tall east-facing window rhythm; the wall remains solid for collision.
-    for (const zz of [-5.7, -1.9, 1.9, 5.7]) {
+
+    const ridiculousFace = (index) => canvasTexture(540, 780, (ctx, w, h) => {
+      const palettes = [
+        ['#dff6fb', '#ffd73e', '#22152f', '#fa4f70'],
+        ['#dff6fb', '#76e7bc', '#2b1743', '#ff8647'],
+        ['#dff6fb', '#ff8dc5', '#26173c', '#fff2a8'],
+        ['#dff6fb', '#ff9d3f', '#17204c', '#74f2e1'],
+      ];
+      const [ground, skin, ink, accent] = palettes[index];
+      ctx.fillStyle = ground;
+      ctx.fillRect(0, 0, w, h);
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      // A deliberately unstable head silhouette.
+      ctx.beginPath();
+      if (index === 0) {
+        ctx.moveTo(112, 620); ctx.bezierCurveTo(24, 420, 76, 128, 272, 96);
+        ctx.bezierCurveTo(470, 124, 512, 430, 420, 626); ctx.quadraticCurveTo(270, 718, 112, 620);
+      } else if (index === 1) {
+        ctx.moveTo(132, 670); ctx.bezierCurveTo(64, 540, 116, 90, 282, 70);
+        ctx.bezierCurveTo(430, 102, 446, 514, 390, 674); ctx.quadraticCurveTo(260, 724, 132, 670);
+      } else if (index === 2) {
+        ctx.moveTo(98, 628); ctx.bezierCurveTo(32, 346, 132, 112, 270, 100);
+        ctx.bezierCurveTo(420, 106, 514, 360, 438, 632); ctx.quadraticCurveTo(268, 734, 98, 628);
+      } else {
+        ctx.moveTo(74, 600); ctx.lineTo(110, 174); ctx.lineTo(266, 66);
+        ctx.lineTo(442, 174); ctx.lineTo(486, 600); ctx.lineTo(274, 706); ctx.closePath();
+      }
+      ctx.fillStyle = skin;
+      ctx.fill();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 22;
+      ctx.stroke();
+
+      if (index === 0) {
+        // One eye, three pupils, antennae, and lipstick with no restraint.
+        ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(196, 102); ctx.quadraticCurveTo(152, 18, 126, 38); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(340, 104); ctx.quadraticCurveTo(402, 16, 430, 48); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(270, 318, 132, 92, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        for (const px of [216, 270, 324]) {
+          ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(px, 318, 22, 40, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(px - 6, 304, 6, 10, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.moveTo(126, 514); ctx.quadraticCurveTo(270, 420, 418, 514);
+        ctx.quadraticCurveTo(270, 672, 126, 514); ctx.fill(); ctx.stroke();
+      } else if (index === 1) {
+        // Mismatched eyes and a nose that has entered the adjacent postcode.
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(190, 270, 62, 78, -0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(340, 288, 88, 42, 0.16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.ellipse(204, 280, 18, 34, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(316, 282, 28, 16, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = accent; ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(262, 326); ctx.lineTo(484, 430); ctx.lineTo(260, 452); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(104, 522); ctx.quadraticCurveTo(208, 442, 270, 526);
+        ctx.quadraticCurveTo(338, 438, 438, 524); ctx.quadraticCurveTo(338, 650, 270, 560);
+        ctx.quadraticCurveTo(194, 646, 104, 522); ctx.fillStyle = ink; ctx.fill();
+      } else if (index === 2) {
+        // Tiny crown, alarmed eyes, and an exhibition-opening scream.
+        ctx.fillStyle = accent; ctx.strokeStyle = ink; ctx.lineWidth = 18;
+        ctx.beginPath(); ctx.moveTo(168, 128); ctx.lineTo(184, 22); ctx.lineTo(254, 92);
+        ctx.lineTo(312, 14); ctx.lineTo(370, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        ctx.beginPath(); ctx.ellipse(188, 284, 58, 98, -0.18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(350, 284, 58, 98, 0.18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.ellipse(202, 308, 16, 36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(334, 308, 16, 36, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(270, 530, 112, 142, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fffdf5';
+        for (let i = 0; i < 6; i++) ctx.fillRect(202 + i * 25, 414, 18, 42);
+        ctx.fillStyle = '#f44c75'; ctx.beginPath(); ctx.ellipse(270, 596, 66, 38, 0, 0, Math.PI); ctx.fill();
+      } else {
+        // Four eyes, one tongue, and a bow tie negotiating its own commission.
+        const eyes = [[174, 250], [254, 226], [332, 226], [404, 256]];
+        for (const [ex, ey] of eyes) {
+          ctx.fillStyle = '#fffdf5'; ctx.beginPath(); ctx.ellipse(ex, ey, 46, 58, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = ink; ctx.beginPath(); ctx.ellipse(ex + 8, ey + 8, 15, 24, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.strokeStyle = ink; ctx.lineWidth = 24;
+        ctx.beginPath(); ctx.moveTo(136, 440); ctx.quadraticCurveTo(274, 540, 420, 430); ctx.stroke();
+        ctx.fillStyle = accent; ctx.beginPath(); ctx.moveTo(250, 500); ctx.quadraticCurveTo(270, 674, 334, 500); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = ink;
+        ctx.beginPath(); ctx.moveTo(270, 654); ctx.lineTo(120, 724); ctx.lineTo(118, 620); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(270, 654); ctx.lineTo(424, 724); ctx.lineTo(426, 620); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = accent; ctx.beginPath(); ctx.ellipse(270, 654, 42, 38, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+
+    // Four luminous wall portraits; the wall remains solid for collision.
+    for (const [index, zz] of [-5.7, -1.9, 1.9, 5.7].entries()) {
       plane(z, {
         w: 2.7, h: 3.9, x: 9.79, y: 3.05, z: zz, ry: -Math.PI / 2,
-        material: new THREE.MeshBasicMaterial({ color: 0xdff6fb }), noSplat: true, name: 'skylight',
+        material: new THREE.MeshBasicMaterial({ map: ridiculousFace(index) }),
+        noSplat: true, name: 'ridiculous wall portrait',
       });
     }
 
@@ -3250,6 +3347,297 @@ export class World {
     door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  VACANT EDITIONS — an over-serious tactile product library */
+  /* ---------------------------------------------------------- */
+  #buildVacantEditions() {
+    const z = this.#newZone('vacantEditions');
+    const roomH = 4.8;
+    shell(z, {
+      w: 18, d: 14, h: roomH,
+      floorColor: 0xb5afa6, wallColor: 0xe7e2d8, ceilColor: 0x25252b,
+    });
+    z.spawn.set(-6.55, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xdad3c8, density: 0.011 };
+
+    // A smoked-rubber runway turns the room into a material library rather
+    // than another white cube, while brass seams divide the edition bays.
+    plane(z, {
+      w: 16.8, h: 2.35, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
+      material: new THREE.MeshPhysicalMaterial({
+        color: 0x24232a, roughness: 0.24, metalness: 0.08,
+        clearcoat: 0.42, clearcoatRoughness: 0.18,
+      }),
+      name: 'vacant runway', noSplat: true,
+    });
+    for (const x of [-6.2, -2.1, 2.1, 6.2]) {
+      box(z, {
+        w: 0.035, h: 0.018, d: 12.2, x, y: 0.013, z: 0,
+        material: mat(0xc59c54, { metalness: 0.72, roughness: 0.22 }), solid: false, noSplat: true,
+      });
+    }
+
+    const fleckTexture = (kind) => canvasTexture(256, 256, (ctx, w, h) => {
+      const rng = mulberry32(kind === 'terrazzo' ? 9182 : kind === 'cork' ? 4417 : 7731);
+      if (kind === 'terrazzo') {
+        ctx.fillStyle = '#ded6c8'; ctx.fillRect(0, 0, w, h);
+        const chips = ['#20212a', '#ad593c', '#668f88', '#e5b95b', '#f1eee7'];
+        for (let i = 0; i < 230; i++) {
+          const s = 2 + rng() * 10;
+          ctx.fillStyle = chips[Math.floor(rng() * chips.length)];
+          ctx.save(); ctx.translate(rng() * w, rng() * h); ctx.rotate(rng() * Math.PI);
+          ctx.fillRect(-s / 2, -s / 3, s, s * 0.66); ctx.restore();
+        }
+      } else if (kind === 'cork') {
+        ctx.fillStyle = '#a97645'; ctx.fillRect(0, 0, w, h);
+        for (let i = 0; i < 280; i++) {
+          ctx.strokeStyle = rng() > 0.45 ? '#69452d' : '#d0a36c';
+          ctx.lineWidth = 1 + rng() * 3;
+          const px = rng() * w; const py = rng() * h;
+          ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + 3 + rng() * 18, py + (rng() - 0.5) * 8); ctx.stroke();
+        }
+      } else {
+        ctx.fillStyle = '#d9ddea'; ctx.fillRect(0, 0, w, h);
+        for (let yy = 18; yy < h; yy += 34) {
+          for (let xx = 18; xx < w; xx += 34) {
+            const px = xx + ((yy / 34) % 2) * 17;
+            ctx.fillStyle = 'rgba(255,255,255,0.72)';
+            ctx.beginPath(); ctx.ellipse(px, yy, 12, 12, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(67,75,105,0.46)'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = 'rgba(126,139,184,0.2)';
+            ctx.beginPath(); ctx.ellipse(px - 3, yy + 3, 7, 7, 0, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+    });
+
+    const terrazzoMap = fleckTexture('terrazzo');
+    const corkMap = fleckTexture('cork');
+    const bubbleMap = fleckTexture('bubble');
+    const materials = {
+      velvet: new THREE.MeshStandardMaterial({ color: 0x6e1636, roughness: 1, metalness: 0 }),
+      chrome: new THREE.MeshPhysicalMaterial({ color: 0xdce7ed, roughness: 0.07, metalness: 0.96, clearcoat: 1, clearcoatRoughness: 0.03 }),
+      cork: new THREE.MeshStandardMaterial({ color: 0xffffff, map: corkMap, roughness: 0.96 }),
+      terrazzo: new THREE.MeshStandardMaterial({ color: 0xffffff, map: terrazzoMap, roughness: 0.72 }),
+      bubble: new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: bubbleMap, roughness: 0.18, metalness: 0.02, clearcoat: 0.85, clearcoatRoughness: 0.08 }),
+      moss: new THREE.MeshStandardMaterial({ color: 0x52713d, roughness: 1 }),
+      granite: new THREE.MeshStandardMaterial({ color: 0x77767b, roughness: 1, bumpMap: terrazzoMap, bumpScale: 0.11 }),
+      pearl: new THREE.MeshPhysicalMaterial({ color: 0xe4b8e8, roughness: 0.18, metalness: 0.12, clearcoat: 1, clearcoatRoughness: 0.06, iridescence: 0.7, iridescenceIOR: 1.45 }),
+    };
+
+    const editions = [
+      { key: 'velvet', name: 'VELVET NAP', sub: 'flocked silicone · 1/3', x: -6.0, z: -4.75, style: 'ribbed', color: 0x6e1636,
+        line: 'The velvet nap changes direction when stroked. Vincent calls the dark stripe “viewer participation.” Eddie calls it lint.' },
+      { key: 'chrome', name: 'MIRROR CHROME', sub: 'polished alloy · AP', x: -2.0, z: -4.75, style: 'smooth', color: 0xdce7ed,
+        line: 'The chrome dildo reflects your face, the track lights, and several choices you thought were private.' },
+      { key: 'cork', name: 'CORK BREATHER', sub: 'sealed cork · 2/8', x: 2.0, z: -4.75, style: 'knobbed', color: 0xa97645,
+        line: 'The cork edition is warm, porous-looking, and sealed under twelve coats of professional reassurance.' },
+      { key: 'terrazzo', name: 'AGGREGATE DESIRE', sub: 'cast terrazzo · 4/7', x: 6.0, z: -4.75, style: 'faceted', color: 0xded6c8,
+        line: 'Each terrazzo chip has been distributed by hand. Eddie rejected three compositions for excessive pebble hierarchy.' },
+      { key: 'bubble', name: 'POP PROOF', sub: 'bubble membrane · unique', x: -6.0, z: 4.75, style: 'knobbed', color: 0xcad5ed,
+        line: 'Every bubble remains unpopped. The certificate describes popping one as “an irreversible edition event.”' },
+      { key: 'moss', name: 'AFTERCARE', sub: 'living moss · 3/5', x: -2.0, z: 4.75, style: 'mossy', color: 0x52713d,
+        line: 'The moss dildo needs mist, indirect sun, and reassurance that institutional acquisition will not change it.' },
+      { key: 'granite', name: 'FRICTION STUDY', sub: 'sandblasted stone · 1/6', x: 2.0, z: 4.75, style: 'ridged', color: 0x77767b,
+        line: 'The sandblasted edition is strictly conceptual in use. A nearby waiver uses the phrase “tactile ambition.”' },
+      { key: 'pearl', name: 'MOTHER OF PEARL', sub: 'iridescent silicone · 7/9', x: 6.0, z: 4.75, style: 'smooth', color: 0xe4b8e8,
+        line: 'The pearlescent skin changes from pink to blue as you move. The object considers this a personality.' },
+    ];
+
+    z.animated.editions = [];
+    const plinthMat = mat(0xece8df, { roughness: 0.48, metalness: 0.04 });
+    const railMat = mat(0x8a765e, { roughness: 0.32, metalness: 0.4 });
+    for (let i = 0; i < editions.length; i++) {
+      const e = editions[i];
+      box(z, { w: 1.32, h: 0.72, d: 1.32, x: e.x, z: e.z, material: plinthMat, name: `${e.name} plinth` });
+      box(z, { w: 1.4, h: 0.045, d: 1.4, x: e.x, y: 0.72, z: e.z, material: railMat, solid: false, noSplat: true });
+
+      const sculpture = new THREE.Group();
+      sculpture.position.set(e.x, 0.78, e.z);
+      const surface = materials[e.key];
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.31, 0.13, 28), surface);
+      cup.position.y = 0.065;
+      const bodyGeom = e.style === 'faceted'
+        ? new THREE.CapsuleGeometry(0.18, 0.66, 3, 7)
+        : new THREE.CapsuleGeometry(0.18, 0.66, 8, 22);
+      const body = new THREE.Mesh(bodyGeom, surface);
+      body.position.y = 0.62;
+      body.scale.set(1 + (i % 3) * 0.06, 0.92 + (i % 2) * 0.13, 1 + (i % 3) * 0.06);
+      sculpture.add(cup, body);
+
+      if (e.style === 'ribbed' || e.style === 'ridged') {
+        const count = e.style === 'ribbed' ? 5 : 8;
+        for (let ring = 0; ring < count; ring++) {
+          const ridge = new THREE.Mesh(new THREE.TorusGeometry(0.185, e.style === 'ribbed' ? 0.025 : 0.014, 8, 28), surface);
+          ridge.rotation.x = Math.PI / 2;
+          ridge.position.y = 0.34 + ring * (0.085 - (e.style === 'ridged' ? 0.02 : 0));
+          sculpture.add(ridge);
+        }
+      }
+      if (e.style === 'knobbed' || e.style === 'mossy') {
+        const rng = mulberry32(8100 + i);
+        const count = e.style === 'mossy' ? 34 : 18;
+        for (let n = 0; n < count; n++) {
+          const a = rng() * Math.PI * 2;
+          const yy = 0.26 + rng() * 0.68;
+          const bump = new THREE.Mesh(
+            new THREE.SphereGeometry(e.style === 'mossy' ? 0.035 + rng() * 0.035 : 0.038, 7, 5),
+            surface
+          );
+          bump.position.set(Math.cos(a) * 0.17, yy, Math.sin(a) * 0.17);
+          sculpture.add(bump);
+        }
+      }
+      sculpture.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(sculpture);
+      z.animated.editions.push({ group: sculpture, phase: i * 0.77, baseY: 0.78, direction: i % 2 ? 1 : -1 });
+
+      const facesSouth = e.z < 0;
+      plane(z, {
+        w: 1.72, h: 0.34, x: e.x, y: 0.43, z: e.z + (facesSouth ? 0.666 : -0.666), ry: facesSouth ? 0 : Math.PI,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture(`${e.name}\n${e.sub}`, { fg: '#1e2026', bg: '#f7f2e8', size: 29, w: 900, h: 190, font: '700' }),
+        }),
+        noSplat: true,
+      });
+      z.interactables.push({
+        id: `vacant-${e.key}`, type: 'flavor', label: `Inspect ${e.name}`,
+        title: e.name, pos: new THREE.Vector3(e.x, 1.0, e.z), radius: 1.8,
+        lines: [e.line],
+      });
+    }
+
+    // The pair talk across a low central platform, presented as two living
+    // photographic editions rather than pretending the source images are 3D.
+    box(z, { w: 4.5, h: 0.12, d: 2.2, x: 0, z: 0, material: mat(0x6e655c, { roughness: 0.5 }), name: 'live edition platform' });
+    plane(z, {
+      w: 3.8, h: 0.42, x: 0, y: 0.135, z: 1.11, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('LIVE EDITIONS A + B  ·  CONVERSATION ON LOOP', { fg: '#e9c56d', bg: '#222229', size: 31, w: 1200, h: 150, font: '800' }),
+      }), noSplat: true,
+    });
+
+    plane(z, {
+      w: 7.6, h: 0.72, x: 0, y: 4.15, z: -6.78,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('V A C A N T   E D I T I O N S', { fg: '#191a20', bg: '#e7e2d8', size: 62, w: 1500, h: 180, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 5.4, h: 0.42, x: 0, y: 3.56, z: -6.775,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('SURFACE / FRICTION / FINISH / EDITION', { fg: '#74604b', bg: '#e7e2d8', size: 34, w: 1200, h: 150, font: '700' }),
+      }), noSplat: true,
+    });
+
+    // The wall masterpiece: banana, cock, and structural faith in duct tape.
+    {
+      const artwork = new THREE.Group();
+      artwork.position.set(8.78, 2.5, -2.55);
+      artwork.rotation.y = -Math.PI / 2;
+      const frameSize = 3.42;
+      const aluminum = mat(0xaeb2b6, { roughness: 0.24, metalness: 0.82 });
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(frameSize + 0.16, frameSize + 0.16, 0.09), aluminum);
+      frame.castShadow = true;
+      const artMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.72 });
+      const image = new THREE.Mesh(new THREE.PlaneGeometry(frameSize, frameSize), artMat);
+      image.position.z = 0.052;
+      image.userData.noSplat = true;
+      new THREE.TextureLoader().load(encodeURI('puplic/penis banana.jpg'), (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        artMat.map = tex;
+        artMat.color.set(0xffffff);
+        artMat.needsUpdate = true;
+      });
+
+      // Four literal pieces of tape make the hanging system part of the work.
+      const tapeMat = new THREE.MeshStandardMaterial({ color: 0xc9c9c4, roughness: 0.62, metalness: 0.18 });
+      for (const [tx, ty, rz] of [
+        [-1.48, 1.48, -0.72], [1.48, 1.48, 0.72],
+        [-1.48, -1.48, 0.72], [1.48, -1.48, -0.72],
+      ]) {
+        const tab = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.17), tapeMat);
+        tab.position.set(tx, ty, 0.058);
+        tab.rotation.z = rz;
+        tab.userData.noSplat = true;
+        artwork.add(tab);
+      }
+
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.25, 0.46),
+        new THREE.MeshBasicMaterial({
+          map: textTexture('BANANA COCK, HELD TOGETHER  ·  duct tape and digital drawing, 2026  ·  UNIQUE', {
+            fg: '#1e2026', bg: '#f7f2e8', size: 28, w: 1400, h: 190, font: '700',
+          }),
+        })
+      );
+      label.position.set(0, -2.02, 0.052);
+      label.userData.noSplat = true;
+      artwork.add(frame, image, label);
+      artwork.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      z.group.add(artwork);
+
+      const bananaSpot = new THREE.SpotLight(0xffd7a0, 22, 9, Math.PI * 0.25, 0.72, 1.35);
+      bananaSpot.position.set(5.4, 4.45, -2.55);
+      bananaSpot.target.position.set(8.7, 2.35, -2.55);
+      bananaSpot.castShadow = true;
+      z.group.add(bananaSpot, bananaSpot.target);
+
+      z.interactables.push({
+        id: 'vacant-banana-cock', type: 'flavor', label: 'Inspect the duct-taped banana cock',
+        title: 'BANANA COCK, HELD TOGETHER', pos: new THREE.Vector3(8.1, 2.2, -2.55), radius: 2.5,
+        lines: [
+          'A banana cock meets a silver cross of duct tape. Conservation has classified the adhesive as emotionally permanent.',
+          'The black field makes the tape look structural, ceremonial, and slightly worried about what it is holding together.',
+          'Vincent calls the peach texture “post-fruit skin.” Eddie has already requested a stronger roll of tape.',
+        ],
+      });
+    }
+
+    // Track lighting: a neutral wash plus individual warm pools on the works.
+    z.group.add(new THREE.HemisphereLight(0xf4f7ff, 0x554d48, 1.55));
+    for (const x of [-6, -2, 2, 6]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 11.2), mat(0x15161b, { metalness: 0.56, roughness: 0.3 }));
+      rail.position.set(x, roomH - 0.18, 0);
+      rail.userData.noSplat = true;
+      z.group.add(rail);
+      for (const zz of [-4.7, 0, 4.7]) {
+        const spot = new THREE.SpotLight(0xffe6bb, zz === 0 ? 15 : 12, 8, Math.PI * 0.22, 0.74, 1.4);
+        spot.position.set(x, roomH - 0.28, zz * 0.65);
+        spot.target.position.set(zz === 0 ? Math.sign(x) * 0.7 : x, zz === 0 ? 1.1 : 0.9, zz);
+        spot.castShadow = zz !== 0;
+        z.group.add(spot, spot.target);
+      }
+    }
+
+    z.anchors.vacantVincent = new THREE.Vector3(-0.9, 0.12, -0.72);
+    z.anchors.editionEddie = new THREE.Vector3(0.9, 0.12, 0.72);
+    z.anchorYaws = { vacantVincent: 0.9, editionEddie: -2.24 };
+    z.waypoints = [
+      new THREE.Vector3(-6.2, 0, -2.5), new THREE.Vector3(-6.2, 0, 2.5),
+      new THREE.Vector3(-3.0, 0, -2.5), new THREE.Vector3(-3.0, 0, 2.5),
+      new THREE.Vector3(3.0, 0, -2.5), new THREE.Vector3(3.0, 0, 2.5),
+      new THREE.Vector3(6.2, 0, -2.5), new THREE.Vector3(6.2, 0, 2.5),
+    ];
+
+    z.interactables.push({
+      id: 'vacant-material-index', type: 'flavor', label: 'Read the material index',
+      title: 'MATERIAL INDEX', pos: new THREE.Vector3(0, 1.2, -6.5), radius: 2.2,
+      lines: [
+        'Eight dildos, eight surfaces, eight maintenance plans. “Vacant” refers to availability, not restraint.',
+        'The checklist asks: glossy or matte, porous or sealed, ribbed or legally smooth, unique or aggressively editioned.',
+      ],
+    });
+
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -3404,6 +3792,12 @@ export class World {
         b.wingL.rotation.x = flap;
         b.wingR.rotation.x = -flap;
         b.group.rotation.z = Math.sin(a * 1.7) * 0.09;
+      }
+    }
+    if (z.animated.editions) {
+      for (const e of z.animated.editions) {
+        e.group.rotation.y += dt * 0.075 * e.direction;
+        e.group.position.y = e.baseY + Math.sin(t * 0.72 + e.phase) * 0.012;
       }
     }
     // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays

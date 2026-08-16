@@ -83,6 +83,7 @@ export const ZONES = {
   dildoBall:   { name: 'THE DILDO BALL',    mood: 'off' },
   daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
   upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
+  vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
 };
 
 /**
@@ -167,6 +168,21 @@ export const ROOM_SCORES = {
     wave: 'triangle', bassWave: 'sine', cutoff: 2600, pad: [0, 4, 7, 9],
     bass: [0, null, 7, null, 4, 9, null, 12], lead: [4, null, 2, 5, null, 1, null, 6, 3, null, 5, null, 2, 0, null, 4],
     kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.04, texture: 0.025,
+  },
+  vacantEditions: {
+    // Dry showroom electro: tactile clicks, a rubbery bassline, and enough
+    // empty air for Vincent and Eddie's material seminar to remain audible.
+    bpm: 104, level: 0.22, root: 46.25, scale: [0, 2, 5, 7, 9, 12, 14],
+    wave: 'sine', bassWave: 'triangle', cutoff: 1350, pad: [0, 5, 7, 9],
+    bass: [0, null, 7, null, 5, 9, null, 2], lead: [null, 4, null, null, 2, null, 5, null, null, 1, null, 3, null, null, 6, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.09, texture: 0.16,
+    kickLevel: 0.34, snareLevel: 0.065, hatLevel: 0.022,
+    bassLevel: 0.095, bassDecay: 1.45, leadLevel: 0.02,
+    lofi: {
+      hissLevel: 0.006, hissHighpass: 900, hissLowpass: 4700,
+      wowRate: 0.16, wowDepth: 28, detune: 5,
+      leadAttack: 0.035, leadDecay: 1.5, cutoffScale: 0.9,
+    },
   },
 };
 

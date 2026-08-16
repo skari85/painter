@@ -1768,6 +1768,75 @@ export const UP_AND_CUMMING_CAST = [
   },
 ];
 
+export const VACANT_EDITIONS_CAST = [
+  {
+    id: 'vacantVincent', name: 'Vacant Vincent', shortRole: 'surface theorist', role: 'Dildo Surface Theorist — Vacant Editions',
+    face: 'puplic/vacant-editions/vacant-vincent.jpg', cutout: true, cutoutNoBack: true, cutoutHeight: 2.36, cutoutAspect: 0.505,
+    static: true, anchor: 'vacantVincent', ego: 96, weak: 'witty', resist: 'brutal',
+    hint: 'He has reduced the entire history of sculpture to mouthfeel, drag coefficient, and whether the flocking sheds.',
+    pace: 0.72, pitch: 0.82, accessory: null,
+    palette: { skin: 0xd4a17f, hair: 0xb0713e, top: 0xf2f0e8, bottom: 0x26384c },
+    openers: [
+      'A dildo can be glossy, but should it be smug? That is the surface question.',
+      'Touch the velvet edition with your eyes first. The lint is part of the aura.',
+      'The terrazzo dildo contains seventeen aggregates and one unresolved criticism.',
+      'I am comparing drag coefficients. Desire is measurable if you own enough calipers.',
+    ],
+    countered: [
+      'Harshness is a finish, yes, but not a very editionable one.',
+      'Your argument has the texture of bargain silicone: loud color, no memory.',
+    ],
+    reactions: {
+      kind: ['Kindness is matte. It warms quickly and shows almost no fingerprints.', 'That is a soft-touch observation. Medical grade, emotionally speaking.'],
+      witty: ['Good. A ribbed joke. The punchline survives handling.', 'That line needs flocking. Eddie, bring the adhesive.'],
+      brutal: ['Too abrasive. We already have the sandblasted edition.', 'Aggression leaves micro-scratches on the chrome. Look closely.'],
+    },
+    weakHit: ['Do not make the cork dildo sound breathable. Eddie will edition it.', 'That joke changed the coefficient. I need new calipers.'],
+    disarmed: ['Fine. Texture is just sculpture asking to be touched. Put that on the certificate.'],
+    dismiss: ['I must inspect the velvet nap before it develops a direction.', 'The conversation is becoming smooth. I only discuss textured dildos.'],
+    meltdown: 'THE SILICONE IS NOT “JUST RUBBER.” IT HAS A SHORE HARDNESS AND A COMPLICATED INNER LIFE.',
+    barks: ['Velvet holds lint like provenance!', 'Chrome remembers every fingerprint!', 'Cork breathes. The gallery does not.', 'Never dry-brush the moss edition!'],
+    playerJabs: {
+      kind: ['The soft silicone edition feels considered. Even its wobble has boundaries.'],
+      witty: ['Your texture chart has more foreplay than most exhibition texts.'],
+      brutal: ['You turned eight dildos into a materials meeting and still forgot the lubricant column.'],
+    },
+  },
+  {
+    id: 'editionEddie', name: 'Edition Eddie', shortRole: 'finish technician', role: 'Dildo Finish Technician — Vacant Editions',
+    face: 'puplic/vacant-editions/edition-eddie.jpg', cutout: true, cutoutNoBack: true, cutoutHeight: 2.36, cutoutAspect: 0.489,
+    static: true, anchor: 'editionEddie', ego: 104, weak: 'kind', resist: 'witty',
+    hint: 'He can identify silicone, stone, cork, velvet, and a weak apology without removing his hands from his hips.',
+    pace: 0.66, pitch: 0.92, accessory: null,
+    palette: { skin: 0xd6a07d, hair: 0xb6753d, top: 0xe9e5da, bottom: 0x15171c },
+    openers: [
+      'The pearlescent dildo is edition seven of nine. Number four became too reflective.',
+      'People call the ridges decorative. People have never cleaned between ridges.',
+      'The bubble-wrap dildo is self-deaccessioning. Every touch lowers the edition.',
+      'I polished the chrome one until it developed a second, more expensive personality.',
+    ],
+    countered: [
+      'A joke about ribbing. We catalogue those by depth now.',
+      'Cleverness is high gloss. Attractive, slippery, impossible under track lighting.',
+    ],
+    reactions: {
+      kind: ['Thank you. The moss edition also responds well to misting and reassurance.', 'Gentle pressure preserves the flocking. Finally, a serious visitor.'],
+      witty: ['That is funny, but is it food-safe? The registrar will ask.', 'Excellent. Put the joke beside the chrome one and watch it reflect.'],
+      brutal: ['You have the tactile sensitivity of a shipping crate.', 'That remark belongs on the sandpaper sample, face down.'],
+    },
+    weakHit: ['Nobody has ever asked how the edition feels. They only ask if it comes in black.', 'Careful. Sincerity softens the entire display.'],
+    disarmed: ['All right. The best texture is the one someone actually wants to touch. Very inconvenient.'],
+    dismiss: ['I need to rotate the terrazzo dildo three degrees toward institutional light.', 'Enough. The flocked edition is shedding under conversational stress.'],
+    meltdown: 'SOMEONE CALLED THE BUBBLE-WRAP DILDO “FUN.” IT IS A FRAGILE MEDITATION ON CONSUMPTION.',
+    barks: ['Ridges are maintenance decisions!', 'Pearlescence is not a personality!', 'Bubble wrap changes edition when popped!', 'Terrazzo needs aggregate discipline!'],
+    playerJabs: {
+      kind: ['You cared for every surface like the object might remember being handled.'],
+      witty: ['The bubble-wrap edition is the only artwork with its own applause.'],
+      brutal: ['You polished the chrome dildo so long it became your most reflective colleague.'],
+    },
+  },
+];
+
 /** Build a crowd of ambient weirdos for a zone. */
 export function buildCrowd(zoneKey, night, count) {
   const defs = [];
@@ -1819,6 +1888,7 @@ export function castForNight(night) {
         dildoBall: DILDO_BALL_CAST,
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
+        vacantEditions: VACANT_EDITIONS_CAST,
       };
     case 2:
 
@@ -1836,6 +1906,7 @@ export function castForNight(night) {
         dildoBall: DILDO_BALL_CAST,
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
+        vacantEditions: VACANT_EDITIONS_CAST,
       };
     default:
 
@@ -1850,6 +1921,7 @@ export function castForNight(night) {
         dildoBall: DILDO_BALL_CAST,
         daylightClub: DAYLIGHT_GARDEN_CAST,
         upAndCumming: UP_AND_CUMMING_CAST,
+        vacantEditions: VACANT_EDITIONS_CAST,
       };
 
   }
