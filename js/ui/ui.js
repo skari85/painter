@@ -76,6 +76,9 @@ export class UIManager {
       codexGrid: $('codex-grid'),
       naming: $('naming'),
       namingInput: $('naming-input'),
+      ghostNote: $('ghost-note'),
+      ghostNoteText: $('ghost-note-text'),
+      ghostNoteInput: $('ghost-note-input'),
       nightEnd: $('night-end'),
       nightEndTitle: $('night-end-title'),
       nightEndSummary: $('night-end-summary'),
@@ -247,6 +250,7 @@ export class UIManager {
       'arti-call': { title: 'LIVE CALL', items: [['1', 'answer'], ['2', 'answer'], ['3', 'answer'], ['Esc', 'end call']] },
       seance: { title: 'SÉANCE', items: [['Mouse', 'choose / ask'], ['Esc', 'leave']] },
       naming: { title: 'TITLE THE WORK', items: [['Type', 'name painting'], ['Enter', 'confirm'], ['Esc', 'cancel']] },
+      ghostNote: { title: "A STRANGER'S TRACE", items: [['Type', 'leave a note'], ['Enter', 'leave it'], ['Esc', 'say nothing']] },
       paused: { title: 'PAUSED', items: [['Esc', 'resume'], ['Mouse', 'choose menu']] },
     };
     const preset = presets[mode] ?? presets.playing;
@@ -737,6 +741,33 @@ export class UIManager {
     input.addEventListener('keydown', onKey);
   }
 
+  /** onClose(text) fires with a trimmed note string, or null if the player left nothing. */
+  openGhostNote(existingNote, onClose) {
+    this.show('ghost-note');
+    this.el.ghostNoteText.textContent = existingNote || 'No note left here.';
+    const input = this.el.ghostNoteInput;
+    input.value = '';
+    setTimeout(() => input.focus(), 60);
+
+    const cleanup = () => {
+      $('ghost-note-confirm').removeEventListener('click', confirm);
+      $('ghost-note-skip').removeEventListener('click', skip);
+      input.removeEventListener('keydown', onKey);
+      input.blur();
+      this.hide('ghost-note');
+    };
+    const confirm = () => { const text = input.value.trim(); cleanup(); onClose(text || null); };
+    const skip = () => { cleanup(); onClose(null); };
+    const onKey = (e) => {
+      if (e.key === 'Enter') confirm();
+      else if (e.key === 'Escape') skip();
+      e.stopPropagation();
+    };
+    $('ghost-note-confirm').addEventListener('click', confirm);
+    $('ghost-note-skip').addEventListener('click', skip);
+    input.addEventListener('keydown', onKey);
+  }
+
   showNightSummary(night, rows, onContinue) {
     this.el.nightEndTitle.textContent = `NIGHT ${['', 'ONE', 'TWO', 'THREE'][night]} — RECOUNTED`;
     const wrap = this.el.nightEndSummary;
@@ -812,6 +843,9 @@ const MAP_ZONES = [
   { key: 'daylightClub', name: 'THE DAYLIGHT FLESH GARDEN', desc: 'An adults-only sculpture club at noon. Chrome poles, generous bodies, moss, and animals with no guest list.' },
   { key: 'upAndCumming', name: 'UP AND CUMMING ARTIST', desc: 'Huge paintings in hard daylight. Muscle Mania 300 refuses every sale. Zebra Zebrason refuses his refusal.' },
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
+  { key: 'hairSalon', name: 'U WISH U HAD HAIR BUT U DONT', desc: 'Six chairs, six immaculate bald heads, and enough mirrors to confirm the situation from every angle.' },
+  { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
+  { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },
 ];
 
 

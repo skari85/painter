@@ -1,5 +1,5 @@
 /**
- * world.js — the four rooms of the scene.
+ * world.js — the expanding rooms of the scene.
  *
  *   THE GARRET            warm, wrecked, yours. Easel, mattress, shrine.
  *   GALLERIA BIANCA       cold white cube. Pedestals, wine, judgment.
@@ -8,6 +8,8 @@
  *   ROOMS                 in the back — one house, two material moods.
  *   THE GILDED FORK       one long table, every artworld big shot,
  *                         all of them drunk and messed up.
+ *   U WISH U HAD HAIR     chrome salon stations for an entirely bald cast.
+ *   PUBLIC RESTROOM       tiled stalls, plumbing, bodily techno zamba.
  *
  * Everything uses procedural geometry with generated and locally stored textures.
  * Collision is XZ axis-aligned boxes (single-floor zones by design).
@@ -15,11 +17,12 @@
  */
 
 import * as THREE from 'three';
-import { mulberry32, rand, pick } from '../core/utils.js';
+import { clamp, mulberry32, rand, pick } from '../core/utils.js';
 import { MAXPRO } from '../core/config.js';
 
 
 const WALL_H = 3.6;
+const CHAR_COLOR = new THREE.Color(0x080706);
 
 
 /** The artist's own paintings — compressed JPEGs, hung around the garret. */
@@ -504,6 +507,9 @@ export class World {
     this.#buildDaylightClub();
     this.#buildUpAndCumming();
     this.#buildVacantEditions();
+    this.#buildHairSalon();
+    this.#buildPublicRestroom();
+    this.#buildBlackForest();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -931,6 +937,8 @@ export class World {
     door(z, { x: 8.8, z: 4.4, ry: -Math.PI / 2, label: 'UP AND CUMMING ARTIST →', to: 'upAndCumming' });
     door(z, { x: 0, z: 6.62, ry: Math.PI, label: 'THE GILDED FORK →', to: 'gildedFork' });
     door(z, { x: 6.8, z: 6.62, ry: Math.PI, label: 'MAX PRO KUNST 2000 →', to: 'maxPro' });
+    door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
+    door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -3316,6 +3324,100 @@ export class World {
       });
     }
 
+    // An anabolic weather system: one swollen cloud continuously rains
+    // ampoules and capsules behind the artist/gallerist argument.
+    {
+      const rng = mulberry32(300); // Muscle Mania's extremely specific forecast.
+      const cloud = new THREE.Group();
+      const cloudX = 0.15;
+      const cloudZ = 2.85;
+      const cloudY = 4.62;
+      cloud.position.set(cloudX, cloudY, cloudZ);
+      const cloudMat = new THREE.MeshStandardMaterial({
+        color: 0xc9c8d5, roughness: 0.84, metalness: 0.02,
+        emissive: 0x33284c, emissiveIntensity: 0.16,
+      });
+      for (let i = 0; i < 10; i++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.46 + rng() * 0.34, 14, 10), cloudMat);
+        puff.position.set(-1.55 + i * 0.34 + (rng() - 0.5) * 0.2, (rng() - 0.5) * 0.42, (rng() - 0.5) * 0.78);
+        puff.scale.y = 0.62 + rng() * 0.32;
+        puff.castShadow = true;
+        puff.userData.noSplat = true;
+        cloud.add(puff);
+      }
+      const cloudLight = new THREE.PointLight(0xb68cff, 3.2, 6.5, 1.8);
+      cloudLight.position.set(0, -0.4, 0);
+      cloudLight.userData.base = 3.2;
+      cloud.add(cloudLight);
+      z.group.add(cloud);
+      z.animated.steroidCloud = { group: cloud, light: cloudLight, baseY: cloudY };
+
+      const forecast = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.7, 0.34),
+        new THREE.MeshBasicMaterial({
+          map: textTexture('100% CHANCE OF GAINS', { fg: '#7f43ba', bg: '#f7f5ef', size: 42, w: 1000, h: 150, font: '800' }),
+        })
+      );
+      forecast.position.set(cloudX - 0.02, cloudY - 0.72, cloudZ - 0.02);
+      forecast.rotation.y = -Math.PI / 2;
+      forecast.userData.noSplat = true;
+      z.group.add(forecast);
+
+      const glass = new THREE.MeshPhysicalMaterial({
+        color: 0xcbeaff, roughness: 0.1, metalness: 0.03,
+        transparent: true, opacity: 0.7, transmission: 0.25,
+        clearcoat: 0.7, clearcoatRoughness: 0.04,
+      });
+      const capMats = [
+        mat(0xe84b63, { roughness: 0.42 }),
+        mat(0x7f43ba, { roughness: 0.42 }),
+        mat(0x29a8c7, { roughness: 0.42 }),
+        mat(0xf0b72c, { roughness: 0.42 }),
+      ];
+      z.animated.steroidRain = [];
+      for (let i = 0; i < 30; i++) {
+        const drop = new THREE.Group();
+        if (i % 4 === 0) {
+          // Oversized capsules tumble between the ampoules.
+          const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.12, 5, 10), capMats[i % capMats.length]);
+          capsule.rotation.z = Math.PI / 2;
+          drop.add(capsule);
+        } else {
+          const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.052, 0.22, 10), glass);
+          const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.037, 0.041, 0.105, 9), capMats[i % capMats.length]);
+          liquid.position.y = -0.045;
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.055, 10), capMats[(i + 1) % capMats.length]);
+          cap.position.y = 0.137;
+          drop.add(vial, liquid, cap);
+        }
+        const baseX = cloudX - 1.45 + rng() * 2.9;
+        const baseZ = cloudZ - 0.95 + rng() * 1.9;
+        const bottom = 0.22 + rng() * 0.28;
+        const top = cloudY - 0.7 + rng() * 0.35;
+        drop.position.set(baseX, bottom + rng() * (top - bottom), baseZ);
+        drop.scale.setScalar(0.8 + rng() * 0.65);
+        drop.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.noSplat = true; } });
+        z.group.add(drop);
+        z.animated.steroidRain.push({
+          group: drop, baseX, baseZ, bottom, top,
+          speed: 0.38 + rng() * 0.72,
+          drift: 0.08 + rng() * 0.2,
+          phase: rng() * Math.PI * 2,
+          spin: (rng() - 0.5) * 2.7,
+        });
+      }
+
+      z.interactables.push({
+        id: 'up-steroid-cloud', type: 'flavor', label: 'Check the anabolic forecast',
+        title: 'ANABOLIC WEATHER', pos: new THREE.Vector3(cloudX, 1.2, cloudZ), radius: 2.8,
+        lines: [
+          'Thirty ampoules fall forever. Muscle Mania calls it precipitation. Zebra calls it sponsored content.',
+          'The cloud smells faintly of lavender, locker rooms, and a medical disclaimer printed too small to read.',
+          'Today’s forecast: heavy gains, scattered mood swings, and a one hundred percent chance of enlarged sculpture.',
+        ],
+      });
+    }
+
     z.group.add(new THREE.HemisphereLight(0xffffff, 0xb9c3bf, 2.35));
     const sun = new THREE.DirectionalLight(0xfff4d6, 3.0);
     sun.position.set(-7, 11, 5);
@@ -3345,6 +3447,7 @@ export class World {
       ],
     });
     door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    door(z, { x: -9.8, z: 5.35, ry: Math.PI / 2, label: 'U WISH U HAD HAIR BUT U DONT →', to: 'hairSalon' });
   }
 
   /* ---------------------------------------------------------- */
@@ -3638,6 +3741,1168 @@ export class World {
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
   }
 
+  /* ---------------------------------------------------------- */
+  /*  U WISH U HAD HAIR BUT U DONT — a strictly bald hair salon */
+  /* ---------------------------------------------------------- */
+  #buildHairSalon() {
+    const z = this.#newZone('hairSalon');
+    const roomH = 4.7;
+    shell(z, {
+      w: 18, d: 12, h: roomH,
+      floorColor: 0xd7cfca, wallColor: 0xf2e2e7, ceilColor: 0x342f38,
+    });
+    z.spawn.set(-6.45, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xe7cfd8, density: 0.012 };
+
+    const chrome = new THREE.MeshPhysicalMaterial({
+      color: 0xdce5e8, metalness: 0.94, roughness: 0.08,
+      clearcoat: 1, clearcoatRoughness: 0.03,
+    });
+    const blackVinyl = new THREE.MeshPhysicalMaterial({
+      color: 0x17161b, metalness: 0.05, roughness: 0.24,
+      clearcoat: 0.68, clearcoatRoughness: 0.16,
+    });
+    const blush = mat(0xd987a3, { roughness: 0.55 });
+    const warmWhite = mat(0xf4ece7, { roughness: 0.56 });
+
+    // Large terrazzo-like checker tiles make the whole room read as a salon
+    // before any furniture loads, without adding one mesh per tile.
+    const floorMap = canvasTexture(512, 512, (ctx, w, h) => {
+      const size = w / 8;
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          ctx.fillStyle = (xx + yy) % 2 ? '#eee7e2' : '#cfc4c1';
+          ctx.fillRect(xx * size, yy * size, size, size);
+        }
+      }
+      ctx.strokeStyle = 'rgba(98,78,87,0.18)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i <= 8; i++) {
+        ctx.beginPath(); ctx.moveTo(i * size, 0); ctx.lineTo(i * size, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * size); ctx.lineTo(w, i * size); ctx.stroke();
+      }
+    });
+    floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
+    floorMap.repeat.set(2.25, 1.5);
+    plane(z, {
+      w: 17.6, h: 11.6, y: 0.012, rx: -Math.PI / 2,
+      material: new THREE.MeshStandardMaterial({ color: 0xffffff, map: floorMap, roughness: 0.68 }),
+      name: 'salon tile', noSplat: true,
+    });
+
+    // The name is deliberately too large and too certain for a room with no
+    // hair in it. It sits above six identical chrome-framed mirrors.
+    plane(z, {
+      w: 12.8, h: 0.58, x: 0, y: 4.15, z: -5.785,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('U WISH U HAD HAIR BUT U DONT', {
+          fg: '#fff5f8', bg: '#b82e64', size: 68, w: 1800, h: 180, font: '900',
+        }),
+      }),
+      name: 'salon name', noSplat: true,
+    });
+    plane(z, {
+      w: 8.4, h: 0.3, x: 0, y: 3.72, z: -5.78,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('CUT  /  COLOR  /  SHINE  /  ACCEPTANCE', {
+          fg: '#7b2448', bg: '#f2e2e7', size: 36, w: 1300, h: 130, font: '800',
+        }),
+      }),
+      noSplat: true,
+    });
+
+    const stationXs = [-6, -3.6, -1.2, 1.2, 3.6, 6];
+    for (let i = 0; i < stationXs.length; i++) {
+      const x = stationXs[i];
+
+      // A pale blue metallic plane gives a strong mirror impression while
+      // staying cheap enough to keep six stations lit at once.
+      plane(z, {
+        w: 1.72, h: 2.55, x, y: 2.15, z: -5.77,
+        material: new THREE.MeshPhysicalMaterial({
+          color: 0xcbdde1, metalness: 0.88, roughness: 0.09,
+          clearcoat: 1, clearcoatRoughness: 0.02,
+        }),
+        name: `salon mirror ${i + 1}`, noSplat: true,
+      });
+      box(z, { w: 1.9, h: 0.075, d: 0.08, x, y: 0.82, z: -5.72, material: chrome, solid: false, noSplat: true });
+      box(z, { w: 1.9, h: 0.075, d: 0.08, x, y: 3.42, z: -5.72, material: chrome, solid: false, noSplat: true });
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.075, h: 2.67, d: 0.08, x: x + side * 0.95, y: 0.82, z: -5.72, material: chrome, solid: false, noSplat: true });
+      }
+
+      // Empty counters emphasize that there are no brushes full of hair and
+      // no loose clippings anywhere in the building.
+      box(z, { w: 1.95, h: 0.12, d: 0.56, x, y: 0.74, z: -5.25, material: warmWhite, solid: false, noSplat: true });
+      const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.3, 10), i % 2 ? blush : chrome);
+      bottle.position.set(x + 0.56, 1.01, -5.24);
+      bottle.userData.noSplat = true;
+      z.group.add(bottle);
+
+      // Barber chair: broad vinyl seat, tall back, chrome pump and circular
+      // foot. It is deliberately usable-looking despite the impossible menu.
+      const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.54, 0.08, 24), chrome);
+      foot.position.set(x, 0.04, -3.72);
+      const pump = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.58, 14), chrome);
+      pump.position.set(x, 0.36, -3.72);
+      z.group.add(foot, pump);
+      box(z, { w: 0.92, h: 0.18, d: 0.82, x, y: 0.65, z: -3.72, material: blackVinyl, name: 'salon chair' });
+      box(z, { w: 0.88, h: 0.92, d: 0.16, x, y: 0.82, z: -4.06, material: blackVinyl, solid: false, noSplat: true });
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.12, h: 0.08, d: 0.72, x: x + side * 0.53, y: 0.98, z: -3.7, material: chrome, solid: false, noSplat: true });
+      }
+    }
+
+    // Three washing stations line the opposite wall. The black torus reads as
+    // the rolled lip of a shampoo basin; not one drain contains a hair.
+    for (const x of [-4.1, 0, 4.1]) {
+      box(z, { w: 2.35, h: 0.78, d: 1.05, x, y: 0, z: 4.78, material: warmWhite, name: 'wash station' });
+      const basin = new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.115, 12, 28), blackVinyl);
+      basin.position.set(x, 0.88, 4.56);
+      basin.rotation.x = Math.PI / 2;
+      basin.userData.noSplat = true;
+      const drain = new THREE.Mesh(new THREE.CircleGeometry(0.085, 18), chrome);
+      drain.position.set(x, 0.77, 4.56);
+      drain.rotation.x = -Math.PI / 2;
+      drain.userData.noSplat = true;
+      z.group.add(basin, drain);
+      box(z, { w: 0.86, h: 0.16, d: 0.9, x, y: 0.42, z: 3.92, material: blackVinyl, solid: false, noSplat: true });
+    }
+
+    // Reception and the entirely empty hair inventory.
+    box(z, { w: 2.8, h: 1.08, d: 0.82, x: 6.85, y: 0, z: 2.1, material: blush, name: 'salon reception' });
+    plane(z, {
+      w: 2.35, h: 0.43, x: 6.85, y: 0.66, z: 1.685, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('CHECK IN / GIVE UP', { fg: '#fff7f4', bg: '#b82e64', size: 40, w: 900, h: 180, font: '900' }),
+      }),
+      noSplat: true,
+    });
+    box(z, { w: 0.36, h: 2.85, d: 3.2, x: 8.48, y: 0.34, z: -1.3, material: chrome, name: 'product cabinet' });
+    for (const yy of [0.95, 1.7, 2.45]) {
+      box(z, { w: 0.62, h: 0.07, d: 2.7, x: 8.13, y: yy, z: -1.3, material: warmWhite, solid: false, noSplat: true });
+    }
+    plane(z, {
+      w: 2.55, h: 0.45, x: 8.075, y: 3.45, z: -1.3, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('HAIR — OUT OF STOCK', { fg: '#fff5f8', bg: '#7b2448', size: 37, w: 900, h: 180, font: '900' }),
+      }),
+      noSplat: true,
+    });
+    for (const [yy, zz] of [[1.12, -2.1], [1.12, -0.5], [1.87, -1.3], [2.62, -2.05], [2.62, -0.55]]) {
+      const emptyDome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.2, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        mat(0xd4a17f, { roughness: 0.72 })
+      );
+      emptyDome.position.set(8.03, yy, zz);
+      emptyDome.userData.noSplat = true;
+      z.group.add(emptyDome);
+    }
+
+    // Pink-white ceiling bars and warmer mirror lights keep every bald head
+    // legible and throw polished highlights across the chairs and counters.
+    z.group.add(new THREE.HemisphereLight(0xfff3f6, 0x604954, 1.55));
+    for (const x of [-6, -3, 0, 3, 6]) {
+      box(z, {
+        w: 0.16, h: 0.08, d: 8.8, x, y: roomH - 0.18, z: 0,
+        material: new THREE.MeshBasicMaterial({ color: x % 6 ? 0xffc4d8 : 0xfff7ee }),
+        solid: false, noSplat: true,
+      });
+      const light = new THREE.PointLight(x % 6 ? 0xffb0cc : 0xffead7, 8.5, 7.5, 1.6);
+      light.position.set(x, roomH - 0.34, -2.1);
+      z.group.add(light);
+    }
+    const receptionSpot = new THREE.SpotLight(0xffaac8, 18, 9, Math.PI * 0.3, 0.65, 1.25);
+    receptionSpot.position.set(5.8, 4.25, 2.25);
+    receptionSpot.target.position.set(6.85, 0.6, 2.1);
+    z.group.add(receptionSpot, receptionSpot.target);
+
+    z.anchors.gretaGleam = new THREE.Vector3(5.55, 0, 1.55);
+    z.anchors.bjornBare = new THREE.Vector3(-5.95, 0, -2.35);
+    z.anchors.monaDome = new THREE.Vector3(-3.55, 0, -2.35);
+    z.anchors.sisselShine = new THREE.Vector3(-1.15, 0, -2.35);
+    z.anchors.gunnarGloss = new THREE.Vector3(0, 0, 3.45);
+    z.anchors.nilsNoFringe = new THREE.Vector3(4.55, 0, 2.55);
+    z.anchorYaws = {
+      gretaGleam: -Math.PI / 2, bjornBare: Math.PI, monaDome: Math.PI,
+      sisselShine: Math.PI, gunnarGloss: 0, nilsNoFringe: 2.4,
+    };
+    z.waypoints = [
+      new THREE.Vector3(-6.4, 0, 1.8), new THREE.Vector3(-4.1, 0, 1.7),
+      new THREE.Vector3(-1.8, 0, 1.8), new THREE.Vector3(1.4, 0, 1.8),
+      new THREE.Vector3(3.8, 0, 1.6), new THREE.Vector3(6.2, 0, -0.2),
+    ];
+
+    z.interactables.push(
+      {
+        id: 'salon-mirror', type: 'flavor', label: 'Inspect the mirrors',
+        title: 'SIX-WAY CONFIRMATION', pos: new THREE.Vector3(0, 1.6, -4.7), radius: 2.4,
+        lines: [
+          'Six mirrors confirm the same result from six professional angles: nobody here has hair.',
+          'The lighting is forgiving. The evidence is not.',
+        ],
+      },
+      {
+        id: 'salon-menu', type: 'flavor', label: 'Read the treatment menu',
+        title: 'FULL SERVICE MENU', pos: new THREE.Vector3(6.85, 1.0, 2.1), radius: 2.2,
+        lines: [
+          'INVISIBLE TRIM — 90. CONCEPTUAL COLOR — 140. SCALP POLISH — market price.',
+          'The cancellation policy is longer than every haircut in the building combined.',
+        ],
+      },
+      {
+        id: 'salon-inventory', type: 'flavor', label: 'Check the hair inventory',
+        title: 'HAIR — OUT OF STOCK', pos: new THREE.Vector3(8.05, 1.6, -1.3), radius: 2.15,
+        lines: [
+          'Five smooth display heads wait on empty shelves. Even the wig stands are bald.',
+          'A stock card reads: ORDERED — NEVER. RECEIVED — NONE. SHRINKAGE — EMOTIONAL.',
+        ],
+      },
+      {
+        id: 'salon-wash', type: 'flavor', label: 'Inspect the wash basins',
+        title: 'THE CLEANEST DRAINS IN TOWN', pos: new THREE.Vector3(0, 0.9, 4.25), radius: 2.2,
+        lines: [
+          'Three spotless drains have never caught a clipping. Gunnar cleans them anyway.',
+          'The conditioner promises volume, repair, and a tactful refusal to discuss raw materials.',
+        ],
+      },
+    );
+
+    door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← UP AND CUMMING ARTIST', to: 'upAndCumming' });
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE PUBLIC RESTROOM — ceramic acoustics, no polite sounds */
+  /* ---------------------------------------------------------- */
+  #buildPublicRestroom() {
+    const z = this.#newZone('publicRestroom');
+    const roomW = 16;
+    const roomD = 12;
+    const roomH = 4.2;
+    shell(z, {
+      w: roomW, d: roomD, h: roomH,
+      floorColor: 0x65716c, wallColor: 0xb9c4bd, ceilColor: 0x7d8580,
+    });
+    // Clear the return door's interaction radius so arrival begins with the
+    // room, not an immediate invitation to leave again.
+    z.spawn.set(0, 0, 3.55);
+    z.spawnYaw = 0;
+    z.fog = { color: 0x18221f, density: 0.024 };
+
+    // Grimy sea-green ceramic tile remains highly readable in the low club
+    // light. The grout is drawn once and repeated by the GPU.
+    const tileSource = canvasTexture(256, 256, (ctx, w, h) => {
+      ctx.fillStyle = '#9eaaa3'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#657069';
+      ctx.fillRect(0, 0, w, 9); ctx.fillRect(0, 0, 9, h);
+      ctx.fillStyle = 'rgba(235,245,239,0.16)';
+      ctx.fillRect(14, 14, w - 24, 4);
+      ctx.fillStyle = 'rgba(38,54,48,0.11)';
+      for (let i = 0; i < 22; i++) {
+        const x = (i * 71) % w; const y = (i * 113) % h;
+        ctx.fillRect(x, y, 2 + (i % 5), 2 + ((i * 3) % 7));
+      }
+    });
+    const tiled = (repeatX, repeatY, color = 0xffffff) => {
+      const map = tileSource.clone();
+      map.wrapS = map.wrapT = THREE.RepeatWrapping;
+      map.repeat.set(repeatX, repeatY);
+      map.needsUpdate = true;
+      return new THREE.MeshStandardMaterial({ color, map, roughness: 0.26, metalness: 0.04 });
+    };
+    plane(z, {
+      w: roomW - 0.45, h: roomD - 0.45, y: 0.012, rx: -Math.PI / 2,
+      material: tiled(12, 9, 0x89968f), noSplat: false, name: 'restroom tile floor',
+    });
+    plane(z, { w: roomW - 0.45, h: roomH - 0.25, y: roomH / 2, z: -5.785, material: tiled(14, 4), noSplat: false });
+    plane(z, { w: roomW - 0.45, h: roomH - 0.25, y: roomH / 2, z: 5.785, ry: Math.PI, material: tiled(14, 4), noSplat: false });
+    plane(z, { w: roomD - 0.45, h: roomH - 0.25, x: -7.785, y: roomH / 2, ry: Math.PI / 2, material: tiled(10, 4), noSplat: false });
+    plane(z, { w: roomD - 0.45, h: roomH - 0.25, x: 7.785, y: roomH / 2, ry: -Math.PI / 2, material: tiled(10, 4), noSplat: false });
+
+    // A genuine local Poly Haven material from the project's texture library
+    // skins the damp ceiling, including its normal and roughness maps.
+    const ceilingMat = new THREE.MeshStandardMaterial({ color: 0xaab4ad, roughness: 0.92 });
+    plane(z, {
+      w: roomW - 0.42, h: roomD - 0.42, y: roomH - 0.105, rx: Math.PI / 2,
+      material: ceilingMat, noSplat: true, name: 'Poly Haven painted plaster ceiling',
+    });
+    const restroomLoader = new THREE.TextureLoader();
+    const ceilingRoot = 'puplic/polyhaven/daylight-garden/painted_plaster_wall';
+    const loadCeiling = (slot, file, srgb = false) => {
+      restroomLoader.load(encodeURI(`${ceilingRoot}/${file}`), (tex) => {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(4, 3);
+        tex.anisotropy = 4;
+        if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+        ceilingMat[slot] = tex;
+        ceilingMat.needsUpdate = true;
+      });
+    };
+    loadCeiling('map', 'painted_plaster_wall_diff_1k.jpg', true);
+    loadCeiling('normalMap', 'painted_plaster_wall_nor_gl_1k.jpg');
+    loadCeiling('roughnessMap', 'painted_plaster_wall_rough_1k.jpg');
+
+    const porcelain = new THREE.MeshPhysicalMaterial({
+      color: 0xe9eee9, roughness: 0.15, metalness: 0.02,
+      clearcoat: 0.82, clearcoatRoughness: 0.08,
+    });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xabb9b6, roughness: 0.18, metalness: 0.84 });
+    const partitionMat = new THREE.MeshStandardMaterial({ color: 0x29463f, roughness: 0.44, metalness: 0.36 });
+    const blackRubber = mat(0x111817, { roughness: 0.88, metalness: 0.02 });
+
+    // Four stalls form the back wall. Their laminated fronts use one of the
+    // user's blue painterly textures from puplic/textures as a shared library
+    // image, so the restroom still belongs to this particular art world.
+    const stallDoorMat = new THREE.MeshStandardMaterial({ color: 0x5f8d9d, roughness: 0.46, metalness: 0.08 });
+    restroomLoader.load(encodeURI('puplic/textures/8.jpg'), (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      stallDoorMat.map = tex;
+      stallDoorMat.color.set(0xb9d7df);
+      stallDoorMat.needsUpdate = true;
+    });
+    const stallCenters = [-5.7, -1.9, 1.9, 5.7];
+    let impossiblePoop = null;
+    let doomedFlush = null;
+    let containmentBeacon = null;
+    for (const x of [-7.55, -3.8, 0, 3.8, 7.55]) {
+      box(z, {
+        w: 0.11, h: 2.48, d: 3.95, x, y: 0.18, z: -3.75,
+        material: partitionMat, noSplat: true, name: 'restroom stall partition',
+      });
+    }
+    for (let i = 0; i < stallCenters.length; i++) {
+      const x = stallCenters[i];
+      const doorPanel = box(z, {
+        w: 2.68, h: 2.2, d: 0.09, x, y: 0.25, z: -1.79,
+        material: stallDoorMat, solid: false, noSplat: false, name: 'painted restroom stall door',
+      });
+      doorPanel.rotation.y = (i % 2 ? -1 : 1) * (0.08 + i * 0.025);
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.09), steel);
+      latch.position.set(x + 1.03, 1.35, -1.71);
+      z.group.add(latch);
+
+      const toilet = new THREE.Group();
+      toilet.position.set(x, 0, -4.75);
+      const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.38, 20, 12), porcelain);
+      bowl.scale.set(1, 0.58, 1.32); bowl.position.set(0, 0.39, 0.08);
+      const seat = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.052, 9, 28), porcelain);
+      seat.rotation.x = Math.PI / 2; seat.scale.z = 1.24; seat.position.set(0, 0.57, 0.06);
+      const cistern = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.72, 0.26), porcelain);
+      cistern.position.set(0, 0.74, -0.38);
+      const flush = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.035, 14), steel);
+      flush.rotation.z = Math.PI / 2; flush.position.set(0.39, 0.86, -0.38);
+      toilet.add(bowl, seat, cistern, flush);
+      toilet.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      z.group.add(toilet);
+
+      if (i === 2) {
+        // Stall three contains an object whose scale is incompatible with both
+        // the toilet and municipal optimism. Coiled glossy forms rise far above
+        // the seat, with extra overflow parked on the tile.
+        const poopMat = new THREE.MeshPhysicalMaterial({
+          color: 0x4a1f0d, roughness: 0.34, metalness: 0.02,
+          clearcoat: 0.68, clearcoatRoughness: 0.19,
+        });
+        impossiblePoop = new THREE.Group();
+        impossiblePoop.position.set(x, 0.55, -4.67);
+        const coils = [
+          [0.48, 0.18, 0.07, -0.06],
+          [0.43, 0.17, 0.32, 0.05],
+          [0.35, 0.155, 0.56, -0.04],
+          [0.27, 0.135, 0.77, 0.035],
+        ];
+        for (const [radius, tube, yy, offsetX] of coils) {
+          const coil = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 12, 32), poopMat);
+          coil.rotation.x = Math.PI / 2;
+          coil.position.set(offsetX, yy, 0);
+          coil.castShadow = true;
+          impossiblePoop.add(coil);
+        }
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.48, 22), poopMat);
+        crown.position.set(0.045, 1.03, 0.01);
+        crown.rotation.z = -0.13;
+        crown.castShadow = true;
+        impossiblePoop.add(crown);
+        for (const [ox, oz, scale] of [[-0.52, 0.16, 0.48], [0.48, 0.28, 0.4], [0.32, -0.36, 0.33]]) {
+          const overflow = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 10), poopMat);
+          overflow.position.set(ox, -0.34, oz);
+          overflow.scale.set(scale * 1.35, scale * 0.42, scale);
+          overflow.castShadow = true;
+          impossiblePoop.add(overflow);
+        }
+        impossiblePoop.traverse((o) => { if (o.isMesh) o.userData.noSplat = true; });
+        z.group.add(impossiblePoop);
+        doomedFlush = flush;
+
+        plane(z, {
+          w: 2.2, h: 0.33, x, y: 2.06, z: -1.735,
+          material: new THREE.MeshBasicMaterial({
+            map: textTexture('STALL 3 · CONTAINMENT', { fg: '#fff2a8', bg: '#491d18', size: 31, w: 900, h: 145, font: '800' }),
+          }), noSplat: true,
+        });
+        const warning = new THREE.PointLight(0xff3c32, 3.4, 4.5, 1.7);
+        warning.position.set(x, 2.35, -3.8);
+        z.group.add(warning);
+
+        // The door is now a tiny crime scene: crossed tape and a rotating red
+        // beacon make the incident legible before the player enters the stall.
+        const tapeMat = new THREE.MeshBasicMaterial({
+          map: textTexture('DO NOT CROSS  ·  POOP CRIME SCENE  ·  DO NOT CROSS', {
+            fg: '#17130a', bg: '#f4d13f', size: 27, w: 1400, h: 115, font: '800',
+          }),
+        });
+        for (const [yy, rz] of [[1.18, 0.1], [1.5, -0.1]]) {
+          const tape = plane(z, { w: 3.0, h: 0.18, x, y: yy, z: -1.685, material: tapeMat, noSplat: true });
+          tape.rotation.z = rz;
+        }
+        const beaconBase = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.08, 16), blackRubber);
+        beaconBase.position.set(x, 2.62, -1.69);
+        const beaconDome = new THREE.Mesh(
+          new THREE.SphereGeometry(0.145, 16, 9, 0, Math.PI * 2, 0, Math.PI * 0.58),
+          new THREE.MeshPhysicalMaterial({
+            color: 0xff3328, emissive: 0xff1f18, emissiveIntensity: 3.2,
+            transparent: true, opacity: 0.82, roughness: 0.12, clearcoat: 1,
+          })
+        );
+        beaconDome.position.set(x, 2.69, -1.69);
+        const beaconLight = new THREE.PointLight(0xff3028, 4.5, 5.2, 1.7);
+        beaconLight.position.set(x, 2.73, -1.56);
+        beaconBase.userData.noSplat = beaconDome.userData.noSplat = true;
+        z.group.add(beaconBase, beaconDome, beaconLight);
+        containmentBeacon = { dome: beaconDome, light: beaconLight };
+      }
+
+      z.colliders.push({ minX: x - 0.48, maxX: x + 0.48, minZ: -5.38, maxZ: -4.18 });
+      z.interactables.push({
+        id: `restroom-toilet-${i}`, type: 'restroomFixture', sound: 'fart', variant: i,
+        label: `Test stall ${i + 1}`, title: `STALL ${i + 1}`,
+        lines: i === 2
+          ? [
+            'GUARD: “Sir, the bowl has constitutional limits.” The poop declines to comment.',
+            'GUARD: “We have flushed twelve times. You are now infrastructure.”',
+            'GUARD: “Please reduce yourself to a standard municipal volume.” The poop remains huge.',
+          ]
+          : null,
+        line: i === 2 ? null : 'The porcelain answers with the only review this room permits.',
+        pos: new THREE.Vector3(x, 0.9, -3.75), radius: 2.0,
+      });
+    }
+
+    // The Toilet Guard has one duty and no useful equipment. He faces the
+    // impossible poop, points at it continuously and delivers a rotating silent
+    // lecture so the room's piss-and-fart-only audio policy remains unbroken.
+    {
+      const guard = new THREE.Group();
+      guard.position.set(3.0, 0, -0.55);
+      guard.rotation.y = -0.27;
+      const uniform = new THREE.MeshStandardMaterial({ color: 0x182b3e, roughness: 0.72 });
+      const skin = new THREE.MeshStandardMaterial({ color: 0xc18d68, roughness: 0.86 });
+      const gold = new THREE.MeshStandardMaterial({ color: 0xe0b948, roughness: 0.3, metalness: 0.58 });
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.34, 0.84, 14), uniform);
+      torso.position.y = 1.05;
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.345, 0.345, 0.075, 14), blackRubber);
+      belt.position.y = 0.72;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.225, 18, 13), skin);
+      head.position.y = 1.67;
+      const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.25, 0.15, 16), uniform);
+      hat.position.y = 1.88;
+      const brim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.035, 0.22), uniform);
+      brim.position.set(0, 1.82, 0.1);
+      const badge = new THREE.Mesh(new THREE.OctahedronGeometry(0.095, 0), gold);
+      badge.position.set(0.17, 1.2, 0.245);
+      badge.scale.y = 1.28;
+      const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.075, 0.045), gold);
+      buckle.position.set(0, 0.72, 0.19);
+      const radio = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.08), blackRubber);
+      radio.position.set(-0.2, 1.36, 0.2);
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.2, 6), blackRubber);
+      antenna.position.set(-0.23, 1.54, 0.2);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x171313 });
+      for (const ex of [-0.07, 0.07]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), eyeMat);
+        eye.position.set(ex, 1.7, 0.208);
+        guard.add(eye);
+      }
+      const moustache = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.028, 0.028), eyeMat);
+      moustache.position.set(0, 1.59, 0.224);
+      guard.add(torso, belt, head, hat, brim, badge, buckle, radio, antenna, moustache);
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.72, 10), uniform);
+        leg.position.set(side * 0.15, 0.36, 0);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.31), blackRubber);
+        shoe.position.set(side * 0.15, 0.055, 0.07);
+        guard.add(leg, shoe);
+      }
+      const armQuiet = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.64, 10), uniform);
+      armQuiet.position.set(0.35, 1.08, 0);
+      armQuiet.rotation.z = 0.12;
+      const armPoint = new THREE.Group();
+      armPoint.position.set(-0.31, 1.36, 0);
+      armPoint.rotation.set(-1.18, -0.18, 0.28);
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.078, 0.68, 10), uniform);
+      sleeve.position.y = -0.29;
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.085, 12, 9), skin);
+      hand.position.y = -0.65;
+      armPoint.add(sleeve, hand);
+      guard.add(armQuiet, armPoint);
+      const clipboard = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.42, 0.035), new THREE.MeshStandardMaterial({ color: 0x6a4628, roughness: 0.82 }));
+      clipboard.position.set(0.43, 0.97, 0.23);
+      clipboard.rotation.z = -0.18;
+      const report = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.34), new THREE.MeshBasicMaterial({ color: 0xf2ead1 }));
+      report.position.set(0.43, 0.99, 0.25);
+      report.rotation.z = -0.18;
+      guard.add(clipboard, report);
+      guard.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(guard);
+
+      const guardLines = [
+        '“WHO DID THIS? STEP FORWARD.”',
+        '“THE POOPER IS UNDER ARREST.”',
+        '“I WILL DUST THE FLUSH HANDLE.”',
+        '“THIS IS A CUSTODIAL FELONY.”',
+        '“CONFESS BEFORE I CHECK THE CCTV.”',
+      ];
+      const bubbleMaps = guardLines.map((line) => canvasTexture(1200, 190, (ctx, w, h) => {
+        const pad = 10; const radius = 38;
+        ctx.clearRect(0, 0, w, h);
+        ctx.beginPath();
+        ctx.moveTo(pad + radius, pad);
+        ctx.lineTo(w - pad - radius, pad);
+        ctx.quadraticCurveTo(w - pad, pad, w - pad, pad + radius);
+        ctx.lineTo(w - pad, h - pad - radius);
+        ctx.quadraticCurveTo(w - pad, h - pad, w - pad - radius, h - pad);
+        ctx.lineTo(pad + radius, h - pad);
+        ctx.quadraticCurveTo(pad, h - pad, pad, h - pad - radius);
+        ctx.lineTo(pad, pad + radius);
+        ctx.quadraticCurveTo(pad, pad, pad + radius, pad);
+        ctx.closePath();
+        ctx.fillStyle = '#f5f0d8'; ctx.fill();
+        ctx.strokeStyle = '#17221e'; ctx.lineWidth = 8; ctx.stroke();
+        ctx.fillStyle = '#17221e';
+        ctx.font = '800 31px Georgia, serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(line, w / 2, h / 2 + 2);
+      }));
+      const bubble = plane(z, {
+        w: 3.2, h: 0.56, x: 2.55, y: 2.65, z: -0.43,
+        material: new THREE.MeshBasicMaterial({ map: bubbleMaps[0], transparent: true }), noSplat: true,
+        name: 'toilet guard speech bubble',
+      });
+      const tailGeom = new THREE.BufferGeometry();
+      tailGeom.setAttribute('position', new THREE.Float32BufferAttribute([
+        0, 0, 0, 0.28, 0, 0, 0.2, -0.28, 0,
+      ], 3));
+      tailGeom.computeVertexNormals();
+      const tail = new THREE.Mesh(tailGeom, new THREE.MeshBasicMaterial({ color: 0xf5f0d8, side: THREE.DoubleSide }));
+      tail.position.set(2.85, 2.39, -0.425);
+      tail.userData.noSplat = true;
+      z.group.add(tail);
+      plane(z, {
+        w: 1.75, h: 0.25, x: 3.0, y: 2.2, z: -0.42,
+        material: new THREE.MeshBasicMaterial({
+          map: textTexture('TOILET GUARD · POOP CRIMES UNIT', { fg: '#ffd75e', bg: '#182b3e', size: 25, w: 980, h: 130, font: '800' }),
+        }), noSplat: true,
+      });
+      z.animated.toiletGuard = {
+        group: guard, head, arm: armPoint, bubble, bubbleMaps,
+        lineIndex: 0, bubbleChangedAt: 0, poop: impossiblePoop, flush: doomedFlush,
+        beacon: containmentBeacon,
+      };
+      z.interactables.push({
+        id: 'toilet-guard', type: 'restroomFixture', sound: 'fart', variant: 11,
+        label: 'Ask who is under arrest', title: 'THE TOILET GUARD',
+        lines: [
+          '“Whoever produced stall three is under arrest. I am building a stool profile.”',
+          '“Nobody leaves until the poop has an alibi and the pooper has a lawyer.”',
+          '“I will fingerprint the flush handle. Laugh now. Regret it at processing.”',
+          '“One of these patrons knows something. Bodies always talk eventually.”',
+        ],
+        pos: new THREE.Vector3(3.0, 1.2, -0.55), radius: 2.0,
+      });
+    }
+
+    // Three wall urinals and privacy dividers make the west aisle an actual
+    // public facility rather than a gallery that merely owns some toilets.
+    for (let i = 0; i < 3; i++) {
+      const zz = -0.55 + i * 2.05;
+      const urinal = new THREE.Group();
+      urinal.position.set(-7.56, 0, zz);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.86, 0.62), porcelain);
+      back.position.set(0.12, 0.78, 0);
+      const cup = new THREE.Mesh(new THREE.SphereGeometry(0.34, 18, 12), porcelain);
+      cup.scale.set(0.55, 0.82, 1); cup.position.set(0.31, 0.48, 0);
+      const drain = new THREE.Mesh(new THREE.CircleGeometry(0.075, 16), blackRubber);
+      drain.rotation.y = Math.PI / 2; drain.position.set(0.505, 0.49, 0);
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.55, 10), steel);
+      pipe.position.set(0.29, 1.45, 0);
+      urinal.add(back, cup, drain, pipe);
+      z.group.add(urinal);
+      box(z, {
+        w: 0.78, h: 1.32, d: 0.075, x: -7.25, y: 0.48, z: zz + 0.98,
+        material: partitionMat, ry: Math.PI / 2, solid: false, noSplat: true,
+      });
+      z.colliders.push({ minX: -7.78, maxX: -6.96, minZ: zz - 0.42, maxZ: zz + 0.42 });
+      z.interactables.push({
+        id: `restroom-urinal-${i}`, type: 'restroomFixture', sound: 'piss', variant: i,
+        label: `Use urinal ${i + 1}`, title: `URINAL ${i + 1}`,
+        line: 'A bright stream joins the rhythm. The tiled room approves without words.',
+        pos: new THREE.Vector3(-6.9, 1.0, zz), radius: 1.65,
+      });
+    }
+
+    // Communal sink, mirror and exposed plumbing on the east wall.
+    box(z, { w: 0.78, h: 0.16, d: 5.65, x: 6.85, y: 0.76, z: 1.15, material: porcelain, name: 'communal sink' });
+    for (const zz of [-0.65, 1.15, 2.95]) {
+      const basin = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 10), porcelain);
+      basin.scale.set(0.58, 0.25, 1.0); basin.position.set(6.53, 0.88, zz);
+      z.group.add(basin);
+      const tap = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 7, 14, Math.PI), steel);
+      tap.rotation.z = Math.PI / 2; tap.position.set(6.45, 1.14, zz);
+      z.group.add(tap);
+    }
+    z.colliders.push({ minX: 6.22, maxX: 7.78, minZ: -1.95, maxZ: 4.25 });
+    const mirrorMat = new THREE.MeshPhysicalMaterial({
+      color: 0x9fb7b4, roughness: 0.08, metalness: 0.92, clearcoat: 1, clearcoatRoughness: 0.03,
+    });
+    plane(z, { w: 5.75, h: 1.45, x: 7.765, y: 2.16, z: 1.15, ry: -Math.PI / 2, material: mirrorMat, noSplat: true, name: 'fogged mirror' });
+    plane(z, {
+      w: 5.2, h: 0.32, x: 7.755, y: 3.12, z: 1.15, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('YOU LOOK EXPENSIVE WHEN DAMP', { fg: '#ccffe9', bg: '#1a322b', size: 31, w: 1100, h: 130, font: '800' }) }),
+      noSplat: true,
+    });
+
+    // The restroom is occupied: two patrons use the urinals, one scrubs at the
+    // sink, and one waits outside the stalls while pretending not to hear the
+    // Poop Crimes Unit. Bodies are simple procedural geometry so they remain
+    // readable under the hard green/magenta club light.
+    const buildPatron = ({ x, z: zz, ry, shirt, trousers, skinColor, hairColor }) => {
+      const group = new THREE.Group();
+      group.position.set(x, 0, zz);
+      group.rotation.y = ry;
+      const shirtMat = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.78 });
+      const trouserMat = new THREE.MeshStandardMaterial({ color: trousers, roughness: 0.82 });
+      const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.88 });
+      const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.96 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.25, 0.45, 4, 10), shirtMat);
+      torso.position.y = 1.16;
+      const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.18, 0.3), shirtMat);
+      shoulders.position.y = 1.38;
+      const hips = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.3), trouserMat);
+      hips.position.y = 0.73;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), skinMat);
+      head.position.y = 1.77;
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.225, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), hairMat);
+      hair.position.y = 1.84;
+      group.add(torso, shoulders, hips, head, hair);
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.105, 0.72, 9), trouserMat);
+        leg.position.set(side * 0.145, 0.35, 0);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.095, 0.3), trouserMat);
+        shoe.position.set(side * 0.145, 0.05, 0.07);
+        group.add(leg, shoe);
+        legs.push(leg);
+      }
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.073, 0.58, 9), shirtMat);
+        arm.position.set(side * 0.31, 1.12, 0.06);
+        arm.rotation.z = side * 0.38;
+        group.add(arm);
+        arms.push(arm);
+      }
+      group.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = true;
+        o.userData.noSplat = true;
+      });
+      z.group.add(group);
+      return { group, torso, head, arms, legs };
+    };
+
+    const peeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffe35d, emissive: 0xa86b08, emissiveIntensity: 0.8,
+      transparent: true, opacity: 0.72, roughness: 0.12, depthWrite: false,
+    });
+    const peeing = [];
+    const peeDefs = [
+      { zz: -0.55, shirt: 0xa73e72, trousers: 0x222631, skinColor: 0xb97c58, hairColor: 0x2c1710 },
+      { zz: 1.5, shirt: 0x396f8f, trousers: 0x28231f, skinColor: 0xd0a078, hairColor: 0xd4b55e },
+    ];
+    for (let i = 0; i < peeDefs.length; i++) {
+      const def = peeDefs[i];
+      const patron = buildPatron({ x: -6.42, z: def.zz, ry: -Math.PI / 2, ...def });
+      // Hands hover awkwardly at the waist; nobody makes eye contact.
+      patron.arms[0].rotation.z = -0.76;
+      patron.arms[1].rotation.z = 0.76;
+      patron.arms[0].position.y = patron.arms[1].position.y = 1.0;
+      const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.68, 8), peeMat.clone());
+      stream.rotation.z = Math.PI / 2;
+      stream.position.set(-7.01, 0.69, def.zz);
+      stream.userData.noSplat = true;
+      z.group.add(stream);
+      const drops = [];
+      for (let d = 0; d < 4; d++) {
+        const drop = new THREE.Mesh(new THREE.SphereGeometry(0.024, 7, 5), peeMat.clone());
+        drop.position.set(-6.78 - d * 0.11, 0.69 - d * 0.018, def.zz + (d % 2 ? 0.012 : -0.01));
+        drop.userData.noSplat = true;
+        z.group.add(drop);
+        drops.push(drop);
+      }
+      peeing.push({ ...patron, stream, drops, phase: i * 1.7, z: def.zz });
+    }
+
+    const washing = buildPatron({
+      x: 6.0, z: 1.15, ry: Math.PI / 2,
+      shirt: 0x7b5aaa, trousers: 0x242832, skinColor: 0x8f604d, hairColor: 0x151318,
+    });
+    washing.arms[0].rotation.x = -0.92;
+    washing.arms[1].rotation.x = -0.92;
+    washing.arms[0].position.y = washing.arms[1].position.y = 1.06;
+    const waiting = buildPatron({
+      x: -2.15, z: 1.05, ry: -0.18,
+      shirt: 0xc28735, trousers: 0x31343b, skinColor: 0xe0b18d, hairColor: 0x5b271c,
+    });
+    waiting.arms[0].rotation.z = -0.92;
+    waiting.arms[1].rotation.z = 0.92;
+    z.animated.restroomPatrons = { peeing, washing, waiting };
+    z.interactables.push(
+      {
+        id: 'restroom-patron-waiting', type: 'restroomFixture', sound: 'fart', variant: 14,
+        label: 'Ask the nervous patron', title: 'NERVOUS PATRON',
+        lines: [
+          'They stare at stall three and silently shake their head much too quickly.',
+          '“I came in after it happened.” The guard writes that down without blinking.',
+        ],
+        pos: new THREE.Vector3(-2.15, 1.1, 1.05), radius: 1.75,
+      },
+      {
+        id: 'restroom-patron-sink', type: 'restroomFixture', sound: 'piss', variant: 15,
+        label: 'Observe the hand washing', title: 'THE SINK WITNESS',
+        lines: ['They have been washing the same hands since the guard said “fingerprints.”'],
+        pos: new THREE.Vector3(6.0, 1.1, 1.15), radius: 1.75,
+      },
+    );
+
+    // Puddles, drains and exposed pipes sell the dampness from eye level.
+    const puddleMat = new THREE.MeshPhysicalMaterial({
+      color: 0x8cb49c, transparent: true, opacity: 0.38, roughness: 0.08,
+      metalness: 0.05, clearcoat: 1, depthWrite: false,
+    });
+    for (const [x, zz, sx, sz] of [[-5.6, 0.2, 1.3, 0.5], [1.3, 2.6, 0.8, 1.4], [5.4, -0.3, 1.1, 0.55]]) {
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.72, 26), puddleMat);
+      puddle.rotation.x = -Math.PI / 2; puddle.position.set(x, 0.026, zz); puddle.scale.set(sx, sz, 1);
+      puddle.userData.noSplat = true; z.group.add(puddle);
+    }
+    for (const [x, zz] of [[-2.1, 0.5], [3.5, 3.5]]) {
+      const drain = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.018, 20), steel);
+      drain.position.set(x, 0.025, zz); drain.userData.noSplat = true; z.group.add(drain);
+    }
+    for (const x of [-6.75, 6.05]) {
+      const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 3.7, 10), steel);
+      pipe.position.set(x, 1.85, -5.56); pipe.userData.noSplat = true; z.group.add(pipe);
+    }
+
+    // Fluorescent slabs stay sickly white; hidden colored bulbs punch the fart
+    // downbeats into the wet floor without turning the room into a clean club.
+    z.animated.strobes = [];
+    for (let i = 0; i < 4; i++) {
+      const x = -5.4 + i * 3.6;
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(2.25, 0.06, 0.28),
+        new THREE.MeshStandardMaterial({ color: 0xe7fff3, emissive: 0xb8ffe0, emissiveIntensity: 1.8, roughness: 0.24 })
+      );
+      slab.position.set(x, roomH - 0.19, 0.65); slab.userData.noSplat = true; z.group.add(slab);
+      const pulse = new THREE.PointLight(i % 2 ? 0x50ffb0 : 0xff5dbb, 0.8, 7.5, 1.8);
+      pulse.position.set(x, roomH - 0.36, 0.65); pulse.userData.base = 0.62; z.group.add(pulse);
+      z.animated.strobes.push(pulse);
+    }
+    z.group.add(new THREE.HemisphereLight(0xcfffe6, 0x10221c, 1.15));
+
+    plane(z, {
+      w: 7.8, h: 0.78, x: 0, y: 3.48, z: -5.77,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('T E C H N O   Z A M B A', { fg: '#ff83d3', bg: '#162b26', size: 64, w: 1500, h: 190, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 6.7, h: 0.45, x: 0, y: 2.91, z: -5.765,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('ACOUSTIC POLICY: PISS + FART ONLY', { fg: '#bfffe5', bg: '#162b26', size: 34, w: 1300, h: 150, font: '800' }),
+      }), noSplat: true,
+    });
+    plane(z, {
+      w: 5.4, h: 0.38, x: 0, y: 3.25, z: 5.77, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('PUBLIC RESTROOM · EVERY BODY IS ON THE LIST', { fg: '#d8f5e8', bg: '#223c34', size: 29, w: 1300, h: 140, font: '800' }),
+      }), noSplat: true,
+    });
+    z.interactables.push({
+      id: 'restroom-policy', type: 'restroomFixture', sound: 'fart', variant: 7,
+      label: 'Read the acoustic policy', title: 'ACOUSTIC POLICY',
+      line: 'No speech, no melody, no applause. The room recognizes only pressure and plumbing.',
+      pos: new THREE.Vector3(0, 2.9, -5.3), radius: 2.35,
+    });
+
+    z.waypoints = [
+      new THREE.Vector3(-4.6, 0, 3.3), new THREE.Vector3(-2.1, 0, 1.0),
+      new THREE.Vector3(1.2, 0, 3.4), new THREE.Vector3(4.4, 0, 0.4),
+    ];
+    door(z, { x: 0, z: 5.82, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE BLACK FOREST                                          */
+  /* ---------------------------------------------------------- */
+  #buildBlackForest() {
+    const z = this.#newZone('blackForest');
+    z.spawn.set(0, 0, 20.2);
+    z.spawnYaw = 0;
+    z.fog = { color: 0x101817, density: 0.085 };
+
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x273329, roughness: 1 });
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(25, 64), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.015;
+    ground.name = 'black forest floor';
+    z.group.add(ground);
+    new THREE.TextureLoader().load(encodeURI('puplic/polyhaven/daylight-garden/forest_ground_04/forest_ground_04_diff_1k.jpg'), (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(9, 9);
+      groundMat.map = tex;
+      groundMat.color.set(0x586258);
+      groundMat.needsUpdate = true;
+    });
+
+    // Invisible thicket at the perimeter keeps the player inside the clearing.
+    z.colliders.push(
+      { minX: -26, maxX: 26, minZ: -26, maxZ: -24 },
+      { minX: -26, maxX: 26, minZ: 24, maxZ: 26 },
+      { minX: -26, maxX: -24, minZ: -26, maxZ: 26 },
+      { minX: 24, maxX: 26, minZ: -26, maxZ: 26 },
+    );
+
+    const rng = mulberry32(0xB04A5);
+    const trunkGeo = new THREE.CylinderGeometry(0.16, 0.24, 5.2, 7);
+    const crownGeo = new THREE.ConeGeometry(1.25, 4.8, 8);
+    const trunks = new THREE.InstancedMesh(trunkGeo, mat(0x201b17, { roughness: 1 }), 132);
+    const crowns = new THREE.InstancedMesh(crownGeo, mat(0x13241d, { roughness: 1 }), 132);
+    const dummy = new THREE.Object3D();
+    for (let i = 0; i < 132; i++) {
+      const a = rng() * Math.PI * 2;
+      const radius = i < 84 ? 17.5 + rng() * 6.2 : 8 + rng() * 15.5;
+      let x = Math.cos(a) * radius;
+      let zz = Math.sin(a) * radius;
+      // Keep the arrival path and the central conversation readable.
+      if (Math.abs(x) < 2.6 && zz > 10) x += x < 0 ? -3.2 : 3.2;
+      const scale = 0.72 + rng() * 0.76;
+      dummy.position.set(x, 2.6 * scale, zz);
+      dummy.rotation.set(0, rng() * Math.PI * 2, (rng() - 0.5) * 0.06);
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      trunks.setMatrixAt(i, dummy.matrix);
+      dummy.position.y = (5.2 + 2.0) * scale;
+      dummy.rotation.y += rng();
+      dummy.updateMatrix();
+      crowns.setMatrixAt(i, dummy.matrix);
+    }
+    trunks.castShadow = crowns.castShadow = true;
+    trunks.receiveShadow = true;
+    z.group.add(trunks, crowns);
+
+    const churchWood = mat(0x211914, { roughness: 0.94 });
+    const roofWood = mat(0x0e1110, { roughness: 0.86 });
+    const churchPositions = [];
+    const churchStates = [];
+    const makeChurch = (index, x, zz, yaw) => {
+      const church = new THREE.Group();
+      church.position.set(x, 0, zz);
+      church.rotation.y = yaw;
+      const nave = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.05, 3.2), churchWood);
+      nave.position.y = 1.025;
+      const naveRoof = new THREE.Mesh(new THREE.ConeGeometry(2.1, 1.7, 4), roofWood);
+      naveRoof.position.y = 2.85;
+      naveRoof.rotation.y = Math.PI / 4;
+      naveRoof.scale.z = 1.32;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(1.18, 3.7, 1.2), churchWood);
+      tower.position.set(0, 2.45, -0.82);
+      const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(1.15, 2.35, 4), roofWood);
+      towerRoof.position.set(0, 5.45, -0.82);
+      towerRoof.rotation.y = Math.PI / 4;
+      const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.66, 0.38), churchWood);
+      lantern.position.set(0, 6.82, -0.82);
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.7, 4), roofWood);
+      spire.position.set(0, 7.95, -0.82);
+      spire.rotation.y = Math.PI / 4;
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.62, 0.07), roofWood);
+      crossV.position.set(0, 9.05, -0.82);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.07, 0.07), roofWood);
+      crossH.position.set(0, 9.1, -0.82);
+      church.add(nave, naveRoof, tower, towerRoof, lantern, spire, crossV, crossH);
+      church.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      z.group.add(church);
+      churchPositions.push(new THREE.Vector3(x, 0, zz));
+      z.colliders.push({ minX: x - 1.65, maxX: x + 1.65, minZ: zz - 1.9, maxZ: zz + 1.9 });
+      const item = {
+        id: `forest-church-${index + 1}`, type: 'church', label: `Douse stave church ${index + 1} of 10 with gasoline`,
+        title: `STAVE CHURCH ${index + 1} / 10`, pos: new THREE.Vector3(x, 1.2, zz), radius: 2.35,
+        lines: [
+          'Black timber, stacked roofs, dragon-dark silhouette. The fog has filled every seat.',
+          'It is unmistakably a traditional Norwegian stave church, built here at the scale of a memory.',
+          'No flame touches it. The lighter throws one small gold reflection across the old wood.',
+        ],
+        churchIndex: index,
+      };
+      z.interactables.push(item);
+      churchStates.push({
+        index, group: church, pos: new THREE.Vector3(x, 0, zz), item,
+        primed: false, burning: false, fireT: 0, fx: null, burnMeshes: [],
+      });
+    };
+
+    // Exactly ten stave churches, arranged like a broken clock around the clearing.
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + 0.18;
+      const radius = 13.1 + (i % 2) * 2.3;
+      makeChurch(i, Math.cos(a) * radius, Math.sin(a) * radius - 1.2, -a + Math.PI / 2);
+    }
+    z.anchors.churches = churchPositions;
+    z.animated.forestChurches = churchStates;
+    z.animated.churchCrackleT = 0.4;
+
+    // The apparition waits in the one place the ring of buildings cannot hide.
+    z.anchors.varg = new THREE.Vector3(0, 0, -2.3);
+    z.anchorYaws = { varg: 0 };
+    z.waypoints = [
+      new THREE.Vector3(-5, 0, 4), new THREE.Vector3(5, 0, 5),
+      new THREE.Vector3(-6, 0, -5), new THREE.Vector3(6, 0, -6),
+      new THREE.Vector3(0, 0, 8), new THREE.Vector3(0, 0, -10),
+    ];
+
+    // A lot of boars. They roam in overlapping crooked ellipses and never
+    // collide with the player; the forest is already crowded enough.
+    const boars = [];
+    const boarBodyMat = mat(0x302820, { roughness: 1 });
+    const boarDarkMat = mat(0x171514, { roughness: 1 });
+    for (let i = 0; i < 34; i++) {
+      const boar = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.48, 4, 8), boarBodyMat);
+      body.rotation.z = Math.PI / 2;
+      body.position.y = 0.42;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8), boarBodyMat);
+      head.position.set(0, 0.43, 0.43);
+      const snout = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.28, 9), boarDarkMat);
+      snout.rotation.x = Math.PI / 2;
+      snout.position.set(0, 0.39, 0.69);
+      const tuskMat = mat(0xc9b98f, { roughness: 0.8 });
+      for (const side of [-1, 1]) {
+        const tusk = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.15, 7), tuskMat);
+        tusk.rotation.x = Math.PI / 2;
+        tusk.position.set(side * 0.12, 0.35, 0.82);
+        boar.add(tusk);
+      }
+      for (const [lx, lz] of [[-0.18, -0.23], [0.18, -0.23], [-0.18, 0.2], [0.18, 0.2]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.3, 0.075), boarDarkMat);
+        leg.position.set(lx, 0.16, lz);
+        boar.add(leg);
+      }
+      boar.add(body, head, snout);
+      const a = rng() * Math.PI * 2;
+      const r = 4 + rng() * 16;
+      const centerX = Math.cos(a) * r;
+      const centerZ = Math.sin(a) * r;
+      boar.position.set(centerX, 0, centerZ);
+      const scale = 0.7 + rng() * 0.58;
+      boar.scale.setScalar(scale);
+      z.group.add(boar);
+      boars.push({
+        group: boar, centerX, centerZ, phase: rng() * Math.PI * 2,
+        speed: 0.12 + rng() * 0.22, radiusX: 0.9 + rng() * 3.1,
+        radiusZ: 0.8 + rng() * 2.7, bob: rng() * Math.PI * 2,
+      });
+    }
+    z.animated.forestBoars = boars;
+    z.animated.boarSqueakT = 0.9;
+
+    // Low fog banks supplement the scene fog so nearby fog has readable motion.
+    const fogTex = canvasTexture(192, 96, (ctx, w, h) => {
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2);
+      grad.addColorStop(0, 'rgba(190,205,197,0.34)');
+      grad.addColorStop(0.55, 'rgba(145,165,157,0.16)');
+      grad.addColorStop(1, 'rgba(100,120,114,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+    z.animated.forestFog = [];
+    for (let i = 0; i < 28; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: fogTex, transparent: true, opacity: 0.34, depthWrite: false }));
+      sprite.position.set(-21 + rng() * 42, 0.65 + rng() * 1.25, -21 + rng() * 42);
+      sprite.scale.set(6 + rng() * 8, 2.2 + rng() * 2.5, 1);
+      z.group.add(sprite);
+      z.animated.forestFog.push({ sprite, speed: 0.08 + rng() * 0.16, phase: rng() * Math.PI * 2 });
+    }
+
+    z.group.add(new THREE.HemisphereLight(0x506965, 0x080b09, 0.72));
+    const moon = new THREE.DirectionalLight(0x9bb9b4, 1.3);
+    moon.position.set(-9, 14, 7);
+    moon.castShadow = true;
+    z.group.add(moon);
+
+    door(z, { x: 0, z: 23.2, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.interactables.push({
+      id: 'forest-count', type: 'flavor', label: 'Read the moss-covered marker',
+      title: 'CHURCH BURNING FIRE SENSATION COCKBURN', pos: new THREE.Vector3(2.1, 0.7, 20.3), radius: 2.0,
+      lines: ['TEN CHURCHES. THIRTY-FOUR BOARS. ONE CONVERSATION THE FOG CANNOT FINISH.'],
+    });
+  }
+
+  primeForestChurch(index) {
+    const church = this.zones.get('blackForest')?.animated.forestChurches?.[index];
+    if (!church) return { status: 'missing' };
+    if (church.burning) return { status: 'burning', church };
+    if (church.primed) return { status: 'primed', church };
+    church.primed = true;
+    church.item.label = `Primed — click the lighter on stave church ${index + 1}`;
+
+    // A dull petrol sheen gives the dousing readable feedback in the fog.
+    if (church.sheen) {
+      church.sheen.visible = true;
+    } else {
+      const sheen = new THREE.Mesh(
+        new THREE.CircleGeometry(1.55, 24),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x15191b, roughness: 0.08, metalness: 0.08,
+          clearcoat: 0.9, transparent: true, opacity: 0.72,
+        })
+      );
+      sheen.rotation.x = -Math.PI / 2;
+      sheen.position.y = 0.025;
+      sheen.userData.noSplat = true;
+      church.group.add(sheen);
+      church.sheen = sheen;
+    }
+    return { status: 'primed', church, fresh: true };
+  }
+
+  igniteForestChurch(playerPos, forward, range = 4.1) {
+    const churches = this.zones.get('blackForest')?.animated.forestChurches ?? [];
+    let best = null;
+    let bestScore = Infinity;
+    for (const church of churches) {
+      const to = church.pos.clone().sub(playerPos);
+      to.y = 0;
+      const d = to.length();
+      if (d > range || d < 0.01) continue;
+      const facing = to.normalize().dot(forward);
+      const score = d - facing * 0.8;
+      if (facing > 0.12 && score < bestScore) {
+        best = church;
+        bestScore = score;
+      }
+    }
+    if (!best) return { status: 'none' };
+    if (best.burning) return { status: 'burning', church: best };
+    if (!best.primed) return { status: 'needsGas', church: best };
+
+    if (!best.fx) this.#buildChurchFire(best);
+    best.burning = true;
+    best.fireT = 0;
+    best.fx.group.visible = true;
+    best.fx.light.intensity = 5.5;
+    best.item.label = `Stave church ${best.index + 1} is burning`;
+    if (best.sheen) best.sheen.visible = false;
+
+    best.group.traverse((o) => {
+      if (!o.isMesh || o.userData.churchFx || o === best.sheen) return;
+      if (!o.userData.burnMaterial) {
+        o.material = o.material.clone();
+        o.userData.burnMaterial = true;
+        o.userData.originalColor = o.material.color?.clone() ?? null;
+        best.burnMeshes.push(o);
+      }
+    });
+    return { status: 'ignited', church: best };
+  }
+
+  #buildChurchFire(church) {
+    const fx = new THREE.Group();
+    fx.visible = false;
+    fx.userData.churchFx = true;
+    const flames = [];
+    const smoke = [];
+    const rng = mulberry32(0xF1AE + church.index * 491);
+    const flameColors = [0xffd85c, 0xff8b2c, 0xe83b19];
+
+    for (let i = 0; i < 28; i++) {
+      const material = new THREE.MeshBasicMaterial({
+        color: flameColors[i % flameColors.length], transparent: true,
+        opacity: 0.86, depthWrite: false, blending: THREE.AdditiveBlending,
+      });
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13 + rng() * 0.18, 0.75 + rng() * 1.05, 8), material);
+      const high = i >= 17;
+      flame.position.set(
+        (rng() - 0.5) * (high ? 1.6 : 2.7),
+        high ? 2.25 + rng() * 4.5 : 0.35 + rng() * 2.35,
+        (rng() - 0.5) * (high ? 1.45 : 3.45),
+      );
+      flame.userData.churchFx = true;
+      flame.userData.phase = rng() * Math.PI * 2;
+      flame.userData.baseY = flame.position.y;
+      fx.add(flame);
+      flames.push(flame);
+    }
+
+    const smokeTex = this.zones.get('blackForest').churchSmokeTex ?? canvasTexture(128, 128, (ctx, w, h) => {
+      const grad = ctx.createRadialGradient(w / 2, h / 2, 3, w / 2, h / 2, w / 2);
+      grad.addColorStop(0, 'rgba(22,24,23,0.72)');
+      grad.addColorStop(0.55, 'rgba(39,43,41,0.42)');
+      grad.addColorStop(1, 'rgba(50,56,53,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+    });
+    this.zones.get('blackForest').churchSmokeTex = smokeTex;
+    for (let i = 0; i < 12; i++) {
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, opacity: 0, depthWrite: false }));
+      sprite.position.set((rng() - 0.5) * 1.4, 2.4 + rng() * 2, (rng() - 0.5) * 1.2);
+      sprite.scale.setScalar(1.2 + rng() * 1.5);
+      sprite.userData.churchFx = true;
+      fx.add(sprite);
+      smoke.push({ sprite, phase: rng(), speed: 0.1 + rng() * 0.09, drift: (rng() - 0.5) * 0.7 });
+    }
+    const light = new THREE.PointLight(0xff5c25, 0, 13, 1.6);
+    light.position.set(0, 3.1, 0);
+    light.userData.churchFx = true;
+    fx.add(light);
+    church.group.add(fx);
+    church.fx = { group: fx, flames, smoke, light };
+  }
+
+  resetForestChurches() {
+    const z = this.zones.get('blackForest');
+    for (const church of z?.animated.forestChurches ?? []) {
+      church.primed = false;
+      church.burning = false;
+      church.fireT = 0;
+      church.item.label = `Douse stave church ${church.index + 1} of 10 with gasoline`;
+      if (church.sheen) church.sheen.visible = false;
+      if (church.fx) {
+        church.fx.group.visible = false;
+        church.fx.light.intensity = 0;
+      }
+      for (const mesh of church.burnMeshes) {
+        if (mesh.userData.originalColor && mesh.material.color) mesh.material.color.copy(mesh.userData.originalColor);
+      }
+    }
+    if (z) z.animated.churchCrackleT = 0.4;
+  }
+
   /* ============================================================
      Runtime API
      ============================================================ */
@@ -3794,11 +5059,88 @@ export class World {
         b.group.rotation.z = Math.sin(a * 1.7) * 0.09;
       }
     }
+    if (z.animated.steroidCloud) {
+      const c = z.animated.steroidCloud;
+      c.group.position.y = c.baseY + Math.sin(t * 0.68) * 0.08;
+      c.group.rotation.y = Math.sin(t * 0.22) * 0.06;
+      c.light.intensity = c.light.userData.base * (0.82 + Math.sin(t * 2.1) * 0.18 + kick * 0.3);
+    }
+    if (z.animated.steroidRain) {
+      for (const r of z.animated.steroidRain) {
+        r.group.position.y -= dt * r.speed;
+        if (r.group.position.y < r.bottom) r.group.position.y = r.top;
+        r.group.position.x = r.baseX + Math.sin(t * 0.72 + r.phase) * r.drift;
+        r.group.position.z = r.baseZ + Math.cos(t * 0.57 + r.phase) * r.drift * 0.7;
+        r.group.rotation.x += dt * r.spin;
+        r.group.rotation.z += dt * r.spin * 0.63;
+      }
+    }
     if (z.animated.editions) {
       for (const e of z.animated.editions) {
         e.group.rotation.y += dt * 0.075 * e.direction;
         e.group.position.y = e.baseY + Math.sin(t * 0.72 + e.phase) * 0.012;
       }
+    }
+    if (z.animated.toiletGuard) {
+      const guard = z.animated.toiletGuard;
+      const lineIndex = Math.floor(t / 3.4) % guard.bubbleMaps.length;
+      if (lineIndex !== guard.lineIndex) {
+        guard.lineIndex = lineIndex;
+        guard.bubble.material.map = guard.bubbleMaps[lineIndex];
+        guard.bubble.material.needsUpdate = true;
+        guard.bubbleChangedAt = t;
+      }
+      const bubbleAge = t - guard.bubbleChangedAt;
+      const bubblePop = bubbleAge >= 0 && bubbleAge < 0.34
+        ? Math.sin((bubbleAge / 0.34) * Math.PI) * 0.055 : 0;
+      guard.bubble.scale.set(1 + bubblePop, 1 + bubblePop, 1);
+      // He keeps pointing; the poop answers only with a tiny, insoluble wobble.
+      guard.head.rotation.y = Math.sin(t * 1.1) * 0.13 - 0.18;
+      guard.head.rotation.z = Math.sin(t * 0.72) * 0.035;
+      guard.arm.rotation.z = 0.28 + Math.sin(t * 2.15) * 0.08;
+      guard.group.position.y = Math.abs(Math.sin(t * 1.25)) * 0.012;
+      if (guard.poop) {
+        guard.poop.rotation.y = Math.sin(t * 0.83) * 0.055;
+        guard.poop.scale.y = 1 + Math.sin(t * 1.67) * 0.018 + kick * 0.026;
+      }
+      if (guard.flush) guard.flush.rotation.x = Math.sin(t * 9.2) * 0.18;
+      if (guard.beacon) {
+        const flash = Math.pow(Math.max(0, Math.sin(t * 4.8)), 5);
+        guard.beacon.light.intensity = 0.7 + flash * 8.5 + kick * 2.2;
+        guard.beacon.dome.material.emissiveIntensity = 1.5 + flash * 4.8;
+        guard.beacon.dome.rotation.y += dt * 4.2;
+      }
+    }
+    if (z.animated.restroomPatrons) {
+      const patrons = z.animated.restroomPatrons;
+      for (let i = 0; i < patrons.peeing.length; i++) {
+        const p = patrons.peeing[i];
+        const sway = Math.sin(t * 1.35 + p.phase);
+        p.group.position.y = Math.abs(sway) * 0.009;
+        p.torso.rotation.z = sway * 0.018;
+        p.head.rotation.y = Math.sin(t * 0.57 + p.phase) * 0.08;
+        p.stream.material.opacity = 0.56 + Math.sin(t * 8.4 + p.phase) * 0.14;
+        p.stream.scale.y = 0.92 + Math.sin(t * 6.7 + p.phase) * 0.08;
+        for (let d = 0; d < p.drops.length; d++) {
+          const progress = (t * 1.9 + p.phase + d * 0.23) % 1;
+          const drop = p.drops[d];
+          drop.position.x = -6.72 - progress * 0.57;
+          drop.position.y = 0.72 - Math.sin(progress * Math.PI) * 0.055;
+          drop.position.z = p.z + Math.sin(t * 5.1 + d) * 0.012;
+          drop.scale.setScalar(0.72 + (1 - progress) * 0.42);
+        }
+      }
+      const wash = patrons.washing;
+      const scrub = Math.sin(t * 7.6);
+      wash.arms[0].rotation.x = -0.92 + scrub * 0.14;
+      wash.arms[1].rotation.x = -0.92 - scrub * 0.14;
+      wash.head.rotation.z = Math.sin(t * 1.2) * 0.045;
+      wash.group.position.y = Math.abs(Math.sin(t * 2.3)) * 0.008;
+      const wait = patrons.waiting;
+      wait.head.rotation.y = Math.sin(t * 0.74) * 0.46;
+      wait.head.rotation.z = Math.sin(t * 0.42) * 0.055;
+      wait.legs[0].rotation.x = Math.max(0, Math.sin(t * 4.8)) * 0.12;
+      wait.group.position.y = Math.max(0, Math.sin(t * 4.8)) * 0.016;
     }
     // party strobes: idle shimmer when quiet, hard snap to the beat when the room plays
     if (z.animated.strobes) {
@@ -3941,6 +5283,67 @@ export class World {
       for (const orb of garden.orbs) {
         orb.mesh.position.y = orb.baseY + Math.sin(t * 1.25 + orb.phase) * 0.1;
         orb.mesh.material.emissiveIntensity = 1.1 + kick * 1.4 + Math.sin(t * 1.9 + orb.phase) * 0.22;
+      }
+    }
+    if (z.animated.forestBoars) {
+      for (const b of z.animated.forestBoars) {
+        const a = t * b.speed + b.phase;
+        const x = b.centerX + Math.cos(a) * b.radiusX;
+        const zz = b.centerZ + Math.sin(a * 0.83) * b.radiusZ;
+        const dx = -Math.sin(a) * b.radiusX * b.speed;
+        const dz = Math.cos(a * 0.83) * b.radiusZ * b.speed * 0.83;
+        b.group.position.set(x, Math.abs(Math.sin(t * 4.2 + b.bob)) * 0.025, zz);
+        b.group.rotation.y = Math.atan2(dx, dz);
+        b.group.rotation.z = Math.sin(t * 3.1 + b.bob) * 0.018;
+      }
+      z.animated.boarSqueakT -= dt;
+      if (z.animated.boarSqueakT <= 0) {
+        const variant = Math.floor((t * 7.3) % 4);
+        z.animated.boarSqueakT = 0.48 + ((variant * 0.31) % 1.2);
+        event = { type: 'boarSqueak', variant };
+      }
+    }
+    if (z.animated.forestChurches) {
+      let burningCount = 0;
+      for (const church of z.animated.forestChurches) {
+        if (!church.burning || !church.fx) continue;
+        burningCount++;
+        church.fireT += dt;
+        const grow = clamp(church.fireT / 1.15, 0.05, 1);
+        church.fx.light.intensity = grow * (7.4 + Math.sin(t * 19 + church.index) * 1.25);
+        for (const flame of church.fx.flames) {
+          const flicker = 0.72 + Math.sin(t * 14.5 + flame.userData.phase) * 0.2
+            + Math.sin(t * 31 + flame.userData.phase * 1.7) * 0.08;
+          flame.scale.set(grow * flicker, grow * (0.76 + flicker * 0.48), grow * flicker);
+          flame.position.y = flame.userData.baseY + Math.sin(t * 11 + flame.userData.phase) * 0.1;
+          flame.material.opacity = 0.68 + flicker * 0.2;
+          flame.rotation.y += dt * 1.4;
+        }
+        for (const puff of church.fx.smoke) {
+          const p = (church.fireT * puff.speed + puff.phase) % 1;
+          puff.sprite.position.y = 2.6 + p * 7.5;
+          puff.sprite.position.x = puff.drift * p + Math.sin(t * 0.52 + puff.phase * 8) * 0.28;
+          puff.sprite.material.opacity = grow * Math.sin(p * Math.PI) * 0.38;
+          const size = 1.25 + p * 3.8;
+          puff.sprite.scale.set(size, size, 1);
+        }
+        for (const mesh of church.burnMeshes) {
+          if (mesh.material.color) mesh.material.color.lerp(CHAR_COLOR, dt * 0.008);
+        }
+      }
+      if (burningCount) {
+        z.animated.churchCrackleT -= dt;
+        if (z.animated.churchCrackleT <= 0) {
+          z.animated.churchCrackleT = rand(0.18, 0.52) / Math.min(2.2, 0.8 + burningCount * 0.18);
+          event = { type: 'churchCrackle', variant: Math.floor((t * 13 + burningCount) % 4), burningCount };
+        }
+      }
+    }
+    if (z.animated.forestFog) {
+      for (const bank of z.animated.forestFog) {
+        bank.sprite.position.x += dt * bank.speed;
+        bank.sprite.position.y += Math.sin(t * 0.31 + bank.phase) * dt * 0.035;
+        if (bank.sprite.position.x > 23) bank.sprite.position.x = -23;
       }
     }
     return event;

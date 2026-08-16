@@ -155,6 +155,18 @@ export class AudioEngine {
     }, 40);
   }
 
+  /** Hard boundary for acoustically sealed rooms. */
+  cutMusic() {
+    clearInterval(this.#fadeTimer);
+    if (this.#music) {
+      this.#music.pause();
+      this.#music.volume = 0;
+    }
+    this.#music = null;
+    this.#musicKey = null;
+    this.#musicTarget = 0;
+  }
+
 
   get ready() { return !!this.#ctx; }
   get ctx() { return this.#ctx; }
@@ -206,11 +218,11 @@ export class AudioEngine {
   /* ---------------- generated room scores ---------------- */
 
   /** Select a room's coded score, or disable it while a communal record plays. */
-  setRoomScore(zoneKey, enabled = true) {
+  setRoomScore(zoneKey, enabled = true, immediate = false) {
     const nextKey = enabled && ROOM_SCORES[zoneKey] ? zoneKey : null;
     if (this.#roomScoreKey === nextKey && (!!this.#roomScore === !!nextKey)) return;
     this.#roomScoreKey = nextKey;
-    this.#stopRoomScoreRig();
+    this.#stopRoomScoreRig(immediate);
     if (nextKey && this.#ctx) this.#startRoomScore(nextKey);
   }
 
@@ -282,7 +294,7 @@ export class AudioEngine {
     this.#roomScoreStep = 0;
   }
 
-  #stopRoomScoreRig() {
+  #stopRoomScoreRig(immediate = false) {
     const s = this.#roomScore;
     if (!s) return;
     this.#roomScore = null;
@@ -290,10 +302,11 @@ export class AudioEngine {
     if (!this.#ctx) return;
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
-    s.bus.gain.setTargetAtTime(0.0001, t, 0.28);
+    if (immediate) s.bus.gain.setValueAtTime(0.0001, t);
+    else s.bus.gain.setTargetAtTime(0.0001, t, 0.28);
     if (s.lofiNodes) {
-      try { s.lofiNodes.hiss.stop(t + 1.5); } catch { /* already composted */ }
-      try { s.lofiNodes.wow.stop(t + 1.5); } catch { /* already composted */ }
+      try { s.lofiNodes.hiss.stop(t + (immediate ? 0.02 : 1.5)); } catch { /* already composted */ }
+      try { s.lofiNodes.wow.stop(t + (immediate ? 0.02 : 1.5)); } catch { /* already composted */ }
     }
     setTimeout(() => {
       if (s.lofiNodes) {
@@ -303,7 +316,7 @@ export class AudioEngine {
       }
       try { s.bus.disconnect(); } catch { /* garnish */ }
       try { s.filter.disconnect(); } catch { /* garnish */ }
-    }, 1800);
+    }, immediate ? 80 : 1800);
   }
 
   #roomScoreTick() {
@@ -439,11 +452,217 @@ export class AudioEngine {
     vibrato.stop(t + dur + 0.04);
   }
 
+  /** Short original pseudo-rap syllables: no words or samples, just a pitched
+      glottal carrier snapped through changing mouth formants and one dark echo. */
+  #scoreRapChop(t, s, rap, eventIndex) {
+    const dur = s.stepDur * rap.durationSteps[eventIndex % rap.durationSteps.length];
+    const semi = rap.notes[eventIndex % rap.notes.length];
+    const f0 = s.profile.root * Math.pow(2, semi / 12) * (rap.octave ?? 2);
+    const vowel = rap.vowels[eventIndex % rap.vowels.length];
+
+    const carrier = this.#ctx.createOscillator();
+    carrier.type = eventIndex % 3 === 2 ? 'square' : 'sawtooth';
+    carrier.frequency.setValueAtTime(f0 * (rap.scoop ?? 1.18), t);
+    carrier.frequency.exponentialRampToValueAtTime(f0, t + dur * 0.22);
+    carrier.frequency.exponentialRampToValueAtTime(f0 * (rap.drop ?? 0.88), t + dur);
+
+    const throat = this.#ctx.createBiquadFilter();
+    throat.type = 'lowpass';
+    throat.frequency.value = rap.cutoff ?? 2100;
+    throat.Q.value = 0.85;
+    carrier.connect(throat);
+
+    const mouth = this.#ctx.createGain();
+    const peak = rap.level ?? 0.035;
+    mouth.gain.setValueAtTime(0.0001, t);
+    mouth.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    mouth.gain.exponentialRampToValueAtTime(peak * 0.58, t + dur * 0.34);
+    mouth.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    for (let i = 0; i < 2; i++) {
+      const formant = this.#ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.setValueAtTime(vowel[i], t);
+      formant.frequency.exponentialRampToValueAtTime(vowel[i + 2], t + dur * 0.72);
+      formant.Q.value = i ? 8.5 : 6.2;
+      const formantGain = this.#ctx.createGain();
+      formantGain.gain.value = i ? 0.68 : 1;
+      throat.connect(formant).connect(formantGain).connect(mouth);
+    }
+
+    mouth.connect(s.bus);
+    const echo = this.#ctx.createDelay(0.5);
+    echo.delayTime.value = s.stepDur * (rap.echoSteps ?? 3);
+    const echoGain = this.#ctx.createGain();
+    echoGain.gain.value = rap.echoLevel ?? 0.18;
+    mouth.connect(echo).connect(echoGain).connect(s.bus);
+
+    carrier.start(t);
+    carrier.stop(t + dur + 0.04);
+  }
+
+  /** A tiny tiled-room reflection network. The early reflections are short
+      enough to read as hard ceramic walls, not as a musical echo. */
+  #restroomReflections(input, bus) {
+    for (const [delayTime, level] of [[0.021, 0.19], [0.037, 0.12], [0.061, 0.065]]) {
+      const delay = this.#ctx.createDelay(0.09);
+      const gain = this.#ctx.createGain();
+      delay.delayTime.value = delayTime;
+      gain.gain.value = level;
+      input.connect(delay).connect(gain).connect(bus);
+    }
+  }
+
+  /** Layered pressure, cloth and turbulent-air synthesis. The pitched body is
+      deliberately unstable and buried under filtered noise so it reads as a
+      close fart rather than a bass synthesizer. */
+  #scoreRestroomFart(t, bus, variant = 0, accent = false) {
+    if (!this.#ctx) return;
+    const dur = accent ? 0.105 + (variant % 3) * 0.025 : 0.28 + (variant % 4) * 0.055;
+    const peak = accent ? 0.16 : 0.31;
+    const output = this.#ctx.createGain();
+    output.gain.value = 0.9;
+    const panner = this.#ctx.createStereoPanner?.() ?? this.#ctx.createGain();
+    if (panner.pan) panner.pan.value = ((variant % 5) - 2) * 0.18;
+    output.connect(panner).connect(bus);
+    this.#restroomReflections(panner, bus);
+
+    const body = this.#ctx.createOscillator();
+    body.type = variant % 2 ? 'triangle' : 'sawtooth';
+    const startFreq = (accent ? 118 : 88) + (variant % 4) * 9;
+    body.frequency.setValueAtTime(startFreq, t);
+    body.frequency.exponentialRampToValueAtTime(accent ? 54 : 38, t + dur);
+    const bodyFilter = this.#ctx.createBiquadFilter();
+    bodyFilter.type = 'lowpass';
+    bodyFilter.frequency.value = accent ? 250 : 190;
+    bodyFilter.Q.value = 1.8;
+    const bodyGain = this.#ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.0001, t);
+    bodyGain.gain.exponentialRampToValueAtTime(peak * 0.72, t + 0.009);
+    bodyGain.gain.exponentialRampToValueAtTime(peak * 0.31, t + dur * 0.64);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    body.connect(bodyFilter).connect(bodyGain).connect(output);
+
+    const air = this.#ctx.createBufferSource();
+    air.buffer = this.#noiseBuffer;
+    air.loop = true;
+    const airFilter = this.#ctx.createBiquadFilter();
+    airFilter.type = 'bandpass';
+    airFilter.frequency.setValueAtTime(accent ? 410 : 265, t);
+    airFilter.frequency.exponentialRampToValueAtTime(accent ? 185 : 118, t + dur);
+    airFilter.Q.value = accent ? 2.8 : 2.1;
+    const airGain = this.#ctx.createGain();
+    airGain.gain.setValueAtTime(0.0001, t);
+    airGain.gain.exponentialRampToValueAtTime(peak, t + 0.006);
+    // Irregular pressure packets make the air flap instead of hissing evenly.
+    const packets = accent ? 3 : 6;
+    for (let i = 1; i < packets; i++) {
+      const tt = t + dur * (i / packets);
+      airGain.gain.setValueAtTime(peak * (i % 2 ? 0.34 : 0.82) * (1 - i / (packets + 2)), tt);
+    }
+    airGain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    air.connect(airFilter).connect(airGain).connect(output);
+
+    // A brief damp burble gives selected hits a convincingly unfortunate end.
+    if (!accent && variant % 3 === 2) {
+      const wet = this.#ctx.createBufferSource();
+      wet.buffer = this.#noiseBuffer;
+      const wetFilter = this.#ctx.createBiquadFilter();
+      wetFilter.type = 'bandpass'; wetFilter.frequency.value = 720; wetFilter.Q.value = 6.5;
+      const wetGain = this.#ctx.createGain();
+      const wt = t + dur * 0.54;
+      wetGain.gain.setValueAtTime(0.0001, wt);
+      wetGain.gain.exponentialRampToValueAtTime(peak * 0.24, wt + 0.008);
+      wetGain.gain.exponentialRampToValueAtTime(0.0001, Math.min(t + dur, wt + 0.075));
+      wet.connect(wetFilter).connect(wetGain).connect(output);
+      wet.start(wt, rand(0, 0.8)); wet.stop(t + dur + 0.02);
+    }
+
+    body.start(t); air.start(t, rand(0, 0.8));
+    body.stop(t + dur + 0.03); air.stop(t + dur + 0.03);
+  }
+
+  /** Broadband stream plus individual ceramic-bowl droplets. All harmonic
+      content is confined to short water-drop chirps; there is no instrument. */
+  #scoreRestroomPiss(t, bus, variant = 0, stream = false) {
+    if (!this.#ctx) return;
+    const dur = stream ? 1.18 + (variant % 3) * 0.16 : 0.085 + (variant % 4) * 0.025;
+    const peak = stream ? 0.115 : 0.092;
+    const output = this.#ctx.createGain();
+    const panner = this.#ctx.createStereoPanner?.() ?? this.#ctx.createGain();
+    if (panner.pan) panner.pan.value = ((variant % 7) - 3) * 0.14;
+    output.connect(panner).connect(bus);
+    this.#restroomReflections(panner, bus);
+
+    const spray = this.#ctx.createBufferSource();
+    spray.buffer = this.#noiseBuffer;
+    spray.loop = true;
+    const high = this.#ctx.createBiquadFilter();
+    high.type = 'highpass'; high.frequency.value = stream ? 850 : 1250;
+    const splash = this.#ctx.createBiquadFilter();
+    splash.type = 'bandpass';
+    splash.frequency.value = 2450 + (variant % 5) * 310;
+    splash.Q.value = stream ? 0.72 : 1.25;
+    const sprayGain = this.#ctx.createGain();
+    sprayGain.gain.setValueAtTime(0.0001, t);
+    sprayGain.gain.exponentialRampToValueAtTime(peak, t + (stream ? 0.075 : 0.004));
+    if (stream) {
+      sprayGain.gain.setValueAtTime(peak * 0.76, t + dur * 0.32);
+      sprayGain.gain.setValueAtTime(peak * 0.94, t + dur * 0.63);
+      sprayGain.gain.setValueAtTime(peak * 0.58, t + dur * 0.86);
+    }
+    sprayGain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    spray.connect(high).connect(splash).connect(sprayGain).connect(output);
+
+    if (stream) {
+      // A second, narrow stream carries the bright granular detail.
+      const needle = this.#ctx.createBiquadFilter();
+      needle.type = 'bandpass'; needle.frequency.value = 5900; needle.Q.value = 2.4;
+      const needleGain = this.#ctx.createGain();
+      needleGain.gain.value = 0.23;
+      high.connect(needle).connect(needleGain).connect(sprayGain);
+    }
+
+    const drops = stream ? 3 : 1;
+    for (let i = 0; i < drops; i++) {
+      const dt = t + (stream ? dur * (0.24 + i * 0.27) : 0.012);
+      const drop = this.#ctx.createOscillator();
+      drop.type = 'sine';
+      const f = 1120 + ((variant + i) % 5) * 170;
+      drop.frequency.setValueAtTime(f, dt);
+      drop.frequency.exponentialRampToValueAtTime(f * 0.44, dt + 0.055);
+      const dropGain = this.#ctx.createGain();
+      dropGain.gain.setValueAtTime(0.0001, dt);
+      dropGain.gain.exponentialRampToValueAtTime(stream ? 0.032 : 0.048, dt + 0.002);
+      dropGain.gain.exponentialRampToValueAtTime(0.0001, dt + 0.065);
+      drop.connect(dropGain).connect(output);
+      drop.start(dt); drop.stop(dt + 0.075);
+    }
+
+    spray.start(t, rand(0, 0.8)); spray.stop(t + dur + 0.025);
+  }
+
+  #scoreRestroomStep(step, t, s) {
+    const r = s.profile.restroom;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
+    if (r.floor.includes(pos)) this.#scoreRestroomFart(swung, s.bus, Math.floor(step / 4), false);
+    if (r.accents.includes(pos)) this.#scoreRestroomFart(swung, s.bus, step + 2, true);
+    if (r.splashes.includes(pos)) this.#scoreRestroomPiss(swung, s.bus, step, false);
+    // One changing urinal stream per bar supplies the sustained shuffle layer.
+    if (pos === 0) this.#scoreRestroomPiss(swung + s.stepDur * 0.42, s.bus, step / 16, true);
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
     const lofi = s.lofi;
     const pos = step % 16;
     const swung = pos % 2 ? t + s.stepDur * p.swing : t;
+
+    if (p.restroom) {
+      this.#scoreRestroomStep(step, t, s);
+      return;
+    }
 
     if (p.kick.includes(pos)) {
       this.#scoreTone(swung, 145, { bus: s.bus, peak: p.kickLevel ?? 0.56, decay: 0.22, cutoff: 500, slide: 0.24 });
@@ -461,7 +680,7 @@ export class AudioEngine {
           peak: p.bassLevel ?? 0.16,
           decay: s.stepDur * (p.bassDecay ?? 1.7),
           cutoff: Math.min(p.cutoff, 520),
-          slide: s.key === 'vault' ? 0.92 : 1,
+          slide: p.bassSlide ?? (s.key === 'vault' ? 0.92 : 1),
         });
       }
     }
@@ -493,9 +712,20 @@ export class AudioEngine {
     if (p.vocal?.steps.includes(step)) {
       this.#scoreVocalMoan(swung, s, p.vocal, p.vocal.steps.indexOf(step));
     }
+    if (p.rap?.steps.includes(step)) {
+      this.#scoreRapChop(swung, s, p.rap, p.rap.steps.indexOf(step));
+    }
   }
 
   /* ---------------- game verbs ---------------- */
+
+  restroomFart(variant = 0) {
+    if (this.#ctx) this.#scoreRestroomFart(this.#ctx.currentTime + 0.012, this.#master, variant, false);
+  }
+
+  restroomPiss(variant = 0) {
+    if (this.#ctx) this.#scoreRestroomPiss(this.#ctx.currentTime + 0.012, this.#master, variant, true);
+  }
 
   uiMove()    { this.#tone({ freq: 1150, type: 'sine', peak: 0.06, decay: 0.05 }); }
   uiConfirm() { this.#tone({ freq: 740, type: 'sine', peak: 0.09, decay: 0.09 });
@@ -548,6 +778,69 @@ export class AudioEngine {
       this.talkBlip(variant % 2 ? 0.58 : 0.76);
       if (hard) this.#tone({ freq: 74, freqEnd: 118, type: 'sawtooth', peak: 0.06, attack: 0.03, decay: 0.24 });
     }, 35);
+  }
+
+  /** The forest boars sound less like animals than wet kitchen sponges being
+      squeezed inside a rubber glove. That is deliberate. */
+  boarSqueak(variant = 0) {
+    if (!this.#ctx) return;
+    const base = 520 + (variant % 4) * 95;
+    this.#tone({
+      freq: base * 0.72,
+      freqEnd: base * 1.42,
+      type: 'square',
+      peak: 0.045,
+      attack: 0.012,
+      decay: 0.09 + (variant % 3) * 0.025,
+    });
+    this.#noise({
+      peak: 0.055,
+      attack: 0.004,
+      decay: 0.13,
+      filterFreq: 1180 + variant * 70,
+      filterEnd: 430,
+      q: 5.2,
+      type: 'bandpass',
+    });
+    setTimeout(() => this.#tone({
+      freq: base * 1.1,
+      freqEnd: base * 0.63,
+      type: 'triangle',
+      peak: 0.035,
+      attack: 0.006,
+      decay: 0.08,
+    }), 55);
+  }
+
+  forestIgnite() {
+    this.#noise({ peak: 0.22, attack: 0.025, decay: 1.15, filterFreq: 2900, filterEnd: 360, q: 0.7, type: 'bandpass' });
+    this.#tone({ freq: 94, freqEnd: 42, type: 'sawtooth', peak: 0.12, attack: 0.02, decay: 0.7 });
+  }
+
+  gasolinePour() {
+    this.#noise({ peak: 0.11, attack: 0.08, decay: 0.72, filterFreq: 1250, filterEnd: 310, q: 1.8, type: 'bandpass' });
+    this.#tone({ freq: 118, freqEnd: 72, type: 'sine', peak: 0.035, attack: 0.04, decay: 0.58 });
+  }
+
+  lighterClick() {
+    this.#noise({ peak: 0.08, attack: 0.001, decay: 0.035, filterFreq: 5200, filterEnd: 1900, q: 3.4, type: 'highpass' });
+    this.#tone({ freq: 1840, freqEnd: 960, type: 'square', peak: 0.025, attack: 0.001, decay: 0.04 });
+  }
+
+  churchCrackle(variant = 0, burningCount = 1) {
+    const level = Math.min(0.12, 0.035 + burningCount * 0.009);
+    this.#noise({
+      peak: level,
+      attack: 0.001,
+      decay: 0.045 + (variant % 3) * 0.028,
+      filterFreq: 1750 + variant * 610,
+      filterEnd: 420,
+      q: 1.2,
+      type: 'bandpass',
+    });
+    if (variant % 3 === 0) {
+      this.#tone({ freq: 210 + variant * 33, freqEnd: 74, type: 'triangle', peak: level * 0.42, attack: 0.002, decay: 0.09 });
+    }
   }
 
   /** A mumble-voice syllable: buzzy glottal saw → throat → two vowel formants. */
@@ -982,7 +1275,7 @@ export class AudioEngine {
     return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
   }
 
-  stopJazz() {
+  stopJazz(immediate = false) {
     this.#jazzRequested = false;
     const s = this.#jazz;
     if (!s) return;
@@ -991,9 +1284,10 @@ export class AudioEngine {
     if (!this.#ctx) return;
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
-    s.bus.gain.setTargetAtTime(0.0001, t, 0.6);
-    try { s.hushSrc.stop(t + 3); } catch { /* already gone */ }
-    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 3200);
+    if (immediate) s.bus.gain.setValueAtTime(0.0001, t);
+    else s.bus.gain.setTargetAtTime(0.0001, t, 0.6);
+    try { s.hushSrc.stop(t + (immediate ? 0.02 : 3)); } catch { /* already gone */ }
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, immediate ? 80 : 3200);
   }
 
   get jazzPlaying() { return !!this.#jazz; }

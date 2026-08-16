@@ -9,8 +9,11 @@
  */
 
 import * as THREE from 'three';
+import { inject } from '@vercel/analytics';
 
 import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, DAILY_PHENOMENA } from './core/config.js';
+
+inject();
 
 
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily } from './core/state.js';
@@ -26,6 +29,8 @@ import { PlayerController } from './game/player.js';
 import { HandRig } from './game/hand.js';
 import { PaintSystem } from './game/paint.js';
 import { NPCManager } from './game/npc.js';
+import { GhostManager } from './game/ghosts.js';
+import { GhostRecorder } from './game/ghostRecorder.js';
 import { castForNight, MAINS } from './game/characters.js';
 import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
 import { ArtiEngine, COLLECTOR_CALL } from './game/arti.js';
@@ -114,6 +119,8 @@ class Game {
     this.hand = new HandRig(this.camera);
     this.paint = new PaintSystem();
     this.npcs = new NPCManager(this.world, this.audio);
+    this.ghosts = new GhostManager(this.world);
+    this.ghostRecorder = new GhostRecorder();
     this.dialogue = new DialogueEngine(this.state);
     this.quests = new QuestDirector(this.state);
     this.arti = new ArtiEngine();
@@ -127,6 +134,8 @@ class Game {
     this.ui.bindState(this.state);
     this.ui.renderEndingsStrip(loadEndings());
     this.world.setZone('garret');
+    this.ghostRecorder.onZoneChange('garret');
+    this.ghosts.loadZone('garret');
     this.ui.setHotkeys('playing');
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
@@ -189,6 +198,10 @@ class Game {
     click('howto-close', () => this.ui.hide('howto'));
     click('btn-settings', () => this.ui.show('settings'));
     click('settings-close', () => { this.ui.hide('settings'); saveSettings(this.settings); });
+    click('btn-privacy', () => this.ui.show('privacy'));
+    click('privacy-close', () => this.ui.hide('privacy'));
+    click('btn-terms', () => this.ui.show('terms'));
+    click('terms-close', () => this.ui.hide('terms'));
     click('pause-resume', () => this.#resume());
     click('pause-settings', () => this.ui.show('settings'));
     click('pause-quit', () => this.#quitToTitle());
@@ -317,6 +330,7 @@ class Game {
       ui.hideOptions();
       if (outcome === 'shatter') {
         this.audio.shatter();
+        if (r.npc.def.meltdownStyle === 'fire') this.audio.forestIgnite();
         ui.hitmarker(true);
         this.#dmgAbove(r.npc, 'SHATTERED', 'brutal');
       }
@@ -473,6 +487,7 @@ class Game {
     this.npcs.clear();
     this.world.clearSplats();
     this.world.clearDisplay();
+    this.world.resetForestChurches();
     this.pendingAppraisal = null;
     this.#dailyProgress = 0;
     this.#cowVisitedThisRun = false;
@@ -493,7 +508,10 @@ class Game {
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
 
     const z = this.world.setZone('garret');
+    this.ghostRecorder.onZoneChange('garret');
+    this.ghosts.loadZone('garret');
     this.paint.attachTo(z.group);
+    this.hand.setForestLoadout(false);
     this.#applyZoneAtmosphere('garret');
     this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
 
@@ -824,6 +842,30 @@ class Game {
   #onSwing() {
     if (this.mode !== 'playing' || !this.input.locked) return;
     if (this.#swingCooldown > 0) return;
+
+    if (this.world.current === 'blackForest') {
+      this.#swingCooldown = SWING.cooldown;
+      this.hand.swing();
+      this.audio.lighterClick();
+      setTimeout(() => {
+        if (this.mode !== 'playing' || this.world.current !== 'blackForest') return;
+        const fwd = this.player.forwardDir(this.#fwd);
+        const result = this.world.igniteForestChurch(this.player.position, fwd);
+        if (result.status === 'ignited') {
+          const n = result.church.index + 1;
+          this.audio.forestIgnite();
+          this.state.addMeter('heat', 14, `Stave church ${n} ignited`);
+          this.state.addMeter('soul', -3, 'The fog remembers the choice');
+          this.state.shiftVirtue('valor', 2, '');
+          this.state.record(`Set stave church ${n} alight in Cockburn`, null);
+          this.ui.toast('FIRE SENSATION', `Stave church ${n} catches. Flame climbs the black timber; smoke disappears into the fog.`, 'bad');
+        } else if (result.status === 'needsGas') {
+          this.ui.toast('THE LIGHTER REFUSES', `Stave church ${result.church.index + 1} is dry. Press E nearby to douse it first.`);
+        }
+      }, 150);
+      return;
+    }
+
     this.#swingCooldown = SWING.cooldown;
     this.hand.swing();
     this.audio.swing();
@@ -939,6 +981,11 @@ class Game {
       return;
     }
 
+    if (t.kind === 'ghost') {
+      this.#readGhostNote(t.ghost);
+      return;
+    }
+
     const it = t.item;
     switch (it.type) {
       case 'door': {
@@ -987,6 +1034,26 @@ class Game {
         this.ui.toast(it.title ?? 'THE SCENE', pick(it.lines));
         this.audio.uiMove();
         break;
+      case 'restroomFixture':
+        this.ui.toast(it.title ?? 'THE PUBLIC RESTROOM', it.lines ? pick(it.lines) : it.line);
+        if (it.sound === 'piss') this.audio.restroomPiss(it.variant ?? 0);
+        else this.audio.restroomFart(it.variant ?? 0);
+        break;
+      case 'church': {
+        const result = this.world.primeForestChurch(it.churchIndex);
+        const n = it.churchIndex + 1;
+        if (result.status === 'burning') {
+          this.ui.toast(`STAVE CHURCH ${n}`, 'Already burning. The timber answers in cracks and orange light.');
+          this.audio.churchCrackle(n % 4, 1);
+        } else if (result.fresh) {
+          this.audio.gasolinePour();
+          this.ui.toast('GASOLINE', `Stave church ${n} is soaked. Aim at it and click the lighter to ignite.`, 'bad');
+        } else {
+          this.audio.lighterClick();
+          this.ui.toast(`STAVE CHURCH ${n}`, 'Primed. Aim at the timber and click the lighter.');
+        }
+        break;
+      }
       case 'crownQuest': {
         if (!this.state.getFlag('crownFound')) {
           this.state.setFlag('crownFound');
@@ -1081,13 +1148,32 @@ class Game {
     this.dialogue.start(npc);
   }
 
+  #readGhostNote(ghost) {
+    this.mode = 'ghostNote';
+    this.ui.setHotkeys('ghostNote');
+    this.player.setFrozen(true);
+    this.input.exitLock();
+    this.#interactTarget = null;
+    this.ui.interactPrompt(null);
+    this.ui.openGhostNote(ghost.note, (text) => {
+      this.ghostRecorder.setNote(text);
+      this.mode = 'playing';
+      this.ui.setHotkeys('playing');
+      this.player.setFrozen(false);
+      this.input.requestLock();
+    });
+  }
+
 
   #travelTo(zoneKey) {
     this.audio.uiConfirm();
     this.ui.transition(() => {
 
       const z = this.world.setZone(zoneKey);
+      this.ghostRecorder.onZoneChange(zoneKey);
+      this.ghosts.loadZone(zoneKey);
       this.paint.attachTo(z.group);
+      this.hand.setForestLoadout(zoneKey === 'blackForest');
       this.#applyZoneAtmosphere(zoneKey);
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
@@ -1104,8 +1190,11 @@ class Game {
         maxPro: 'Forty metres of wall. One painting. Somewhere in it, an argument.',
         dildoBall: 'The bass is wearing a crown. The court is in session. Wobble accordingly.',
         daylightClub: 'Noon detonates into color. Unicorns patrol the moss beneath a giant rainbow while a thinking public debates whether it is thinking.',
-        upAndCumming: 'Five enormous works, two red dots, seven coded birds, one desk, and an argument strong enough to move inventory.',
+        upAndCumming: 'Five enormous works, two red dots, seven coded birds, and an original woozy trap remix: sliding sub, haunted bells, and a synthetic rapper with no actual words.',
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
+        hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
+        blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
+        publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
       }[zoneKey]);
 
       if (zoneKey === 'maxPro') this.debate.enter();
@@ -1127,6 +1216,17 @@ class Game {
       this.audio.setMusic(null);
       this.audio.setRoomScore(null, false);
       this.audio.startJazz();
+      this.world.setRecordPlayerState(null);
+      return;
+    }
+
+    // The restroom is even stricter than the royal court: communal records,
+    // ambient drones and the jazz combo stay outside. Its entire score is made
+    // from synthesized urine and fart sounds.
+    if (zoneKey === 'publicRestroom') {
+      this.audio.stopJazz(true);
+      this.audio.cutMusic();
+      this.audio.setRoomScore(zoneKey, true, true);
       this.world.setRecordPlayerState(null);
       return;
     }
@@ -1223,7 +1323,7 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti', 'ghostNote'].includes(this.mode);
 
 
 
@@ -1234,6 +1334,7 @@ class Game {
       this.#mintCooldown = Math.max(0, this.#mintCooldown - dt);
 
       const moving = this.player.update(dt, this.world.colliders());
+      this.ghostRecorder.tick(dt, this.player);
 
       // the room's pulse: everything in the frame answers the kick
       const beatPhase = this.world.current === 'dildoBall'
@@ -1245,8 +1346,15 @@ class Game {
       if (worldEvent?.type === 'boxingImpact') {
         this.audio.boxingImpact(worldEvent.variant);
       }
+      if (worldEvent?.type === 'boarSqueak') {
+        this.audio.boarSqueak(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'churchCrackle') {
+        this.audio.churchCrackle(worldEvent.variant, worldEvent.burningCount);
+      }
 
       this.npcs.update(dt, now, this.player.position);
+      this.ghosts.update(dt);
       if (this.world.current === 'maxPro') {
         // the argument is scripted; the ghostwriter is not invited to MAX PRO
         this.debate.update(dt, { busy: () => this.mode !== 'playing' });
@@ -1265,7 +1373,7 @@ class Game {
       this.arti.update(dt);
 
       // footsteps
-      if (moving) {
+      if (moving && this.world.current !== 'publicRestroom') {
         this.#stepAccum += dt * (this.player.sprinting ? 5.6 : 4.1);
         if (this.#stepAccum > 2.1) { this.#stepAccum = 0; this.audio.footstep(); }
       }
@@ -1300,6 +1408,13 @@ class Game {
       return;
     }
 
+    const ghost = this.ghosts.nearest(this.player.position, fwd, PLAYER.interactRange);
+    if (ghost) {
+      this.#interactTarget = { kind: 'ghost', ghost };
+      this.ui.interactPrompt('Read — left here');
+      return;
+    }
+
     let best = null, bestD = Infinity;
     for (const it of this.world.interactables()) {
       const d = it.pos.distanceTo(this.player.position);
@@ -1318,9 +1433,16 @@ class Game {
     const keys = Object.keys(MUSIC);
     const current = keys.indexOf(this.#recordKey);
     this.#recordKey = keys[(current + 1 + keys.length) % keys.length];
-    if (this.world.current === 'dildoBall') {
+    if (this.world.current === 'dildoBall' || this.world.current === 'publicRestroom') {
       this.world.setRecordPlayerState(null);
-      this.ui.toast('THE ROYAL SOUND POLICY', `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`, 'good');
+      const royal = this.world.current === 'dildoBall';
+      this.ui.toast(
+        royal ? 'THE ROYAL SOUND POLICY' : 'THE RESTROOM SOUND POLICY',
+        royal
+          ? `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here, the weird combo has tenure.`
+          : `${MUSIC_TITLES[this.#recordKey]} is queued for outside. In here: piss, fart, Techno Zamba.`,
+        'good'
+      );
       return;
     }
     this.audio.setMusic(this.#recordKey, MUSIC);
