@@ -60,6 +60,7 @@ export class UIManager {
       curtain: $('curtain'),
       credPulse: $('cred-pulse'),
       title: $('title-screen'),
+      resumeRun: $('btn-resume'),
       onboarding: $('onboarding'),
       onboardingFrame: $('onboarding-frame'),
       onboardingKicker: $('onboarding-kicker'),
@@ -85,6 +86,7 @@ export class UIManager {
       namingInput: $('naming-input'),
       ghostNote: $('ghost-note'),
       ghostNoteText: $('ghost-note-text'),
+      ghostNoteStatus: $('ghost-note-status'),
       ghostNoteInput: $('ghost-note-input'),
       nightEnd: $('night-end'),
       nightEndTitle: $('night-end-title'),
@@ -118,6 +120,15 @@ export class UIManager {
   show(name) { $(name)?.classList.remove('hidden'); }
   hide(name) { $(name)?.classList.add('hidden'); }
 
+  setResumeRun(saved) {
+    const button = this.el.resumeRun;
+    if (!button) return;
+    const night = Number(saved?.state?.night);
+    const names = ['', 'One', 'Two', 'Three'];
+    button.classList.toggle('hidden', !Number.isInteger(night) || night < 1 || night > 3);
+    if (night >= 1 && night <= 3) button.textContent = `Resume Night ${names[night]}`;
+  }
+
   /** A compact opening film. Gameplay is not initialized until it completes. */
   openOnboarding(onComplete) {
     const scenes = [
@@ -150,13 +161,13 @@ export class UIManager {
       },
       {
         scene: 'ghosts', kicker: 'THE GHOST LAYER · OTHER ARTISTS, AFTERWARD', title: 'SOMEONE ELSE WALKED THIS ROOM FIRST.',
-        body: 'A pale figure is not a live player or a bot. It is an asynchronous trace: a past route replaying in the room, with a note that may have been left for whoever arrives next.',
-        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'No live chat. Just routes, notes, and afterimages.', accent: '#8ab4ff',
+        body: 'A pale figure is not a live player or a bot. It is an asynchronous trace: a past route replaying in the room, with a note that may have been left for whoever arrives next. Notes burn after 24 hours; the route stays.',
+        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'No live chat. Notes burn in 24 hours; routes linger.', accent: '#8ab4ff',
         cast: [
           { name: 'SOMEONE ELSE', role: 'a recorded route', face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png', pose: 'hero', ghost: true },
           { name: 'THE NEXT ARTIST', role: 'maybe you', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'side', ghost: true },
         ],
-        beats: [['Read', 'Walk up to a pale figure and press E to read what they left.'], ['Leave a trace', 'Type a short note—or say nothing. Your route can still echo later.']],
+        beats: [['Read', 'Walk up to a pale figure and press E. Its note shows a live burn timer.'], ['Leave a trace', 'Type a short note—or say nothing. Notes last 24 hours; routes can echo later.']],
       },
       {
         scene: 'vault', kicker: 'NIGHT THREE · THE VAULT', title: 'THEY DO NOT ONLY WANT THE CANVAS.',
@@ -811,18 +822,38 @@ export class UIManager {
   }
 
   /** onClose(text) fires with a trimmed note string, or null if the player left nothing. */
-  openGhostNote(existingNote, onClose) {
+  openGhostNote(existingNote, noteExpiresAt, onClose) {
     this.show('ghost-note');
     this.el.ghostNoteText.textContent = existingNote || 'No note left here.';
+    const status = this.el.ghostNoteStatus;
+    const expiry = Number.isFinite(noteExpiresAt) ? noteExpiresAt : null;
+    const updateCountdown = () => {
+      const remaining = expiry ? Math.max(0, expiry - Date.now()) : 0;
+      if (!existingNote || !expiry || remaining <= 0) {
+        if (existingNote && expiry) this.el.ghostNoteText.textContent = 'The note burned away. Only the route remains.';
+        status.textContent = existingNote && expiry ? 'The note burned away.' : 'This trace has no message. You can still leave one.';
+        status.classList.toggle('burning', Boolean(existingNote && expiry));
+        return false;
+      }
+      const hours = Math.floor(remaining / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      status.textContent = `Burns in ${hours}h ${String(minutes).padStart(2, '0')}m · then only the route remains.`;
+      status.classList.toggle('burning', remaining <= 15 * 60 * 1000);
+      return true;
+    };
+    updateCountdown();
+    const timer = expiry ? setInterval(updateCountdown, 1000) : null;
     const input = this.el.ghostNoteInput;
     input.value = '';
     setTimeout(() => input.focus(), 60);
 
     const cleanup = () => {
+      if (timer) clearInterval(timer);
       $('ghost-note-confirm').removeEventListener('click', confirm);
       $('ghost-note-skip').removeEventListener('click', skip);
       input.removeEventListener('keydown', onKey);
       input.blur();
+      status.classList.remove('burning');
       this.hide('ghost-note');
     };
     const confirm = () => { const text = input.value.trim(); cleanup(); onClose(text || null); };

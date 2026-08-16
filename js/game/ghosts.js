@@ -30,6 +30,7 @@ export class GhostPlayer {
   constructor(record) {
     this.id = record.id;
     this.note = record.note ?? null;
+    this.noteExpiresAt = Number.isFinite(record.noteExpiresAt) ? record.noteExpiresAt : null;
     this.path = record.path;
 
     // id must be unique per ghost — npc.js's faceTexture()/labelTexture() cache by def.id,
@@ -52,7 +53,17 @@ export class GhostPlayer {
 
   #t; #duration;
 
+  get noteRemainingMs() {
+    return this.noteExpiresAt ? Math.max(0, this.noteExpiresAt - Date.now()) : 0;
+  }
+
+  get noteIsBurning() { return this.noteRemainingMs > 0 && this.noteRemainingMs <= 15 * 60 * 1000; }
+
   update(dt) {
+    if (this.noteExpiresAt && this.noteExpiresAt <= Date.now()) {
+      this.note = null;
+      this.noteExpiresAt = null;
+    }
     this.#t = (this.#t + dt) % this.#duration;
     const { x, z, yaw } = this.#sampleAt(this.#t);
     this.group.position.set(x, 0, z);

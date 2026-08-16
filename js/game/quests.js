@@ -27,6 +27,22 @@ export class QuestDirector extends Emitter {
   /** 'roam' is explicitly optional — the bed accepts pacifists too. */
   get bedArmed() { return ['bed', 'roam'].includes(this.currentStep?.id); }
 
+  snapshot() {
+    return { night: this.#state.night, stepIndex: this.stepIndex };
+  }
+
+  restore(snapshot) {
+    const night = Number(snapshot?.night);
+    const stepIndex = Number(snapshot?.stepIndex);
+    if (!Number.isInteger(night) || night < 1 || night > 3 || !Number.isInteger(stepIndex)) return false;
+    this.#state.night = night;
+    this.steps = this.#planFor(night);
+    this.stepIndex = Math.max(0, Math.min(stepIndex, this.steps.length - 1));
+    if (night === 3) this.#state.setFlag('vaultOpen');
+    this.#announce();
+    return true;
+  }
+
 
   startNight(n) {
     this.#state.night = n;

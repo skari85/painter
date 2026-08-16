@@ -306,6 +306,7 @@ export const STORAGE = {
   settings: 'painter.settings.v1',
   endings:  'painter.endings.v1',
   meta:     'painter.meta.v1',
+  run:      'painter.run.v1',
 };
 
 /** Daily mutations keep repeat runs recognizable, but never respectable. */

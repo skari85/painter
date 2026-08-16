@@ -141,6 +141,17 @@ export class PaintSystem extends Emitter {
   get color() { return PAINT.palette[this.colorIndex]; }
   get brushSize() { return PAINT.brushSizes[this.brushIndex]; }
 
+  /** Compact enough for local run recovery; keeps signed work visible after a refresh. */
+  artworkSnapshot() {
+    try {
+      const preview = document.createElement('canvas');
+      preview.width = 256; preview.height = 320;
+      preview.getContext('2d').drawImage(this.#ui.canvas, 0, 0, preview.width, preview.height);
+      return preview.toDataURL('image/jpeg', 0.72);
+    }
+    catch { return null; }
+  }
+
   attachTo(group) {
     group.add(this.pool.points);
   }

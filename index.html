@@ -249,6 +249,7 @@
     <div class="modal-card">
       <h2 class="modal-title">SOMEONE ELSE WAS HERE</h2>
       <p id="ghost-note-text" class="modal-note">No note left here.</p>
+      <p id="ghost-note-status" class="ghost-note-status">This trace is still warm.</p>
       <input id="ghost-note-input" type="text" maxlength="140" placeholder="Leave something for the next one…" autocomplete="off" spellcheck="false" />
       <div class="modal-actions">
         <button class="btn" id="ghost-note-skip">Say nothing</button>
@@ -270,6 +271,7 @@
         <div id="daily-progress" class="daily-progress">RETURN TO FIND OUT</div>
       </section>
       <nav class="title-menu" aria-label="Main menu">
+        <button class="btn primary xl hidden" id="btn-resume">Resume Night One</button>
         <button class="btn primary xl" id="btn-begin">Begin Night One</button>
         <button class="btn ghost" id="btn-howto">How to Play</button>
         <button class="btn ghost" id="btn-settings">Settings</button>

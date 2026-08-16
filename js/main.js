@@ -16,7 +16,7 @@ import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, DAILY_PHENOMENA } fr
 inject();
 
 
-import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily } from './core/state.js';
+import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
 import { Ghostwriter } from './core/ai.js';
@@ -77,6 +77,9 @@ class Game {
   #callRound = 0;
   #callUnhappy = 0;
   #recordKey = null;
+  #runActive = false;
+  #saveTimer = 0;
+  #savedRun = null;
 
   /* ============================================================
      Boot
@@ -134,6 +137,12 @@ class Game {
 
     this.ui.bindState(this.state);
     this.ui.renderEndingsStrip(loadEndings());
+    this.#savedRun = loadRun();
+    this.ui.setResumeRun(this.#savedRun);
+    window.addEventListener('beforeunload', () => this.#persistRun());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.#persistRun();
+    });
     this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
     this.ghosts.loadZone('garret');
@@ -199,6 +208,7 @@ class Game {
     const click = (id, fn) => $(id).addEventListener('click', () => { this.audio.ensure(); this.audio.uiConfirm(); fn(); });
 
     click('btn-begin', () => this.#startOnboarding());
+    click('btn-resume', () => this.#resumeRun());
     click('btn-howto', () => this.ui.show('howto'));
     click('howto-close', () => this.ui.hide('howto'));
     click('btn-settings', () => this.ui.show('settings'));
@@ -277,6 +287,8 @@ class Game {
 
   #wireGameEvents() {
     const ui = this.ui;
+
+    this.state.on('change', () => this.#persistRun());
 
     this.quests.on('objective', ({ night, text }) => {
       ui.setObjective(night, text);
@@ -438,7 +450,7 @@ class Game {
       ui.openNaming(`Untitled Nº ${n}`, (title) => {
         const p = {
           id: `p${Date.now()}`, title, texture, quality, sold: false,
-          lotNumber: lotNumberFor(n), storyTags: [],
+          lotNumber: lotNumberFor(n), storyTags: [], artData: this.paint.artworkSnapshot(),
         };
         this.state.addPainting(p);
         this.state.carrying = p.id;
@@ -495,6 +507,10 @@ class Game {
   #startRun() {
     this.ui.hide('ending');
     this.ui.hide('title-screen');
+    this.#runActive = false;
+    clearRun();
+    this.#savedRun = null;
+    this.ui.setResumeRun(null);
     this.state.reset();
     this.arti.reset();
     this.ui.updateArtiChip(this.arti.followers);
@@ -512,6 +528,101 @@ class Game {
     const ec = this.world.zone('garret').easelCanvas;
     ec.material = new THREE.MeshStandardMaterial({ color: 0xefe9dc, roughness: 0.85 });
     this.#startNight(1);
+  }
+
+  #resumeRun() {
+    const saved = loadRun();
+    if (!saved || !this.state.restore(saved.state)) {
+      this.#clearSavedRun();
+      this.ui.toast('NO TRACE FOUND', 'There is no stable local run to return to. Start with the canvas.', 'bad');
+      return;
+    }
+
+    this.ui.hide('title-screen');
+    this.ui.hide('ending');
+    this.arti.reset();
+    this.ui.updateArtiChip(this.arti.followers);
+    this.ui.clearArtiUnread();
+    this.npcs.clear();
+    for (const [zone, defs] of Object.entries(castForNight(this.state.night))) this.npcs.spawn(defs, zone);
+
+    for (const painting of this.state.paintings) painting.texture = this.#restorePaintingTexture(painting);
+    const latest = this.state.paintings[this.state.paintings.length - 1];
+    if (latest) {
+      const easel = this.world.zone('garret').easelCanvas;
+      easel.material = new THREE.MeshStandardMaterial({ map: latest.texture, roughness: 0.85 });
+    }
+
+    const pending = this.state.getPainting(saved.pendingAppraisalId);
+    this.pendingAppraisal = pending ? { p: pending } : null;
+    if (pending) this.world.hangOnDisplay(pending.texture, pending.title, pending.lotNumber);
+
+    const zoneKey = ZONES[saved.zone] ? saved.zone : 'garret';
+    const zone = this.world.setZone(zoneKey);
+    this.ghostRecorder.onZoneChange(zoneKey);
+    this.ghosts.loadZone(zoneKey);
+    this.#resize();
+    this.paint.attachTo(zone.group);
+    this.hand.setForestLoadout(zoneKey === 'blackForest');
+    this.#applyZoneAtmosphere(zoneKey);
+    const position = saved.player;
+    const x = Number.isFinite(position?.x) ? position.x : zone.spawn.x;
+    const z = Number.isFinite(position?.z) ? position.z : zone.spawn.z;
+    const yaw = Number.isFinite(position?.yaw) ? position.yaw : zone.spawnYaw;
+    this.player.teleport(x, z, yaw);
+    this.world.setVaultArchive(latest?.title, latest?.lotNumber);
+    this.#syncCarry();
+
+    if (!this.quests.restore(saved.quest)) this.quests.startNight(this.state.night);
+    this.#dailyProgress = Math.max(0, Number(saved.dailyProgress) || 0);
+    this.#cowVisitedThisRun = Boolean(saved.cowVisited);
+    this.mode = 'playing';
+    this.#runActive = true;
+    this.ui.show('hud');
+    this.ui.setHotkeys('playing');
+    this.ui.toast('RUN RESTORED', `Night ${this.state.night}, ${ZONES[zoneKey].name}. The room kept your place.`, 'good');
+    this.input.requestLock();
+    this.#persistRun();
+  }
+
+  #restorePaintingTexture(painting) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 384; canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    const primer = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    primer.addColorStop(0, '#efe9dc'); primer.addColorStop(1, '#c8bda9');
+    ctx.fillStyle = primer; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#1b1813'; ctx.font = '700 22px sans-serif'; ctx.fillText(painting.title.slice(0, 28), 24, 44);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    if (painting.artData) {
+      const image = new Image();
+      image.onload = () => { ctx.drawImage(image, 0, 0, canvas.width, canvas.height); texture.needsUpdate = true; };
+      image.src = painting.artData;
+    }
+    return texture;
+  }
+
+  #persistRun() {
+    if (!this.#runActive || !this.world?.current || !this.player) return;
+    const { x, y, z } = this.player.position;
+    if (![x, y, z, this.player.yaw].every(Number.isFinite)) return;
+    const saved = {
+      version: 1, savedAt: Date.now(), state: this.state.snapshot(), zone: this.world.current,
+      player: { x, y, z, yaw: this.player.yaw }, quest: this.quests.snapshot(),
+      pendingAppraisalId: this.pendingAppraisal?.p?.id ?? null,
+      dailyProgress: this.#dailyProgress, cowVisited: this.#cowVisitedThisRun,
+    };
+    saveRun(saved);
+    this.#savedRun = saved;
+    this.ui.setResumeRun(saved);
+  }
+
+  #clearSavedRun() {
+    this.#runActive = false;
+    clearRun();
+    this.#savedRun = null;
+    this.ui.setResumeRun(null);
   }
 
   #startNight(n) {
@@ -533,6 +644,7 @@ class Game {
     this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
 
     this.mode = 'playing';
+    this.#runActive = true;
     this.ui.show('hud');
     this.ui.setHotkeys('playing');
     this.ui.hint('WASD · E use · LMB brush · Q appraise · N arti · M map · Tab virtues');
@@ -540,6 +652,7 @@ class Game {
     setTimeout(() => this.ui.hint(null), 9000);
     this.quests.startNight(n);
     this.input.requestLock();
+    this.#persistRun();
   }
 
   #quitToTitle() {
@@ -555,6 +668,7 @@ class Game {
     this.audio.stopJazz();
     this.audio.setMusic('title', MUSIC);
     this.input.exitLock();
+    this.#clearSavedRun();
   }
 
 
@@ -568,6 +682,7 @@ class Game {
     this.audio.stopTechno();
     this.audio.stopJazz();
     this.audio.setMusic('ending', MUSIC);
+    this.#clearSavedRun();
 
     this.ui.transition(() => {
 
@@ -1217,7 +1332,7 @@ class Game {
     this.input.exitLock();
     this.#interactTarget = null;
     this.ui.interactPrompt(null);
-    this.ui.openGhostNote(ghost.note, (text) => {
+    this.ui.openGhostNote(ghost.note, ghost.noteExpiresAt, (text) => {
       this.ghostRecorder.setNote(text);
       this.mode = 'playing';
       this.ui.setHotkeys('playing');
@@ -1372,6 +1487,7 @@ class Game {
 
       if (zoneKey === 'maxPro') this.debate.enter();
       this.quests.notify('zoneEntered', { zone: zoneKey });
+      this.#persistRun();
 
     });
   }
@@ -1508,6 +1624,11 @@ class Game {
 
       const moving = this.player.update(dt, this.world.colliders());
       this.ghostRecorder.tick(dt, this.player);
+      this.#saveTimer += dt;
+      if (this.#saveTimer >= 5) {
+        this.#saveTimer = 0;
+        this.#persistRun();
+      }
 
       // the room's pulse: everything in the frame answers the kick
       const beatPhase = this.world.current === 'dildoBall'

@@ -830,6 +830,9 @@ kbd {
 }
 .ghost-chip:hover { transform: translateY(-3px) scale(1.06); box-shadow: 0 0 18px var(--ghost-color); }
 .ghost-chip.active { background: var(--ghost-color); color: #0b0b0f; box-shadow: 0 0 24px var(--ghost-color); }
+.ghost-note-status { margin: -9px 0 var(--s2); color: #8ab4ff; font: 700 10px/1.45 var(--font-mono); letter-spacing: .04em; }
+.ghost-note-status.burning { color: #f08a5d; animation: ghost-note-burn .75s steps(2) infinite; }
+@keyframes ghost-note-burn { 50% { opacity: .45; text-shadow: 0 0 10px rgba(240,138,93,.72); } }
 .seance-orb {
   min-height: 120px;
   border-radius: 16px;
