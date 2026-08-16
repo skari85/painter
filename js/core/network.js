@@ -6,15 +6,37 @@
  * for the single-player game.
  */
 
-const ENDPOINT = 'https://painter-ghosts.YOUR-SUBDOMAIN.workers.dev/ghosts';
 const TIMEOUT_MS = 5000;
+
+function ghostsEndpoint() {
+  const runtimeValue = globalThis.PAINTER_CONFIG?.ghostsEndpoint;
+  const metaValue = document
+    .querySelector('meta[name="painter-ghosts-endpoint"]')
+    ?.getAttribute('content');
+  const value = String(runtimeValue || metaValue || '').trim();
+
+  // The multiplayer layer is optional. An unset or template URL must never
+  // produce network noise or interfere with the single-player experience.
+  if (!value || /YOUR-SUBDOMAIN/i.test(value)) return null;
+
+  try {
+    const url = new URL(value, window.location.origin);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return null;
+  }
+}
 
 /** Fetch up to `limit` recent ghost recordings for a zone. Never throws. */
 export async function fetchGhosts(zoneKey, limit = 8) {
+  const endpoint = ghostsEndpoint();
+  if (!endpoint) return [];
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const url = `${ENDPOINT}?zone=${encodeURIComponent(zoneKey)}&limit=${limit}`;
+    const url = `${endpoint}?zone=${encodeURIComponent(zoneKey)}&limit=${limit}`;
     const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
     if (!res.ok) return [];
     const data = await res.json();
@@ -28,10 +50,13 @@ export async function fetchGhosts(zoneKey, limit = 8) {
 
 /** Upload a recorded path (+ optional note) for a zone. Fire-and-forget. */
 export async function uploadGhost({ zoneKey, palette, path, note }) {
+  const endpoint = ghostsEndpoint();
+  if (!endpoint) return;
+
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    await fetch(ENDPOINT, {
+    await fetch(endpoint, {
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'Content-Type': 'application/json' },

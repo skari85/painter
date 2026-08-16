@@ -12,11 +12,12 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "@vercel/analytics": "https://cdn.jsdelivr.net/npm/@vercel/analytics@2.0.1/dist/index.mjs"
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
       }
     }
   </script>
+  <!-- Set this to the deployed Worker URL after `worker/` has been provisioned. -->
+  <meta name="painter-ghosts-endpoint" content="" />
 </head>
 <body>
   <!-- 3D viewport -->
@@ -500,6 +501,6 @@
       }, 8000);
     });
   </script>
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=20260816-network-fix"></script>
 </body>
 </html>

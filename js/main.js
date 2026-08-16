@@ -9,11 +9,16 @@
  */
 
 import * as THREE from 'three';
-import { inject } from '@vercel/analytics';
 
 import { CAMERA, PLAYER, SWING, ZONES, MUSIC, MUSIC_TITLES, MUSIC_ARTISTS, DAILY_PHENOMENA } from './core/config.js';
 
-inject();
+// Vercel's script intentionally does not exist on localhost or preview hosts.
+// Only load analytics on the production domain where the endpoint is available.
+if (window.location.hostname === 'painter-iota.vercel.app') {
+  import('https://cdn.jsdelivr.net/npm/@vercel/analytics@2.0.1/dist/index.mjs')
+    .then(({ inject }) => inject())
+    .catch(() => {});
+}
 
 
 import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
