@@ -84,10 +84,13 @@ export const ZONES = {
   daylightClub: { name: 'THE DAYLIGHT FLESH GARDEN', mood: 'leatherLatex' },
   upAndCumming: { name: 'UP AND CUMMING ARTIST', mood: 'galleria' },
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
+  hairSalon: { name: 'U WISH U HAD HAIR BUT U DONT', mood: 'galleria' },
+  blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
+  publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },
 };
 
 /**
- * Seven coded club identities. Patterns are one 16-step bar; bass values are
+ * Coded room identities. Patterns are one 16-step bar; bass values are
  * semitone offsets from root and lead values are indexes into scale.
  */
 export const ROOM_SCORES = {
@@ -108,6 +111,21 @@ export const ROOM_SCORES = {
     wave: 'square', bassWave: 'sawtooth', cutoff: 360, pad: [0, 1, 6, 10],
     bass: [0, null, 0, 1, null, 6, 0, -5], lead: [null, null, null, 3, null, null, 1, null, null, 4, null, null, null, 2, null, 5],
     kick: [0, 3, 8, 11], snare: [6, 14], hats: [1, 5, 9, 13], swing: 0.03, texture: 0.22,
+  },
+  blackForest: {
+    // Original lo-fi black-metal / dark-ambient room score: cold semitone
+    // harmony, tremolo-like lead repetition, blast texture, and forest hiss.
+    bpm: 156, level: 0.23, root: 36.71, scale: [0, 1, 5, 6, 10, 12, 13],
+    wave: 'sawtooth', bassWave: 'triangle', cutoff: 1120, pad: [0, 1, 6, 10],
+    bass: [0, 0, 6, 6, 1, 1, -5, -5], lead: [4, 1, 4, 1, 5, 2, 5, 2, 6, 3, 6, 3, 4, 1, 5, 2],
+    kick: [0, 2, 4, 6, 8, 10, 12, 14], snare: [1, 3, 5, 7, 9, 11, 13, 15], hats: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], swing: 0, texture: 0.68,
+    kickLevel: 0.18, snareLevel: 0.038, hatLevel: 0.014,
+    bassLevel: 0.078, bassDecay: 0.74, leadLevel: 0.016,
+    lofi: {
+      hissLevel: 0.016, hissHighpass: 150, hissLowpass: 4200,
+      wowRate: 0.17, wowDepth: 72, detune: 14,
+      leadAttack: 0.008, leadDecay: 0.42, cutoffScale: 0.94,
+    },
   },
   leatherLatex: {
     bpm: 126, level: 0.34, root: 55, scale: [0, 3, 5, 7, 10, 12, 15],
@@ -163,11 +181,34 @@ export const ROOM_SCORES = {
     },
   },
   upAndCumming: {
-    // Bright, restless gallery pop: clean daylight with a sale always pending.
-    bpm: 124, level: 0.24, root: 65.41, scale: [0, 2, 4, 7, 9, 12, 14],
-    wave: 'triangle', bassWave: 'sine', cutoff: 2600, pad: [0, 4, 7, 9],
-    bass: [0, null, 7, null, 4, 9, null, 12], lead: [4, null, 2, 5, null, 1, null, 6, 3, null, 5, null, 2, 0, null, 4],
-    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.04, texture: 0.025,
+    // Original woozy trap remix: sliding sub, half-time drums, cold bell
+    // fragments, tape air, and synthetic rapper-like chops with no words.
+    bpm: 142, level: 0.27, root: 32.7, scale: [0, 3, 5, 7, 10, 12, 15],
+    wave: 'sine', bassWave: 'sine', cutoff: 1750, pad: [0, 3, 7, 10],
+    bass: [0, null, -2, null, 5, 3, null, -5], lead: [5, null, null, 2, null, null, 4, null, null, 1, null, null, 6, null, 3, null],
+    kick: [0, 7, 10, 14], snare: [8], hats: [2, 4, 6, 10, 12, 14, 15], swing: 0.06, texture: 0.32,
+    kickLevel: 0.54, snareLevel: 0.1, hatLevel: 0.032,
+    bassLevel: 0.19, bassDecay: 3.8, bassSlide: 0.78, leadLevel: 0.026,
+    lofi: {
+      hissLevel: 0.006, hissHighpass: 520, hissLowpass: 5100,
+      wowRate: 0.14, wowDepth: 34, detune: 9,
+      leadAttack: 0.008, leadDecay: 2.4, cutoffScale: 1.7,
+    },
+    rap: {
+      steps: [3, 7, 15, 23, 31, 35, 39, 47, 55, 59, 61, 63],
+      notes: [0, 3, 0, -2, 5, 3, 0, 7, 5, 3, 0, -2],
+      durationSteps: [1.8, 1.2, 2.4, 1.5, 2.8, 1.1, 1.3, 2.6, 1.7, 1.1, 0.9, 2.2],
+      octave: 2, level: 0.044, cutoff: 2250,
+      scoop: 1.16, drop: 0.86, echoSteps: 3, echoLevel: 0.2,
+      vowels: [
+        [520, 980, 680, 1260], [710, 1190, 430, 830],
+        [460, 820, 590, 1040], [780, 1320, 560, 960],
+        [610, 1080, 420, 760], [430, 760, 720, 1210],
+        [690, 1160, 510, 890], [520, 920, 760, 1340],
+        [420, 740, 610, 1110], [760, 1280, 480, 860],
+        [570, 1010, 690, 1190], [470, 810, 540, 940],
+      ],
+    },
   },
   vacantEditions: {
     // Dry showroom electro: tactile clicks, a rubbery bassline, and enough
@@ -182,6 +223,38 @@ export const ROOM_SCORES = {
       hissLevel: 0.006, hissHighpass: 900, hissLowpass: 4700,
       wowRate: 0.16, wowDepth: 28, detune: 5,
       leadAttack: 0.035, leadDecay: 1.5, cutoffScale: 0.9,
+    },
+  },
+  hairSalon: {
+    // Glossy clipper-house electro: polished chrome percussion, soft salon
+    // hum, and a bassline as smooth and uninterrupted as the clientele.
+    bpm: 112, level: 0.23, root: 55, scale: [0, 2, 5, 7, 9, 12, 14],
+    wave: 'triangle', bassWave: 'sine', cutoff: 2100, pad: [0, 5, 7, 9],
+    bass: [0, null, 7, null, 5, null, 9, 2], lead: [null, 4, null, 2, null, 5, null, 1, null, 3, null, 6, 2, null, 4, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.06, texture: 0.18,
+    kickLevel: 0.32, snareLevel: 0.06, hatLevel: 0.024,
+    bassLevel: 0.09, bassDecay: 1.5, leadLevel: 0.022,
+    lofi: {
+      hissLevel: 0.007, hissHighpass: 1000, hissLowpass: 6500,
+      wowRate: 0.25, wowDepth: 12, detune: 3,
+      leadAttack: 0.02, leadDecay: 1.4, cutoffScale: 1.2,
+    },
+  },
+  publicRestroom: {
+    // Techno Zamba, built under the room's strict acoustic policy: every
+    // transient is either a synthesized urine stream / splash or a layered
+    // fart. There are deliberately no conventional drums, voices or synths.
+    bpm: 132, level: 0.34, root: 49, scale: [0],
+    wave: 'sine', bassWave: 'sine', cutoff: 9200, pad: [],
+    bass: [null, null, null, null, null, null, null, null],
+    lead: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    kick: [], snare: [], hats: [], swing: 0.075, texture: 0,
+    restroom: {
+      // Four low farts supply the techno floor; the five syncopated accents
+      // answer like a crooked samba/zamba hand pattern. Piss is the shaker.
+      floor: [0, 4, 8, 12],
+      accents: [3, 6, 10, 13, 15],
+      splashes: [1, 2, 5, 7, 9, 11, 14],
     },
   },
 };

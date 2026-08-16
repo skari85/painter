@@ -55,6 +55,21 @@ Warm songs from `puplic/songs/` play on the title screen, in the garret, and
 over the endings — the market spaces get coded procedural room scores. (The folder
 is spelled `puplic`; left as found.)
 
+### Church Burning Fire Sensation Cockburn
+
+The scene map now reaches a fog-heavy procedural Norwegian forest containing
+exactly ten stave churches, 34 roaming wild boars, and a fictionalized Varg
+Vikernes ego encounter about childhood fear, isolation, and responsibility.
+The apparition is depressive, self-pitying, manipulative, cruel, and explicitly
+not redeemed by being understood; the dialogue separates explanation from excuse.
+Inside this room the first-person brush/canvas silhouette becomes a lit metal
+lighter and red gasoline can. The boars make synthesized wet sponge squeaks;
+the room score is an original lo-fi black-metal/dark-ambient sequence generated
+at runtime. No copyrighted recording is bundled. Shattering the encounter's ego
+triggers a stylized flame dissolve and disappearance. Each church can also be
+burned independently: press `E` nearby to douse it, then aim and click the lighter.
+Its fire, smoke, charring, orange light, and procedural crackle persist for the run.
+
 ### The Daylight Flesh Garden
 
 The garden has its own 108 BPM procedural experimental jazz-electronica room
@@ -71,6 +86,13 @@ values from Poly Haven's asset API are recorded in
 `puplic/polyhaven/daylight-garden/CHECKSUMS.md5` so local copies can be checked
 without relying on filenames or file sizes alone.
 
+### Up and Cumming remix
+
+Up and Cumming Artist has an original procedural woozy-trap room remix: sliding
+sub-bass, half-time drums, detuned bell fragments, tape air, and short synthetic
+rapper-like vowel chops. It uses no sampled performer, copyrighted melody, or
+song lyric; every sound is synthesized at runtime in `js/core/audio.js`.
+
 ### The Garret studio
 
 The studio floor uses Poly Haven's [Old Wood Floor](https://polyhaven.com/a/old_wood_floor),
@@ -78,6 +100,34 @@ while its walls and ceiling use [Worn Plaster Wall](https://polyhaven.com/a/worn
 Both are CC0 materials. Their 1K JPG diffuse, OpenGL normal, and roughness maps
 are stored under `puplic/polyhaven/studio/`; API-provided MD5 values are recorded
 in the adjacent `CHECKSUMS.md5` manifest.
+
+### The Public Restroom
+
+Galleria Bianca now has a public restroom: four usable stall sound points,
+three urinals, a communal sink, fogged mirrors, puddles, drains, exposed pipes,
+fluorescent club lighting, and painted stall fronts using the existing
+`puplic/textures/8.jpg` library image. The damp ceiling reuses the local CC0
+Poly Haven Painted Plaster Wall diffuse, normal, and roughness maps.
+Stall three is under permanent containment: an impossibly large, animated poop
+has defeated the flush, while a uniformed Toilet Guard points at it and cycles
+through silent threats to arrest whoever produced it. Two patrons keep using the
+urinals, one washes their hands with suspicious commitment, and another waits
+outside the stalls while trying not to look implicated.
+
+The room enforces a literal acoustic policy. Its original 132 BPM **Techno
+Zamba** score contains only procedural urine streams, splashes, droplets, and
+layered fart synthesis, with short tiled-room reflections. There are no sampled
+recordings, conventional drums, voices, melodies, or footsteps in the room.
+
+### U Wish U Had Hair But U Dont
+
+The **Up and Cumming Artist** room now connects to a full-service chrome and
+pink hair salon named **U WISH U HAD HAIR BUT U DONT**. It has six mirrored
+cutting stations, hydraulic salon chairs, three wash basins, a reception desk,
+an out-of-stock hair cabinet, a treatment menu, and its own glossy procedural
+electro score. All six authored stylists and customers use genuinely bald
+procedural heads—the hair mesh is omitted rather than merely recolored—and the
+room never draws from the generic, potentially hairy crowd.
 
 **The radio** sits on the garret desk, wearing `visual assets/radio.png` as its
 face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders

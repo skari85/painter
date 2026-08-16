@@ -227,7 +227,7 @@ export class DialogueEngine extends Emitter {
       return;
     }
 
-    if (tone === 'kind' && def.weak === 'kind' && chance(0.22)) {
+    if (tone === 'kind' && def.weak === 'kind' && def.canDisarm !== false && chance(0.22)) {
       a.outcome = 'disarm';
       s.addMeter('soul', 4, 'You reached the person inside');
       s.shiftVirtue('compassion', 3, '');
