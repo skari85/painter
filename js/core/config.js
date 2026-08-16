@@ -213,15 +213,37 @@ export const ROOM_SCORES = {
     },
   },
   rageRoom: {
-    // A fluorescent anger-room pulse: clipped, metallic, and deliberately
-    // unable to resolve into a comfortable chord.
-    bpm: 128, level: 0.32, root: 46.25, scale: [0, 1, 3, 6, 7, 10, 12],
-    wave: 'square', bassWave: 'sawtooth', cutoff: 1500, pad: [0, 1, 6, 10],
-    bass: [0, 0, null, 3, 0, null, 6, 1],
-    lead: [null, 5, null, 2, 6, null, 3, null, 1, null, 4, 2, null, 6, null, 3],
-    kick: [0, 4, 8, 12], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.02, texture: 0.44,
-    kickLevel: 0.34, snareLevel: 0.09, hatLevel: 0.03,
-    bassLevel: 0.1, bassDecay: 0.62, leadLevel: 0.024,
+    // Sun-bleached outsider hip-hop: loose drums under electric-piano
+    // clusters, tape wobble and little synthetic MC syllables in the glass.
+    bpm: 82, level: 0.29, root: 43.65, scale: [0, 2, 3, 5, 7, 9, 10, 12],
+    wave: 'triangle', bassWave: 'sine', cutoff: 1760, pad: [0, 3, 7, 10],
+    bass: [0, null, 3, null, -2, null, 5, 7],
+    lead: [null, null, 4, null, null, 2, null, null, 6, null, null, 3, null, 5, null, 1],
+    kick: [0, 7, 10], snare: [4, 12], hats: [2, 5, 8, 11, 14], swing: 0.19, texture: 0.28,
+    kickLevel: 0.42, snareLevel: 0.085, hatLevel: 0.026,
+    bassLevel: 0.13, bassDecay: 2.7, bassSlide: 0.92, leadLevel: 0.018,
+    lofi: {
+      hissLevel: 0.007, hissHighpass: 480, hissLowpass: 4700,
+      wowRate: 0.12, wowDepth: 38, detune: 11,
+      leadAttack: 0.028, leadDecay: 2.1, cutoffScale: 1.12,
+    },
+    jazz: {
+      steps: [0, 14, 32, 46], octave: 2, level: 0.013,
+      attack: 0.065, decaySteps: 10, spread: 0.018, cutoff: 1620,
+      chords: [[0, 3, 7, 10], [2, 5, 9, 12], [-2, 2, 5, 9], [0, 5, 7, 14]],
+    },
+    rap: {
+      steps: [3, 11, 19, 23, 35, 43, 51, 59, 63],
+      notes: [0, 3, -2, 5, 0, 7, 3, -2, 0],
+      durationSteps: [1.7, 1.1, 2.1, 1.3, 2.5, 1.2, 1.8, 1.1, 2.2],
+      octave: 2, level: 0.031, cutoff: 1880,
+      scoop: 1.12, drop: 0.84, echoSteps: 5, echoLevel: 0.16,
+      vowels: [
+        [500, 920, 680, 1220], [720, 1180, 430, 790], [430, 760, 610, 1050],
+        [650, 1080, 510, 860], [470, 830, 730, 1260], [760, 1280, 540, 910],
+        [560, 980, 420, 740], [410, 720, 650, 1140], [690, 1160, 500, 850],
+      ],
+    },
   },
   deathMetal: {
     // A pink-black blast beat: the room's thesis is that a toy can be both

@@ -1477,7 +1477,7 @@ class Game {
         vacantEditions: 'Eight tactile editions and one duct-taped banana cock await inspection. Vincent and Eddie have opinions about every millimetre.',
         hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
-        rageRoom: 'Five glass boxes invite the private scream. Martin is already demolishing the evidence.',
+        rageRoom: 'Five daylight glass boxes turn panic into architecture. MC Freeglass is inside one, rapping liberation over crooked jazz and a dusty beat.',
         deathMetal: 'Pink lights, black amps, and five punks arguing that Barbie is the loudest death-metal artist alive.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
       }[zoneKey]);
@@ -1648,7 +1648,7 @@ class Game {
       }
       if (worldEvent?.type === 'rageBreak') {
         this.audio.rageBreak(worldEvent.variant);
-        this.ui.subtitle('MARTIN · NO ADVICE', worldEvent.line, 0.72, this.audio);
+        this.ui.subtitle('MC FREEGLASS · BOXED BUT UNBROKEN', worldEvent.line, 0.76, this.audio);
       }
       if (worldEvent?.type === 'deathMetalHit') {
         this.audio.deathMetalHit(worldEvent.variant);

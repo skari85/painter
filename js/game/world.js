@@ -4288,26 +4288,64 @@ export class World {
   /* ---------------------------------------------------------- */
   #buildRageRoom() {
     const z = this.#newZone('rageRoom');
-    shell(z, { w: 24, d: 14, floorColor: 0x26282e, wallColor: 0x15171d, ceilColor: 0x0d0e12 });
+    const roomH = 5.3;
+    shell(z, { w: 24, d: 14, h: roomH, floorColor: 0xb8b5ad, wallColor: 0xeee9dd, ceilColor: 0xf7f4ea });
     z.spawn.set(-10.3, 0, 0);
     z.spawnYaw = -Math.PI / 2;
-    z.fog = { color: 0x080a10, density: 0.026 };
+    z.fog = { color: 0xdcebf0, density: 0.007 };
+
+    // Poly Haven CC0 PBR surfaces keep the room tactile without making the
+    // daylight white cube feel dirty. The glass remains physically shaded.
+    const textureLoader = new THREE.TextureLoader();
+    const loadPbr = (folder, file, repeatX, repeatY, srgb = false) => {
+      const tex = textureLoader.load(encodeURI(`puplic/polyhaven/${folder}/${file}`));
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      tex.anisotropy = 4;
+      if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const marblePbr = {
+      map: loadPbr('glass-boxes/marble_01', 'marble_01_diff_1k.jpg', 9, 5, true),
+      normalMap: loadPbr('glass-boxes/marble_01', 'marble_01_nor_gl_1k.jpg', 9, 5),
+      roughnessMap: loadPbr('glass-boxes/marble_01', 'marble_01_rough_1k.jpg', 9, 5),
+    };
+    const plasterPbr = {
+      map: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_diff_1k.jpg', 4, 1.2, true),
+      normalMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_nor_gl_1k.jpg', 4, 1.2),
+      roughnessMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_rough_1k.jpg', 4, 1.2),
+    };
+    plane(z, { w: 23.7, h: 13.7, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
+      material: new THREE.MeshStandardMaterial({ color: 0xfff9ea, ...marblePbr, roughness: 0.48, normalScale: new THREE.Vector2(0.2, 0.2) }), noSplat: true, name: 'glass boxes PBR floor' });
+    plane(z, { w: 23.7, h: 5.0, x: 0, y: 2.65, z: -7.19,
+      material: new THREE.MeshStandardMaterial({ color: 0xfffbef, ...plasterPbr, roughness: 0.88, normalScale: new THREE.Vector2(0.22, 0.22) }), noSplat: true, name: 'glass boxes plaster wall' });
+
+    // The Flesh Garden's big conservatory move, translated into institutional
+    // architecture: one luminous roof plane above a forest of glass edges.
+    plane(z, { w: 18.6, h: 8.2, x: 1.4, y: roomH - 0.08, z: 0, rx: Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({ color: 0xe7f8fb, transparent: true, opacity: 0.82, side: THREE.DoubleSide }),
+      noSplat: true, name: 'glass boxes skylight' });
+    const skylightRail = mat(0xd3d9d9, { metalness: 0.72, roughness: 0.26 });
+    for (const x of [-7.8, -3.2, 1.4, 6.0, 10.6]) {
+      box(z, { w: 0.065, h: 0.07, d: 8.25, x, y: roomH - 0.12, z: 0, material: skylightRail, solid: false, noSplat: true });
+    }
 
     const glass = new THREE.MeshPhysicalMaterial({
-      color: 0x9ad5e8, transparent: true, opacity: 0.16,
-      transmission: 0.28, roughness: 0.08, metalness: 0.08,
-      clearcoat: 0.8, clearcoatRoughness: 0.05,
+      color: 0xd9f6ff, transparent: true, opacity: 0.3,
+      transmission: 0.74, roughness: 0.11, metalness: 0,
+      thickness: 0.08, ior: 1.45, clearcoat: 1, clearcoatRoughness: 0.035,
     });
-    const frameMat = mat(0x4a5362, { metalness: 0.82, roughness: 0.24 });
+    const frameMat = mat(0xb9c3c8, { metalness: 0.88, roughness: 0.2 });
+    const oak = mat(0x9b6c3f, { roughness: 0.62, metalness: 0.02 });
     const breakables = [];
     const shards = [];
-    const boothLabels = ['THE DEADLINE', 'THE BREAKUP', 'THE BOSS', 'THE BODY', 'THE FUTURE'];
+    const boothLabels = ['CHAOS', 'THE WOUND', 'JESUS FM', 'FREEGLASS', 'NO MASTER'];
     const boothLines = [
-      ['“I am not behind. I am moving at a different speed.”', 'The clock is bolted down. The clock is still winning.'],
-      ['“I have deleted the number. The number remains.”', 'The glass sweats when someone says “closure.”'],
-      ['“I was promoted into a personality I do not recognize.”', 'A laminated policy explains that screaming is not feedback.'],
-      ['“The body is a room. The room has filed a complaint.”', 'A foam dummy has been punched into a more honest shape.'],
-      ['“One day I will be free. The booking system is unconvinced.”', 'The exit sign flickers like it has seen the future.'],
+      ['Chaos has been acoustically treated. It still refuses to sit still.', 'A card reads: RHYTHM IS PANIC THAT FOUND A POCKET.'],
+      ['The glass keeps fingerprints and releases grudges.', 'Someone has written FORGIVE THE WALL, NOT THE CAGE in tiny pencil.'],
+      ['A battered radio receives one station: sermons chopped into hi-hats.', 'The dial points somewhere between doubt and grace.'],
+      ['MC Freeglass performs to one microphone and five reflections.', 'The box is soundproof. The freedom is not.'],
+      ['The exit is unlocked. The manifesto insists you notice that yourself.', 'A chair waits for authority, then collapses under the concept.'],
     ];
 
     const makeBreakable = (label, x, y, zz, geometry, material) => {
@@ -4334,14 +4372,20 @@ export class World {
         box(z, { w: 0.09, h: 0.09, d: 5.1, x: x - 1.75, y, z: zz, material: frameMat, solid: false, noSplat: true });
         box(z, { w: 0.09, h: 0.09, d: 5.1, x: x + 1.75, y, z: zz, material: frameMat, solid: false, noSplat: true });
       }
+      box(z, { w: 3.55, h: 0.075, d: 0.22, x, y: 0.035, z: zz + 2.51, material: oak, solid: false, noSplat: true, name: 'oak glass threshold' });
       box(z, { w: 3.5, h: 2.82, d: 0.035, x, y: 0.08, z: zz - 2.53, material: glass, solid: false, noSplat: true, name: 'rage glass back' });
       box(z, { w: 0.035, h: 2.82, d: 5.0, x: x - 1.73, y: 0.08, z: zz, material: glass, solid: false, noSplat: true, name: 'rage glass side' });
       box(z, { w: 0.035, h: 2.82, d: 5.0, x: x + 1.73, y: 0.08, z: zz, material: glass, solid: false, noSplat: true, name: 'rage glass side' });
       plane(z, {
         w: 2.35, h: 0.34, x, y: 3.25, z: zz - 2.58,
-        material: new THREE.MeshBasicMaterial({ map: textTexture(`BOX ${String(i + 1).padStart(2, '0')} · ${boothLabels[i]}`, { fg: '#ffcad2', bg: '#441722', size: 28, w: 900, h: 150, font: '900' }) }),
+        material: new THREE.MeshBasicMaterial({ map: textTexture(`BOX ${String(i + 1).padStart(2, '0')} · ${boothLabels[i]}`, { fg: '#152a31', bg: '#d6eef0', size: 28, w: 900, h: 150, font: '900' }) }),
         noSplat: true,
       });
+      // Cool daylight reflected in the booth roof, with a warmer strip near
+      // the occupant so faces remain readable through two panes of glass.
+      const roofGlow = plane(z, { w: 2.9, h: 1.35, x, y: 3.72, z: zz, rx: Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ color: i === 3 ? 0xfff2c4 : 0xd8f6ff, transparent: true, opacity: 0.9, side: THREE.DoubleSide }), noSplat: true });
+      roofGlow.userData.daylightPanel = true;
     };
 
     const boothX = [-8, -4, 0, 4, 8];
@@ -4357,9 +4401,15 @@ export class World {
       });
     }
 
+    // The centre booth is a one-person stage: MC Freeglass, a microphone and
+    // a tiny sampler desk. His bars arrive as paced subtitles over the coded
+    // room score, while his body keeps time with the beat.
     const dude = new THREE.Group(); dude.position.set(0, 0, 0.5);
-    const skin = mat(0xd19b7b, { roughness: 0.82 }); const shirt = mat(0x242936, { roughness: 0.72 });
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.5, 6, 10), shirt); torso.position.y = 1.03;
+    const skin = mat(0x8e5538, { roughness: 0.78 });
+    const shirt = mat(0x49336e, { roughness: 0.54, metalness: 0.08 });
+    const trousers = mat(0x16222a, { roughness: 0.7 });
+    const gold = mat(0xd8a52d, { roughness: 0.22, metalness: 0.82 });
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 6, 10), shirt); torso.position.y = 1.03;
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), skin); head.position.y = 1.69;
     const makeArm = (side) => {
       const pivot = new THREE.Group(); pivot.position.set(side * 0.34, 1.28, 0);
@@ -4368,20 +4418,98 @@ export class World {
       pivot.add(limb, fist); dude.add(pivot); return pivot;
     };
     const armL = makeArm(-1); const armR = makeArm(1);
-    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.44, 5, 8), shirt); legL.position.set(-0.14, 0.38, 0);
+    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.44, 5, 8), trousers); legL.position.set(-0.14, 0.38, 0);
     const legR = legL.clone(); legR.position.x = 0.14;
     dude.add(torso, head, legL, legR);
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.235, 0.11, 14), trousers); cap.position.y = 1.87; dude.add(cap);
+    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.035, 0.19), trousers); brim.position.set(0, 1.82, 0.18); dude.add(brim);
+    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 7, 20, Math.PI), gold); chain.position.set(0, 1.34, 0.285); chain.rotation.x = Math.PI / 2; dude.add(chain);
+    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.07, 0.035), mat(0x12181d, { metalness: 0.62, roughness: 0.18 })); shades.position.set(0, 1.72, 0.205); dude.add(shades);
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.018), mat(0xffd4b8, { roughness: 0.58 })); mouth.position.set(0, 1.61, 0.218); dude.add(mouth);
     dude.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(dude);
-    dude.add(plane(z, { w: 2.25, h: 0.34, x: 0, y: 2.3, z: -0.02, material: new THREE.MeshBasicMaterial({ map: textTexture('MARTIN · NO ADVICE', { fg: '#fff0f3', bg: '#661c2b', size: 31, w: 900, h: 140, font: '900' }) }), noSplat: true }));
+    dude.add(plane(z, { w: 2.55, h: 0.34, x: 0, y: 2.3, z: -0.02, material: new THREE.MeshBasicMaterial({ map: textTexture('MC FREEGLASS · BOXED BUT UNBROKEN', { fg: '#fff8d6', bg: '#392556', size: 28, w: 1100, h: 140, font: '900' }) }), noSplat: true }));
+
+    const micStand = new THREE.Group(); micStand.position.set(0.42, 0, 0.82);
+    const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 1.46, 8), frameMat); standPole.position.y = 0.73;
+    const mic = new THREE.Mesh(new THREE.CapsuleGeometry(0.045, 0.16, 5, 8), mat(0x202b32, { roughness: 0.26, metalness: 0.72 })); mic.position.set(-0.08, 1.48, 0); mic.rotation.z = 1.08;
+    const standBase = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.26, 0.045, 14), trousers); standBase.position.y = 0.022;
+    micStand.add(standPole, mic, standBase); micStand.traverse((o) => { o.userData.noSplat = true; }); z.group.add(micStand);
+    box(z, { w: 1.25, h: 0.72, d: 0.58, x: 0, y: 0.01, z: -0.55, material: oak, solid: false, noSplat: true, name: 'MC sampler desk' });
+    box(z, { w: 0.92, h: 0.08, d: 0.43, x: 0, y: 0.74, z: -0.55, material: trousers, solid: false, noSplat: true });
+    for (let i = 0; i < 8; i++) box(z, { w: 0.065, h: 0.025, d: 0.065, x: -0.3 + (i % 4) * 0.2, y: 0.79, z: -0.66 + Math.floor(i / 4) * 0.16, material: mat(i % 3 === 0 ? 0xf46f61 : 0x9edbe0, { emissive: i % 3 === 0 ? 0x57120d : 0x173c42, emissiveIntensity: 0.38 }), solid: false, noSplat: true });
+    for (const sx of [-1.18, 1.18]) {
+      box(z, { w: 0.46, h: 0.82, d: 0.4, x: sx, y: 0.02, z: -0.52, material: trousers, solid: false, noSplat: true });
+      for (const y of [0.25, 0.58]) {
+        const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 0.025, 16), mat(0x344d56, { roughness: 0.48 }));
+        cone.position.set(sx, y, -0.725); cone.rotation.x = Math.PI / 2; cone.userData.noSplat = true; z.group.add(cone);
+      }
+    }
+
+    // Floating signal lights and translucent acoustic ribbons borrow the
+    // garden's layered silhouettes without turning the room into foliage.
+    const signalColors = [0x40cfe5, 0xffcb4d, 0xff6b73, 0x8267df];
+    const signalOrbs = [];
+    for (let i = 0; i < 9; i++) {
+      const color = signalColors[i % signalColors.length];
+      const orb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09 + (i % 3) * 0.02, 12, 9),
+        new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.1, roughness: 0.2 })
+      );
+      orb.position.set(-8.2 + i * 2.05, 0.85 + (i % 3) * 0.48, 5.65 + Math.sin(i * 1.7) * 0.22);
+      orb.userData.noSplat = true; z.group.add(orb);
+      signalOrbs.push({ mesh: orb, baseY: orb.position.y, phase: i * 0.77 });
+    }
+    for (const [x, color, tilt] of [[-5.7, 0xff6b73, -0.15], [0.2, 0x40cfe5, 0.11], [6.5, 0xffcb4d, -0.08]]) {
+      const ribbon = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.9, 0.3, 6, 1),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })
+      );
+      ribbon.position.set(x, 4.18, 5.85); ribbon.rotation.set(0.08, Math.PI, tilt);
+      ribbon.userData.noSplat = true; z.group.add(ribbon);
+    }
+
+    z.interactables.push({
+      id: 'mc-freeglass', type: 'flavor', label: 'Listen at MC Freeglass’s booth',
+      title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(0, 1.1, 2.45), radius: 2.35,
+      lines: [
+        'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
+        'MC FREEGLASS: “Freedom is not silence. Freedom is choosing what the echo gets to keep.”',
+      ],
+    });
 
     z.animated.rageRoom = {
-      breakables, shards, dude, torso, head, armL, armR, rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0,
-      lines: ['I AM PROCESSING IT.', 'THE CHAIR KNOWS WHAT IT DID.', 'THIS IS NOT ABOUT THE LAMP.', 'I HAVE REACHED A HEALTHY LEVEL OF DESTRUCTION.', 'NO NOTES. ONLY SPLINTERS.'],
+      breakables, shards, dude, torso, head, armL, armR, signalOrbs, rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0,
+      lines: [
+        'Chaos on the kick drum, but I keep my breath in time.',
+        'Jesus in the reverb saying mercy still can rhyme.',
+        'I met fear in a glass box. Fear asked me for the key.',
+        'I said freedom is a practice, not a door somebody gives me.',
+        'Break the throne in your head, leave the window where it stood.',
+        'Grace is not obedience. Grace is choosing what is good.',
+        'No master in the mirror, no market in my chest.',
+        'Let the crooked jazz confess what the straight line has suppressed.',
+        'If the world arrives as chaos, make a rhythm, make a name.',
+        'Jesus flipped the tables; I just sample what remains.',
+        'The box can hold my body, not the weather in my voice.',
+        'To be free is not escape. It is the muscle of a choice.',
+      ],
     };
-    plane(z, { w: 8.5, h: 0.55, x: 0, y: 3.35, z: -6.82, material: new THREE.MeshBasicMaterial({ map: textTexture('THE GLASS BOXES  ·  FEEL IT / BREAK IT / BILL IT', { fg: '#ffced4', bg: '#24121a', size: 37, w: 1600, h: 180, font: '900' }) }), noSplat: true });
-    plane(z, { w: 5.2, h: 0.28, x: 0, y: 2.82, z: -6.81, material: new THREE.MeshBasicMaterial({ map: textTexture('SCREAMING IS INCLUDED · REPLACEMENT ITEMS ARE NOT', { fg: '#a4e8f1', bg: '#101b28', size: 24, w: 1500, h: 120, font: '700' }) }), noSplat: true });
-    const red = new THREE.PointLight(0xe82d4f, 4.5, 12, 1.8); red.position.set(0, 3.0, 0.4); z.group.add(red); z.animated.rageLight = red; z.animated.rageRoom.rageLight = red;
-    z.group.add(new THREE.HemisphereLight(0x27334b, 0x090a0e, 0.72));
+    plane(z, { w: 8.5, h: 0.55, x: 0, y: 4.65, z: -7.16, material: new THREE.MeshBasicMaterial({ map: textTexture('THE GLASS BOXES  ·  CHAOS / GRACE / FREEDOM', { fg: '#15333b', bg: '#e4f5f3', size: 37, w: 1600, h: 180, font: '900' }) }), noSplat: true });
+    plane(z, { w: 6.2, h: 0.28, x: 0, y: 4.12, z: -7.15, material: new THREE.MeshBasicMaterial({ map: textTexture('DAYLIGHT IN · FEAR OUT · WEIRD JAZZ FOREVER', { fg: '#6e4a21', bg: '#fff2c9', size: 24, w: 1500, h: 120, font: '700' }) }), noSplat: true });
+
+    // A long false clerestory creates a convincing source for the daylight,
+    // rather than simply raising ambient intensity across the whole room.
+    for (let i = 0; i < 7; i++) {
+      const x = -9 + i * 3;
+      plane(z, { w: 2.55, h: 1.28, x, y: 3.8, z: 7.18, ry: Math.PI,
+        material: new THREE.MeshBasicMaterial({ color: i % 2 ? 0xc9ecf5 : 0xe7f8fb, side: THREE.DoubleSide }), noSplat: true, name: 'clerestory sky' });
+      box(z, { w: 0.06, h: 1.4, d: 0.08, x: x - 1.31, y: 3.1, z: 7.05, material: frameMat, solid: false, noSplat: true });
+    }
+    const sun = new THREE.DirectionalLight(0xfff0cf, 3.0); sun.position.set(-7, 11, 5); sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048); sun.shadow.camera.left = -13; sun.shadow.camera.right = 13;
+    sun.shadow.camera.top = 9; sun.shadow.camera.bottom = -9; z.group.add(sun);
+    const sky = new THREE.HemisphereLight(0xe7fbff, 0xa39a88, 2.25); z.group.add(sky);
+    const red = new THREE.PointLight(0x78d8e7, 1.65, 10, 1.7); red.position.set(0, 3.0, 0.4); red.userData.baseIntensity = 1.65; z.group.add(red); z.animated.rageLight = red; z.animated.rageRoom.rageLight = red;
     door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
     z.waypoints = [new THREE.Vector3(-9, 0, -5), new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 0, -5), new THREE.Vector3(9, 0, -5)];
   }
@@ -5578,7 +5706,7 @@ export class World {
     rage.shoutIndex = 0;
     rage.lastBreak = 0;
     if (rage.dude) rage.dude.position.set(0, 0, 0.5);
-    if (rage.rageLight) rage.rageLight.intensity = 4.5;
+    if (rage.rageLight) rage.rageLight.intensity = rage.rageLight.userData.baseIntensity ?? 1.65;
   }
 
   #breakRageTarget(target, t) {
@@ -5791,6 +5919,11 @@ export class World {
       rage.armL.rotation.x = Math.sin(t * 4.6) * 0.32;
       rage.armR.rotation.x = Math.sin(t * 5.2 + 1.2) * -0.28;
 
+      for (const orb of rage.signalOrbs ?? []) {
+        orb.mesh.position.y = orb.baseY + Math.sin(t * 1.15 + orb.phase) * 0.09;
+        orb.mesh.material.emissiveIntensity = 0.82 + kick * 0.75 + Math.sin(t * 0.65 + orb.phase) * 0.12;
+      }
+
       for (const fragment of rage.shards) {
         if (!fragment.visible || !fragment.userData.velocity) continue;
         const velocity = fragment.userData.velocity;
@@ -5811,17 +5944,18 @@ export class World {
           const result = this.#breakRageTarget(next, t);
           rage.nextIndex++;
           rage.shoutIndex++;
-          rage.timer = 1.55 + (rage.nextIndex % 3) * 0.34;
+          rage.timer = 3.7 + (rage.nextIndex % 3) * 0.42;
           rage.lastBreak = t;
           event = { type: 'rageBreak', variant: result.variant, line: rage.lines[(rage.shoutIndex - 1) % rage.lines.length] };
         } else {
-          rage.timer = 3.2;
+          rage.timer = 4.25;
           rage.shoutIndex++;
-          event = { type: 'rageBreak', variant: rage.shoutIndex % 4, line: 'THE ROOM HAS RUN OUT OF OBJECTS. I AM NOT DONE.' };
+          event = { type: 'rageBreak', variant: rage.shoutIndex % 4, line: rage.lines[(rage.shoutIndex - 1) % rage.lines.length] };
         }
       }
       const breakAge = t - (rage.lastBreak ?? 0);
-      rage.rageLight.intensity = 4.5 + (breakAge >= 0 && breakAge < 0.45 ? (1 - breakAge / 0.45) * 10 : 0);
+      const daylightBase = rage.rageLight.userData.baseIntensity ?? 1.65;
+      rage.rageLight.intensity = daylightBase + (breakAge >= 0 && breakAge < 0.45 ? (1 - breakAge / 0.45) * 3.2 : 0);
     }
 
     if (z.animated.deathMetal) {
