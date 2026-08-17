@@ -13,6 +13,7 @@ const CLUE_REVEALS = {
   brandSeen: 'The room has a treatment plan for your identity.',
   theorySeen: 'The language changes. The transaction does not.',
   privateCollectionSeen: 'Someone has made a room for the version of you they can own.',
+  documentationSeen: 'The archive has catalogued you and the work as an Edition of One.',
 };
 
 const STORY_LINES = {
@@ -78,6 +79,14 @@ const STORY_LINES = {
         ],
       },
     },
+    {
+      when: ['documentationSeen'],
+      pools: {
+        reactions: [
+          'DOCUMENTA gave you a number. I merely acquired the confidence behind it.',
+        ],
+      },
+    },
   ],
 };
 
@@ -85,6 +94,10 @@ const TRANSITIONS = {
   'garret>galleria': 'Your hands still smell like paint. The gallery has already decided what it means.',
   'galleria>gildedFork': 'The title travels faster than you do.',
   'galleria>vault': 'The white cube ends. The paperwork continues.',
+  'galleria>documenta': 'The artwork stops. The documentation continues without supervision.',
+  'documenta>galleria': 'The shutters fade. The white cube feels almost undocumented.',
+  'vault>invisibleCollection': 'The cages end. The empty paperwork has its own annex.',
+  'invisibleCollection>vault': 'The alarms fade behind you. The Vault suddenly looks burdened with objects.',
   'vault>garret': 'Home is smaller when you know who has measured it.',
   'galleria>leatherLatex': 'The public room gives way to the room where taste gets comfortable.',
   'galleria>vacantEditions': 'The work leaves the wall and enters a catalogue.',

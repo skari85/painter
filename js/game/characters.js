@@ -2159,6 +2159,112 @@ export const PUBLIC_RESTROOM_CAST = [{
   },
 }];
 
+/** DOCUMENTA's six workers and the person who has catalogued them. */
+const DOCUMENTERS = [
+  ['consentRunner', 'Mina Release', 'Consent Runner', 'doc-consent', 0xe4bc9e, 0x263247, [
+    'Consent is assumed until the clipboard catches you.',
+    'Please sign where the future dispute will occur.',
+  ]],
+  ['timecodeOperator', 'Otto Timestamp', 'Timecode Operator', 'doc-timecode', 0xb87955, 0x2f4b45, [
+    'The present is running three frames late.',
+    'Nothing happened at 21:04:17. We have four angles.',
+  ]],
+  ['captionIntern', 'Liv Alt-Text', 'Caption Intern', 'doc-caption', 0xe7c3aa, 0x553f69, [
+    'I described the empty plinth as emotionally unavailable.',
+    'The caption is longer than the event. The event understands.',
+  ]],
+  ['qrChaplain', 'Pastor Q.R.', 'QR Chaplain', 'doc-qr', 0x8e5e48, 0x202126, [
+    'Scan and be known by a website that expires Thursday.',
+    'The code leads to another code. Pilgrimage is back.',
+  ]],
+  ['witnessWitness', 'Ada Observer', 'Witness to the Witness', 'doc-witness', 0xd6a98c, 0x5d2d2d, [
+    'I am documenting the photographer failing to look.',
+    'My testimony requires a second witness and a ring light.',
+  ]],
+  ['archiveTech', 'Ben Duplicate', 'Archive Technician', 'doc-archive', 0x6f4939, 0x24415e, [
+    'The backup has a backup. Neither remembers the art.',
+    'We preserve everything except the reason it mattered.',
+  ]],
+];
+
+export const DOCUMENTA_CAST = [
+  ...DOCUMENTERS.map(([id, name, role, anchor, skin, top, barks], i) => ({
+    id, name, shortRole: role.toLowerCase(), role: `${role}, DOCUMENTA`, anchor,
+    ego: 44 + i * 2, weak: i % 2 ? 'kind' : 'witty', resist: i % 3 === 0 ? 'brutal' : 'kind',
+    hint: 'They are too busy recording the encounter to experience it.',
+    pace: 0.74 + i * 0.04, pitch: 0.82 + i * 0.05, accessory: i % 2 ? 'sunglasses' : null,
+    palette: { skin, hair: 0x29272a, top, bottom: 0x18191d },
+    barks,
+    openers: [
+      'Please repeat your entrance. The first one lacked archival intent.',
+      'I have your image, your timestamp and no memory of meeting you.',
+    ],
+    reactions: {
+      kind: ['That is difficult to catalogue without becoming a person.'],
+      witty: ['Good. Say it again after I find the correct filename.'],
+      brutal: ['Aggression is excellent metadata. Hold that expression.'],
+    },
+    countered: ['Your objection has been recorded as enthusiastic participation.'],
+    weakHit: ['Stop making the documentation feel less important than the thing.'],
+    disarmed: ['I could put the clipboard down. There is no field for that.'],
+    dismiss: ['This conversation is now an appendix.'],
+    meltdown: 'THE FILE EXISTS. THE MOMENT DOES NOT. WHICH ONE WAS I PROTECTING?',
+    playerJabs: {
+      kind: ['You are allowed to witness something without turning it into evidence.'],
+      witty: ['Your camera roll has seen more art than you have.'],
+      brutal: ['You replaced attention with storage and called the hard drive a conscience.'],
+    },
+  })),
+  {
+    id: 'headDocumenter', name: 'Dr. Meta Dater', shortRole: 'head of documentation',
+    role: 'Head of Documentation, Keeper of the Metadata', anchor: 'doc-head', static: true,
+    egoLabel: 'METADATA', ego: 70, dmgMods: { kind: 1.15, witty: 1.3, brutal: 1.0 }, canDisarm: false,
+    hint: 'The archive mistakes description for truth. Every tone produces a different kind of exit.',
+    pace: 0.7, pitch: 0.7, accessory: 'sunglasses',
+    face: 'puplic/visual assets/character_faces/12-office-worker.png',
+    palette: { skin: 0xd0a184, hair: 0x36343a, top: 0xe9e8e2, bottom: 0x22242a },
+    openers: [
+      'You are now ARTIST, LIVING, VARIABLE DIMENSIONS. Your painting is supporting documentation.',
+      'Do not worry. We have preserved your encounter with us before it happened.',
+      'The archive does not own you. It owns the authoritative description of you, which is more portable.',
+    ],
+    reactions: {
+      kind: [
+        'Consent introduces unacceptable ambiguity into a complete record.',
+        'If the subjects leave, who confirms that our care occurred?',
+      ],
+      witty: [
+        'That filename is not funny. It is, however, already in twelve catalogues.',
+        'A joke without a checksum is merely oral history.',
+      ],
+      brutal: [
+        'Damage is just documentation with visible consequences.',
+        'Keep shouting. The waveform is exquisite.',
+      ],
+    },
+    countered: ['Your objection has been entered under CONSENT, IMPLIED.'],
+    weakHit: ['Stop making the categories describe themselves. They are becoming frightened.'],
+    disarmed: ['Open the folders. Let the people keep their own names.'],
+    dismiss: ['The archive has reached capacity. Unfortunately, so have I.'],
+    meltdown: 'THE RECORD IS COMPLETE. THE EVENT IS MISSING. I HAVE CATALOGUED THE CATALOGUE.',
+    barks: ['Metadata is the soul after procurement has approved it.'],
+    playerJabs: {
+      kind: [
+        'A record without consent is not care. Let the people take their names home.',
+        'You can preserve the work without imprisoning the person who made it.',
+      ],
+      witty: [
+        'Your authoritative description is currently saved as FINAL_final_REAL_7.',
+        'You documented everything except why anyone should open the folder.',
+      ],
+      brutal: [
+        'You built a mausoleum for attention and staffed it with tripods.',
+        'The archive is empty bureaucracy wearing the artist like a lanyard.',
+      ],
+    },
+  },
+];
+
 /** Build a crowd of ambient weirdos for a zone. */
 export function buildCrowd(zoneKey, night, count) {
   const defs = [];
@@ -2282,6 +2388,7 @@ export function castForNight(night) {
         deathMetal: DEATH_METAL_CAST,
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
+        documenta: DOCUMENTA_CAST,
       };
     case 2:
 
@@ -2305,6 +2412,7 @@ export function castForNight(night) {
         deathMetal: DEATH_METAL_CAST,
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
+        documenta: DOCUMENTA_CAST,
       };
     default:
 
@@ -2325,6 +2433,7 @@ export function castForNight(night) {
         deathMetal: DEATH_METAL_CAST,
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
+        documenta: DOCUMENTA_CAST,
       };
 
   }

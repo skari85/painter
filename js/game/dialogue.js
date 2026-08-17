@@ -132,6 +132,7 @@ export class DialogueEngine extends Emitter {
     this.active = {
       npc,
       rounds: 0,
+      finalTone: null,
       custom: opts.custom ?? null,
       options,
       outcome: null,
@@ -180,6 +181,7 @@ export class DialogueEngine extends Emitter {
     const { npc } = a;
     const def = npc.def;
     const tone = opt.tone;
+    a.finalTone = tone;
 
     // ---- tone economics ----
     const s = this.#state;
@@ -265,7 +267,11 @@ export class DialogueEngine extends Emitter {
     a.npc.endTalk();
     a.npc.setEgoVisible(false);
     this.active = null;
-    this.emit('end', { npc: a.npc, outcome: outcomeOverride ?? a.outcome ?? 'left' });
+    this.emit('end', {
+      npc: a.npc,
+      outcome: outcomeOverride ?? a.outcome ?? 'left',
+      finalTone: a.finalTone,
+    });
   }
 
   get current() { return this.active; }

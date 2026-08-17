@@ -2,7 +2,9 @@
  * ai.js — the ghostwriter.
  *
  * A tiny Groq client that writes ambient party chatter in character.
- * The key lives in js/local.env. (gitignored — never committed).
+ * During local development the key may live in js/local.env. (gitignored —
+ * never committed). Deployments can provide PAINTER_CONFIG.groqApiKey without
+ * probing for a private file that intentionally is not part of the build.
  * If anything is missing, offline, or rate-limited, the ghost simply
  * doesn't show up and the game keeps its authored voice. No exceptions
  * escape this file; the party must go on.
@@ -11,6 +13,7 @@
 const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant';   // fast enough for party gossip
 const TIMEOUT_MS = 7000;
+const LOCAL_DEV_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
 
 export class Ghostwriter {
   #key = null;
@@ -18,10 +21,20 @@ export class Ghostwriter {
 
   get enabled() { return !!this.#key && this.#failures < 3; }
 
-  /** Fetch + parse the gitignored env file. Never throws. */
+  /** Initialize from runtime configuration or the local-only env file. */
   async init() {
+    const runtimeKey = String(globalThis.PAINTER_CONFIG?.groqApiKey || '').trim();
+    if (/^[\w.-]+$/.test(runtimeKey)) {
+      this.#key = runtimeKey;
+      return;
+    }
+
+    // Preview and production builds never contain the private local file.
+    // Skipping the request there prevents an expected absence becoming a 404.
+    if (!LOCAL_DEV_HOSTS.has(window.location.hostname)) return;
+
     try {
-      const res = await fetch('js/local.env.', { cache: 'no-store' });
+      const res = await fetch(new URL('../local.env.', import.meta.url), { cache: 'no-store' });
       if (!res.ok) return;
       const text = await res.text();
       const m = text.match(/GROQ_API_KEY\s*=\s*["']?([\w.-]+)["']?/);

@@ -77,6 +77,7 @@ export class AudioEngine {
   #roomScore = null;   // one profile-driven procedural rig for the current room
   #roomScoreKey = null;
   #roomScoreStep = 0;
+  #roomScoreDrive = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -288,7 +289,7 @@ export class AudioEngine {
   /** Current quarter-note tempo, shared with tempo-reactive scene animation. */
   get soundtrackBpm() {
     if (this.#music && !this.#music.paused) return MUSIC_BPMS[this.#musicKey] ?? 96;
-    if (this.#roomScore) return this.#roomScore.profile.bpm * ROOM_SCORE_FEEL.tempoScale;
+    if (this.#roomScore) return 60 / (this.#roomScore.stepDur * 4);
     if (this.#jazz) return JAZZ.bpm;
     if (this.#techno) return TECHNO.bpm;
     return 0;
@@ -340,10 +341,11 @@ export class AudioEngine {
       lofiNodes = { hiss, hissHighpass, hissLowpass, hissGain, wow, wowDepth };
     }
 
-    const stepDur = 60 / (profile.bpm * ROOM_SCORE_FEEL.tempoScale) / 4;
+    const bpm = profile.office ? 72 + this.#roomScoreDrive * 54 : profile.bpm * ROOM_SCORE_FEEL.tempoScale;
+    const stepDur = 60 / bpm / 4;
     this.#roomScore = {
       key, profile, lofi, bus, filter, lofiNodes,
-      stepDur, startTime: t, nextTime: t + 0.06,
+      stepDur, targetStepDur: stepDur, startTime: t, nextTime: t + 0.06,
       timer: setInterval(() => this.#roomScoreTick(), 40),
     };
     this.#roomScoreStep = 0;
@@ -382,11 +384,21 @@ export class AudioEngine {
     const s = this.#roomScore;
     if (!s || !this.#ctx) return;
     const horizon = this.#ctx.currentTime + 0.12;
+    s.stepDur += (s.targetStepDur - s.stepDur) * 0.08;
     while (s.nextTime < horizon) {
       this.#roomScoreStep16(this.#roomScoreStep, s.nextTime, s);
       this.#roomScoreStep = (this.#roomScoreStep + 1) % 64;
       s.nextTime += s.stepDur;
     }
+  }
+
+  /** Drive an adaptive room score without disturbing a selected record. */
+  setRoomScoreDrive(value = 0) {
+    this.#roomScoreDrive = clamp(value, 0, 1);
+    const s = this.#roomScore;
+    if (!s?.profile.office) return;
+    const bpm = 72 + this.#roomScoreDrive * 54;
+    s.targetStepDur = 60 / bpm / 4;
   }
 
   #scoreTone(t, freq, {
@@ -716,6 +728,40 @@ export class AudioEngine {
     }
   }
 
+  #scoreOfficeStep(step, t, s) {
+    const office = s.profile.office;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
+    const drive = this.#roomScoreDrive;
+
+    // Receipt-printer pin strikes: clipped, pitched ticks in anxious clusters.
+    if (office.printer.includes(pos)) {
+      const repeats = drive > 0.72 && pos % 2 ? 2 : 1;
+      for (let i = 0; i < repeats; i++) {
+        this.#scoreTone(swung + i * s.stepDur * 0.28, 1620 + ((step + i) % 5) * 155, {
+          bus: s.bus, type: 'square', peak: 0.018 + drive * 0.012, attack: 0.002,
+          decay: 0.026, cutoff: 5200, slide: 0.96,
+        });
+      }
+    }
+    // Auction gavel — a wooden low knock, never a club kick.
+    if (office.gavel.includes(pos)) {
+      this.#scoreTone(swung, 118, { bus: s.bus, type: 'triangle', peak: 0.12, attack: 0.002, decay: 0.11, cutoff: 460, slide: 0.52 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.026, decay: 0.045, freq: 780, type: 'bandpass' });
+    }
+    // Elevator confirmation chimes remain calm while the valuation does not.
+    if (office.chimes.includes(pos)) {
+      const f = pos === 4 ? 659.25 : 783.99;
+      this.#scoreTone(swung, f, { bus: s.bus, type: 'sine', peak: 0.027, attack: 0.006, decay: s.stepDur * 1.45, cutoff: 2400 });
+    }
+    // Short filtered shredder breath, kept sparse to preserve the groove.
+    if (office.shredder.includes(pos) && (drive > 0.18 || step % 32 === 14)) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.015 + drive * 0.014, decay: s.stepDur * (0.7 + drive * 0.7), freq: 980, type: 'bandpass' });
+    }
+    // Conservation air system: one restrained inhale per bar.
+    if (pos === 15) this.#scoreNoise(swung, { bus: s.bus, peak: 0.009, decay: s.stepDur * 2.4, freq: 3800, type: 'lowpass' });
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
     const lofi = s.lofi;
@@ -724,6 +770,10 @@ export class AudioEngine {
 
     if (p.restroom) {
       this.#scoreRestroomStep(step, t, s);
+      return;
+    }
+    if (p.office) {
+      this.#scoreOfficeStep(step, t, s);
       return;
     }
 
@@ -790,6 +840,17 @@ export class AudioEngine {
     if (this.#ctx) this.#scoreRestroomPiss(this.#ctx.currentTime + 0.012, this.#master, variant, true);
   }
 
+  museumAlarm(variant = 0) {
+    if (!this.#ctx) return;
+    this.#tone({ freq: 740 + (variant % 3) * 70, type: 'square', peak: 0.09, decay: 0.12 });
+    setTimeout(() => this.#tone({ freq: 540 + (variant % 2) * 80, type: 'square', peak: 0.075, decay: 0.14 }), 135);
+  }
+
+  valuationStamp(variant = 0) {
+    this.#noise({ peak: 0.075, decay: 0.055, filterFreq: 760 + variant * 90, q: 4, type: 'bandpass' });
+    this.#tone({ freq: 132 + variant * 8, type: 'triangle', peak: 0.065, decay: 0.09 });
+  }
+
   uiMove()    { this.#tone({ freq: 1150, type: 'sine', peak: 0.06, decay: 0.05 }); }
   uiConfirm() { this.#tone({ freq: 740, type: 'sine', peak: 0.09, decay: 0.09 });
                 this.#tone({ freq: 1110, type: 'sine', peak: 0.07, decay: 0.12 }); }
@@ -820,6 +881,33 @@ export class AudioEngine {
 
   gasp() {
     this.#tone({ freq: 380, freqEnd: 760, type: 'sine', peak: 0.1, decay: 0.18 });
+  }
+
+  documentaShutter(corrupted = false) {
+    this.#noise({ peak: corrupted ? 0.13 : 0.09, decay: 0.035, filterFreq: 5200, filterEnd: 1600, q: 1.6, type: 'bandpass' });
+    this.#tone({ freq: corrupted ? 1880 : 1420, freqEnd: corrupted ? 740 : 980, type: 'square', peak: 0.035, decay: 0.045 });
+  }
+
+  documentaPaper() {
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => this.#noise({ peak: 0.075, decay: 0.09, filterFreq: 2600 + i * 450, filterEnd: 620, q: 0.8, type: 'bandpass' }), i * 58);
+    }
+    this.#tone({ freq: 96, freqEnd: 72, type: 'square', peak: 0.045, decay: 0.24 });
+  }
+
+  documentaScanner() {
+    [620, 930, 1395, 465].forEach((freq, i) => {
+      setTimeout(() => this.#tone({ freq, freqEnd: freq * 1.04, type: 'sine', peak: 0.065, decay: 0.12 }), i * 82);
+    });
+    this.#noise({ peak: 0.08, decay: 0.48, filterFreq: 1750, filterEnd: 420, q: 1.8, type: 'bandpass' });
+  }
+
+  metadataCollapse(outcome = 'corrupt') {
+    const freqs = outcome === 'release' ? [440, 660, 880] : outcome === 'destroy' ? [190, 132, 74] : [740, 555, 1110, 370];
+    freqs.forEach((freq, i) => {
+      setTimeout(() => this.#tone({ freq, freqEnd: outcome === 'destroy' ? freq * 0.45 : freq * 1.03, type: outcome === 'release' ? 'sine' : 'square', peak: 0.09, decay: 0.3 }), i * 85);
+    });
+    if (outcome === 'destroy') this.#noise({ peak: 0.22, decay: 0.7, filterFreq: 4800, filterEnd: 180, q: 0.7, type: 'highpass' });
   }
 
   /** A short two-formant boxer moan. It is fully synthesized: pitched throat,

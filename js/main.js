@@ -331,7 +331,13 @@ class Game {
       this.input.exitLock();
       this.#interactTarget = null;
       ui.interactPrompt(null);
-      ui.openDialogue({ name: npc.def.name, role: npc.def.role, hint, face: npc.def.face ?? null });
+      ui.openDialogue({
+        name: npc.def.name,
+        role: npc.def.role,
+        hint,
+        face: npc.def.face ?? null,
+        egoLabel: npc.def.egoLabel ?? 'EGO',
+      });
       ui.setEgo(npc.ego / npc.maxEgo);
       ui.setLine(line, { pitch: npc.def.pitch, audio: this.audio });
       ui.showOptions(options, (i) => this.#onOption(i));
@@ -402,7 +408,7 @@ class Game {
     });
 
 
-    this.dialogue.on('end', ({ npc, outcome }) => {
+    this.dialogue.on('end', ({ npc, outcome, finalTone }) => {
       ui.closeDialogue();
       this.hand.gesture(null);
       this.mode = 'playing';
@@ -419,6 +425,9 @@ class Game {
       }
       this.quests.notify('duelEnded', { id: npc.def.id, outcome });
       this.arti.onDuelEnd(npc.def.id, outcome);
+      if (npc.def.id === 'headDocumenter' && ['shatter', 'dismiss', 'disarm'].includes(outcome)) {
+        this.#resolveDocumenta(finalTone);
+      }
     });
 
     // ---- ambient barks → subtitles ----
@@ -533,6 +542,8 @@ class Game {
     this.world.setVaultArchive('THE ARTIST', 'A-01');
     this.world.resetForestChurches();
     this.world.resetRageRoom();
+    this.world.setDocumentaSubject();
+    this.world.applyDocumentaState();
     this.pendingAppraisal = null;
     this.#dailyProgress = 0;
     this.#cowVisitedThisRun = false;
@@ -586,6 +597,8 @@ class Game {
     const yaw = Number.isFinite(position?.yaw) ? position.yaw : zone.spawnYaw;
     this.player.teleport(x, z, yaw);
     this.world.setVaultArchive(latest?.title, latest?.lotNumber);
+    this.#syncDocumenta();
+    this.#syncInvisibleCollection(zoneKey);
     this.#syncCarry();
 
     if (!this.quests.restore(saved.quest)) this.quests.startNight(this.state.night);
@@ -649,6 +662,7 @@ class Game {
     this.npcs.clear();
     const cast = castForNight(n);
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
+    this.#syncDocumenta();
 
     const z = this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
@@ -1203,6 +1217,13 @@ class Game {
         if (this.world.current !== 'garret') {
           this.state.addMeter('heat', 2, 'The walls were white. Were.');
         }
+        if (this.world.current === 'invisibleCollection' && Number.isInteger(hit.object.userData.invisibleWorkIndex)) {
+          this.#contaminateInvisibleCollection(hit.object.userData.invisibleWorkIndex);
+        }
+        if (this.world.isDocumentaCameraHit(hit.object)) {
+          this.#corruptDocumentaCamera();
+          return;
+        }
         this.#maybeKreyoMint();
       }
     }, 190);
@@ -1213,6 +1234,18 @@ class Game {
   #onAppraise() {
     if (this.mode !== 'playing' || !this.input.locked) return;
     const fwd = this.player.forwardDir(this.#fwd);
+    if (this.world.current === 'documenta') {
+      this.#raycaster.camera = this.camera;
+      this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
+      this.#raycaster.far = 5.5;
+      const archiveHit = this.#raycaster.intersectObjects(this.world.zone().group.children, true)
+        .find((hit) => hit.object.visible && this.world.isDocumentaArchiveHit(hit.object));
+      if (archiveHit) {
+        this.#appraiseDocumentaArchive();
+        this.#advanceDaily('appraise');
+        return;
+      }
+    }
     const npc = this.npcs.nearest(this.player.position, fwd, 4.2);
     if (npc) {
       this.ui.toast('THE APPRAISAL', appraiseNPC(npc.def.id, npc.def.name));
@@ -1322,6 +1355,25 @@ class Game {
           this.ui.toast('THE SHRINE', 'The candles are thinking. Give them a moment.');
         }
         break;
+      case 'documentaAccreditation':
+        if (this.state.getFlag('documentaComplete')) {
+          this.ui.toast('ACCREDITATION CLOSED', 'Your identity has already been resolved into an outcome. The printer requests no further contradictions.');
+          this.audio.uiMove();
+          break;
+        }
+        if (this.state.getFlag('documentaAccredited')) {
+          this.ui.toast('ALREADY ACCREDITED', 'Your badges read ARTIST, SUBJECT, AVAILABLE, VISITOR, LIABILITY and OTHER. Proceed to Live Documentation.');
+          this.audio.uiMove();
+          break;
+        }
+        this.state.setFlag('documentaAccredited');
+        this.state.record('Accredited as several incompatible people at DOCUMENTA', null);
+        this.audio.documentaPaper();
+        this.#syncDocumenta();
+        this.ui.toast('ACCREDITATION COMPLETE', 'The printer issues twenty-eight identities. None match, so the institution considers the record comprehensive.', 'good');
+        this.ui.hint('STATION 2 · Aim at the main Live Documentation camera and paint its lens with LMB.');
+        setTimeout(() => this.ui.hint(null), 9000);
+        break;
       case 'flavor':
         if (it.clueKey && !this.state.hasClue(it.clueKey)) {
           const latest = this.state.paintings[this.state.paintings.length - 1];
@@ -1396,6 +1448,10 @@ class Game {
         this.audio.ensure();
         this.audio.uiConfirm();
         this.#openRecords();
+        break;
+
+      case 'collectionAction':
+        this.#handleCollectionAction(it);
         break;
 
 
@@ -1587,6 +1643,246 @@ class Game {
     this.ui.toast('POV: COURIER', 'You seal the package at the sink-side counter. Deliver it to Muscle Mania 300 in UP AND CUMMING ARTIST.', 'good');
   }
 
+  #syncDocumenta() {
+    const latest = this.state.paintings[this.state.paintings.length - 1];
+    this.world.setDocumentaSubject(latest?.texture ?? null, latest?.title, latest?.lotNumber);
+    const complete = Boolean(this.state.getFlag('documentaComplete'));
+    this.world.applyDocumentaState({
+      accredited: Boolean(this.state.getFlag('documentaAccredited')),
+      cameraCorrupted: Boolean(this.state.getFlag('documentaCameraCorrupted')),
+      archiveCorrupted: Boolean(this.state.getFlag('documentaArchiveCorrupted')),
+      complete,
+      outcome: this.state.getFlag('documentaOutcome') || null,
+    });
+    if (complete) this.npcs.retire('headDocumenter');
+  }
+
+  #corruptDocumentaCamera() {
+    if (this.state.getFlag('documentaComplete')) {
+      this.ui.toast('NO AUTHORITATIVE IMAGE', 'The camera accepts the paint as the last surviving witness.');
+      return;
+    }
+    if (!this.state.getFlag('documentaAccredited')) {
+      this.ui.toast('UNACCREDITED GESTURE', 'The lens records the splat but refuses to understand it. Register at Accreditation first.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    if (this.state.getFlag('documentaCameraCorrupted')) {
+      this.ui.toast('LENS ALREADY CORRUPTED', 'All nine feeds remain devoted to the stain. It has representation now.');
+      this.audio.documentaShutter(true);
+      return;
+    }
+    this.state.setFlag('documentaCameraCorrupted');
+    this.state.record('Made paint more documentable than the Artist', null);
+    this.audio.documentaShutter(true);
+    this.#syncDocumenta();
+    this.ui.toast('LIVE DOCUMENTATION CORRUPTED', 'Every monitor abandons the Artist and archives the paint on the lens. The stain now has nine camera angles.', 'good');
+    this.ui.hint('STATION 3 · Find Archive Intake and press Q while looking at its scanner. Bring a finished painting.');
+    setTimeout(() => this.ui.hint(null), 10000);
+  }
+
+  #appraiseDocumentaArchive() {
+    if (this.state.getFlag('documentaComplete')) {
+      this.ui.toast('THE APPRAISAL', 'The scanner appraises its own absence. Estimate: outcome-dependent.');
+      this.audio.uiMove();
+      return;
+    }
+    if (!this.state.getFlag('documentaAccredited')) {
+      this.ui.toast('SEQUENCE ERROR', 'Accreditation must misidentify you before the archive can misidentify the work.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    if (!this.state.getFlag('documentaCameraCorrupted')) {
+      this.ui.toast('IMAGE TOO STABLE', 'The Archive Intake requires a compromised Live Documentation feed. Paint the main camera lens.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    const latest = this.state.paintings[this.state.paintings.length - 1];
+    if (!latest) {
+      this.ui.toast('NO WORK SUBMITTED', 'The scanner has an Artist but no evidence. Make a painting at the garret, then return.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    if (this.state.getFlag('documentaArchiveCorrupted')) {
+      this.ui.toast('METADATA OVERFLOW', `“${latest.title}” is already Artist, Artwork, Evidence, Edition and Scanner Error. The Head is waiting.`, 'good');
+      this.audio.uiMove();
+      return;
+    }
+    this.state.setFlag('documentaArchiveCorrupted');
+    this.state.discoverClue('documentationSeen', clueReveal('documentationSeen'));
+    this.state.record(`Made the archive appraise itself beside “${latest.title}”`, null);
+    this.audio.documentaScanner();
+    this.#syncDocumenta();
+    this.ui.toast('RECURSIVE SELF-VALUATION', `${latest.lotNumber ?? 'PENDING'} · “${latest.title}” becomes ARTIST, ARTWORK, EVIDENCE and EDITION OF ONE. The gate opens.`, 'good');
+    this.ui.hint('FINAL STATION · Confront Dr. Meta Dater. Her EGO is filed as METADATA.');
+    setTimeout(() => this.ui.hint(null), 10000);
+  }
+
+  #resolveDocumenta(finalTone) {
+    if (this.state.getFlag('documentaComplete') || !['kind', 'witty', 'brutal'].includes(finalTone)) return;
+    const outcome = { kind: 'release', witty: 'corrupt', brutal: 'destroy' }[finalTone];
+    this.state.setFlag('documentaOutcome', outcome);
+    this.state.setFlag('documentaComplete');
+    if (outcome === 'release') {
+      this.state.addMeter('soul', 8, 'Returned names to DOCUMENTA’s subjects');
+      this.state.shiftVirtue('compassion', 5, 'Consent became part of the record');
+      this.state.shiftVirtue('honesty', 3, 'The archive admitted it was not the event');
+      this.ui.toast('SUBJECTS RELEASED', 'Folders open. Names return to their owners. Every camera lowers its eye.', 'good');
+    } else if (outcome === 'corrupt') {
+      this.state.addMeter('fame', 7, 'Made DOCUMENTA document itself');
+      this.state.shiftVirtue('vision', 4, 'The metadata became its own punchline');
+      this.state.shiftVirtue('honesty', 2, 'The authoritative copy confessed its filename');
+      this.ui.toast('METADATA CORRUPTED', 'Every label now describes another label. FINAL_final_REAL_7 becomes the most cited work in the room.', 'good');
+    } else {
+      this.state.addMeter('fame', 8, 'Destroyed the Head of Documentation in public');
+      this.state.addMeter('heat', 12, 'Every tripod recorded its own collapse');
+      this.state.addMeter('soul', -4, 'The archive was full of people when it fell');
+      this.state.shiftVirtue('valor', 4, 'Authority lost its footing');
+      this.state.shiftVirtue('compassion', -2, 'Some subjects were still in the folders');
+      this.ui.toast('AUTHORITY NOT FOUND', 'Tripods fall in sequence. The server altar loses the authoritative description and keeps only the impact footage.', 'bad');
+    }
+    this.state.record(`Resolved DOCUMENTA through ${outcome}`, null);
+    this.audio.metadataCollapse(outcome);
+    this.#syncDocumenta();
+    this.ui.hint('DOCUMENTA COMPLETE · The exhibition may now begin. Nobody has time.');
+    setTimeout(() => this.ui.hint(null), 9000);
+  }
+
+  #invisibleValue() {
+    const raw = this.state.getFlag('invisibleValue');
+    if (raw === false) return 15000;
+    const saved = Number(raw);
+    return Number.isFinite(saved) && saved >= 0 ? saved : 15000;
+  }
+
+  #invisibleClean() { return !this.state.getFlag('invisibleContaminated'); }
+
+  #syncInvisibleCollection(zoneKey = this.world.current) {
+    const value = this.#invisibleValue();
+    const clean = this.#invisibleClean();
+    const complete = Boolean(this.state.getFlag('invisibleComplete'));
+    const contacted = [0, 1, 2, 3, 4].filter((i) => this.state.getFlag(`invisibleContact${i}`));
+    this.world.syncInvisibleCollection({ value, clean, complete, contacted });
+    this.ui.setCollectionValue(value, { visible: zoneKey === 'invisibleCollection', clean, complete });
+    if (zoneKey === 'invisibleCollection') this.audio.setRoomScoreDrive(Math.min(1, value / 1000000));
+  }
+
+  #setInvisibleValue(value, reason = '') {
+    this.state.setFlag('invisibleValue', value);
+    if (reason) this.state.record(reason, null);
+    this.#syncInvisibleCollection('invisibleCollection');
+    this.audio.valuationStamp(Math.min(4, Math.floor(value / 300000)));
+  }
+
+  #onInvisibleContact(index, title) {
+    const flag = `invisibleContact${index}`;
+    if (this.state.getFlag(flag)) return;
+    this.state.setFlag(flag);
+    this.state.setFlag('invisibleAlarmTriggered');
+    this.world.triggerInvisibleAlarm(index);
+    this.audio.museumAlarm(index);
+    if (this.#invisibleValue() < 120000) this.#setInvisibleValue(120000, `Security alarm authenticated contact with ${title}`);
+    this.state.addMeter('heat', 3, 'Touched work with no visible boundary');
+    this.ui.toast('PLEASE DO NOT TOUCH THE WORK', `Alarm ${String(index + 1).padStart(2, '0')}: “${title}” has been physically confirmed. Its valuation rises to €120,000.`, 'bad');
+  }
+
+  #contaminateInvisibleCollection(index) {
+    if (this.state.getFlag('invisibleContaminated')) {
+      this.world.triggerInvisibleAlarm(index);
+      this.audio.museumAlarm(index);
+      return;
+    }
+    this.state.setFlag('invisibleContaminated');
+    this.state.setFlag('invisibleAuctioned');
+    this.world.contaminateInvisibleWork(index);
+    this.state.addMeter('fame', 8, 'Made the invisible collection photographable');
+    this.state.addMeter('cash', 5, 'Contamination premium');
+    this.state.addMeter('soul', -8, 'The absence now carries your mark');
+    this.state.shiftVirtue('vision', -3, '');
+    this.#setInvisibleValue(3000000, 'Paint contamination tripled the absence premium');
+    this.audio.museumAlarm(index);
+    this.ui.toast('THE WORK HAS BEEN IMPROVED BY DAMAGE', 'Visible pigment appears on the invisible surface. The registrar calls it “historically decisive.” Valuation: €3,000,000.', 'bad');
+  }
+
+  #handleCollectionAction(it) {
+    const value = this.#invisibleValue();
+    if (it.action === 'inspect') {
+      const lines = [
+        'The certificate describes air with unusual confidence. The sculpture remains difficult to photograph.',
+        'Your eyes find nothing. The insurance policy finds a high-risk surface.',
+        'A taped rectangle asks you to imagine volume. The guard asks you to imagine consequences.',
+        'The conservation notes specify “do not dust the absence.”',
+        'The cube occupies precisely the amount of room required by its estimate.',
+      ];
+      this.ui.toast(`WORK ${String((it.workIndex ?? 0) + 1).padStart(2, '0')}`, lines[it.workIndex] ?? lines[0]);
+      this.audio.uiMove();
+      return;
+    }
+    if (this.state.getFlag('invisibleComplete')) {
+      this.ui.toast('FILE CLOSED', 'The collection has already become a decision. The empty rooms remain on display.');
+      return;
+    }
+    if (it.action === 'authenticate') {
+      if (this.state.getFlag('invisibleAuthenticated')) {
+        this.ui.toast('AUTHENTICATION', 'The empty air remains identical to the authenticated empty air. Excellent provenance.');
+        return;
+      }
+      this.state.setFlag('invisibleAuthenticated');
+      this.#setInvisibleValue(Math.max(value, 45000), 'Authenticated empty air without adding matter');
+      this.ui.toast('CERTIFICATE STAMPED', 'The Chief Conservator verifies that nothing has been altered. Estimate: €45,000.', 'good');
+      return;
+    }
+    if (it.action === 'damageClaim') {
+      if (!this.state.getFlag('invisibleAlarmTriggered')) {
+        this.ui.toast('NO INCIDENT, NO PREMIUM', 'The insurer needs evidence of contact. Walk into an invisible sculpture and let security do the paperwork.', 'bad');
+        return;
+      }
+      if (this.state.getFlag('invisibleDamageClaim')) { this.ui.toast('CLAIM FILED', 'The damage remains impossible to see and therefore impossible to disprove.'); return; }
+      this.state.setFlag('invisibleDamageClaim');
+      this.#setInvisibleValue(Math.max(value, 300000), 'Filed a damage claim for an unmarked absence');
+      this.ui.toast('DAMAGE: CONCEPTUAL, SEVERE', 'The insurer cannot locate the damage. This increases its seriousness. Estimate: €300,000.', 'good');
+      return;
+    }
+    if (it.action === 'reportStolen') {
+      if (!this.state.getFlag('invisibleDamageClaim')) { this.ui.toast('CHAIN OF CUSTODY INCOMPLETE', 'Authenticate contact and file the invisible damage claim first.', 'bad'); return; }
+      if (this.state.getFlag('invisibleStolen')) { this.ui.toast('STILL MISSING', 'It remains exactly where it was reported stolen. Security is relieved.'); return; }
+      this.state.setFlag('invisibleStolen');
+      this.#setInvisibleValue(Math.max(value, 750000), 'Reported the present collection stolen');
+      this.ui.toast('THEFT CONFIRMED BY ABSENCE', 'Nothing has moved, which is exactly what a professional thief would want. Estimate: €750,000.', 'good');
+      return;
+    }
+    if (it.action === 'auction') {
+      if (!this.state.getFlag('invisibleStolen') && !this.state.getFlag('invisibleContaminated')) { this.ui.toast('LOT WITHDRAWN', 'The auctioneer requires either a theft narrative or visible contamination.', 'bad'); return; }
+      if (this.state.getFlag('invisibleAuctioned')) { this.ui.toast('HAMMER DOWN', 'The certificate has sold. The object declined to attend.'); return; }
+      this.state.setFlag('invisibleAuctioned');
+      this.#setInvisibleValue(Math.max(value, 1500000), 'Auctioned a certificate for the missing presence');
+      this.ui.toast('SOLD TO AN ANONYMOUS PHONE', 'The certificate reaches €1,500,000. Please choose what kind of artist this makes you.', 'good');
+      return;
+    }
+    if (it.action === 'accept' || it.action === 'declareEmpty') {
+      if (!this.state.getFlag('invisibleAuctioned')) { this.ui.toast('NO ACQUISITION YET', 'Complete the institutional paperwork or contaminate a work before closing the file.', 'bad'); return; }
+      this.state.setFlag('invisibleComplete');
+      if (it.action === 'accept') {
+        this.state.setFlag('invisibleAccepted');
+        this.state.addMeter('fame', 12, 'Accepted the acquisition');
+        this.state.addMeter('cash', 14, 'Institutional acquisition fee');
+        this.state.addMeter('soul', -10, 'Signed ownership of nothing');
+        this.state.shiftVirtue('humility', -4, '');
+        this.ui.toast('ACQUISITION ACCEPTED', `The institution acquires the absence for €${value.toLocaleString('en-GB')}. Your signature is the only visible work.`, 'bad');
+      } else {
+        this.state.setFlag('invisibleDeclaredEmpty');
+        this.state.addMeter('soul', 14, 'Named the empty room honestly');
+        this.state.shiftVirtue('vision', 5, '');
+        this.state.shiftVirtue('humility', 3, '');
+        this.state.setFlag('invisibleValue', 0);
+        this.ui.toast('THE COLLECTION IS EMPTY', 'The estimate collapses to zero. For one clean second, the room contains only a room.', 'good');
+      }
+      this.state.record(it.action === 'accept' ? 'Accepted the Invisible Collection acquisition' : 'Declared the Invisible Collection empty', null);
+      this.#syncInvisibleCollection('invisibleCollection');
+      this.#persistRun();
+    }
+  }
+
 
   #travelTo(zoneKey) {
     const fromZone = this.world.current;
@@ -1603,6 +1899,8 @@ class Game {
       this.player.teleport(z.spawn.x, z.spawn.z, z.spawnYaw);
       const latest = this.state.paintings[this.state.paintings.length - 1];
       this.world.setVaultArchive(latest?.title, latest?.lotNumber);
+      this.#syncDocumenta();
+      this.#syncInvisibleCollection(zoneKey);
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
         this.#cowVisitedThisRun = true;
         const visits = recordCowVisit();
@@ -1626,6 +1924,8 @@ class Game {
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
         listeningRoom: 'A four-piece band follows the selected record in real time while two reference speakers and twelve art legends hold the room.',
         mtvCribs: 'The camera is rolling. Four unmistakably adult spoiled heirs explain why their gold sippy cups are appreciating assets.',
+        documenta: 'The exhibition has not begun. Documentation is nearly complete. Every camera is facing another camera.',
+        invisibleCollection: 'Five taped footprints. Three severe officials. Nothing on display, and the estimate is already moving.',
       }[zoneKey]);
       if (fromZone && fromZone !== zoneKey) {
         this.ui.toast('BETWEEN ROOMS', transitionLine(fromZone, zoneKey));
@@ -1656,6 +1956,8 @@ class Game {
   #roomScoreTitle(zoneKey) {
     if (zoneKey === 'dildoBall') return 'THE ROYAL JAZZ COMBO';
     if (zoneKey === 'publicRestroom') return 'TECHNO ZAMBA';
+    if (zoneKey === 'documenta') return 'ADMINISTRATIVE MINIMAL TECHNO';
+    if (zoneKey === 'invisibleCollection') return 'VALUATION OFFICE MUZAK';
     return `${ZONES[zoneKey]?.name ?? 'THE ROOM'} · ROOM SCORE`;
   }
 
@@ -1685,6 +1987,7 @@ class Game {
         this.audio.startJazz();
       } else {
         this.audio.setRoomScore(target.key, true, true);
+        if (target.key === 'invisibleCollection') this.audio.setRoomScoreDrive(Math.min(1, this.#invisibleValue() / 1000000));
       }
     }, wait);
   }
@@ -1807,7 +2110,7 @@ class Game {
         : this.audio.roomBeatPhase;
       this.player.setBeat(beatPhase);
 
-      const worldEvent = this.world.update(dt, now, beatPhase, this.audio.soundtrackBpm);
+      const worldEvent = this.world.update(dt, now, beatPhase, this.audio.soundtrackBpm, this.player.position);
       if (worldEvent?.type === 'boxingImpact') {
         this.audio.boxingImpact(worldEvent.variant, worldEvent.victim);
       }
@@ -1826,6 +2129,12 @@ class Game {
       }
       if (worldEvent?.type === 'cribsLine') {
         this.ui.subtitle(worldEvent.speaker, worldEvent.line, 0.88, this.audio);
+      }
+      if (worldEvent?.type === 'documentaShutter') {
+        this.audio.documentaShutter(worldEvent.corrupted);
+      }
+      if (worldEvent?.type === 'invisibleContact') {
+        this.#onInvisibleContact(worldEvent.index, worldEvent.title);
       }
 
       this.npcs.update(dt, now, this.player.position);

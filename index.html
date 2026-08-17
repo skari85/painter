@@ -71,6 +71,12 @@
       <button id="np-stop" aria-label="Stop the record and return to the room score" title="Stop record">■</button>
     </div>
 
+    <div id="collection-value" class="hidden" aria-live="polite">
+      <span class="collection-kicker">INVISIBLE COLLECTION</span>
+      <strong id="collection-value-number">€15,000</strong>
+      <span id="collection-value-status">CLEAN · GOAL €1,000,000</span>
+    </div>
+
     <!-- ARTI chip — the phone is watching -->
     <div id="arti-chip" title="ARTI — press N">
       <span class="arti-icon">📱</span><span id="arti-count">241</span>
@@ -129,8 +135,8 @@
             <span class="dlg-role" id="dlg-role"></span>
           </div>
         </div>
-        <div class="dlg-ego" aria-label="Their ego">
-          <span class="ego-label">EGO</span>
+        <div class="dlg-ego" id="dlg-ego" aria-label="Their ego">
+          <span class="ego-label" id="dlg-ego-label">EGO</span>
           <div class="ego-track"><div class="ego-fill" id="dlg-ego-fill"></div></div>
         </div>
       </header>

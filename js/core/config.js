@@ -77,6 +77,8 @@ export const ZONES = {
   garret:      { name: 'THE GARRET',       mood: 'garret' },
   galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
   vault:       { name: 'THE VAULT',         mood: 'vault' },
+  documenta:   { name: 'DOCUMENTA: THE DOCUMENTING', mood: 'documenta' },
+  invisibleCollection: { name: 'THE INVISIBLE COLLECTION', mood: 'galleria' },
   leatherLatex: { name: 'THE LEATHER & LATEX ROOMS', mood: 'leatherLatex' },
   gildedFork:  { name: 'THE GILDED FORK',   mood: 'gildedFork' },
   maxPro:      { name: 'MAX PRO KUNST 2000', mood: 'galleria' },
@@ -307,6 +309,37 @@ export const ROOM_SCORES = {
     kick: [0, 8], snare: [4, 12], hats: [3, 7, 11, 15], swing: 0.13, texture: 0.08,
     kickLevel: 0.24, snareLevel: 0.038, hatLevel: 0.012,
     bassLevel: 0.075, bassDecay: 2.6, leadLevel: 0.015,
+  },
+  documenta: {
+    // Administrative minimal techno: scanner chirps, fluorescent pulse,
+    // printer rhythm and a bassline approved by four departments.
+    bpm: 92, level: 0.24, root: 43.65, scale: [0, 1, 5, 7, 10, 12, 13],
+    wave: 'square', bassWave: 'sine', cutoff: 2850, pad: [0, 1, 7, 10],
+    bass: [0, null, 0, 7, null, 1, 5, null],
+    lead: [null, 5, null, null, 2, null, 6, null, null, 3, null, 1, null, null, 4, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.025, texture: 0.22,
+    kickLevel: 0.28, snareLevel: 0.05, hatLevel: 0.018,
+    bassLevel: 0.085, bassDecay: 1.7, leadLevel: 0.018,
+    lofi: {
+      hissLevel: 0.005, hissHighpass: 1200, hissLowpass: 7200,
+      wowRate: 0.08, wowDepth: 8, detune: 2,
+      leadAttack: 0.004, leadDecay: 0.65, cutoffScale: 1.35,
+    },
+  },
+  invisibleCollection: {
+    // Nervous institutional muzak performed by office machinery. Its tempo is
+    // driven at runtime by the collection's valuation rather than by movement.
+    bpm: 80, level: 0.25, root: 55, scale: [0, 1, 5, 7, 10, 12],
+    wave: 'sine', bassWave: 'triangle', cutoff: 3400, pad: [0, 5, 7, 10],
+    bass: [null, null, null, null, null, null, null, null],
+    lead: [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null],
+    kick: [], snare: [], hats: [], swing: 0.035, texture: 0,
+    office: {
+      printer: [0, 2, 5, 7, 10, 13, 15],
+      gavel: [0, 8],
+      chimes: [4, 12],
+      shredder: [6, 14],
+    },
   },
   mtvCribs: {
     // Glossy reality-TV electro with a waddling low end and camera-flash hats.

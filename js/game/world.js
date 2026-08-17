@@ -278,7 +278,10 @@ function textTexture(text, { fg = '#efe9dc', bg = 'rgba(0,0,0,0)', size = 44, w 
     ctx.font = `${font} ${size}px Georgia, serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(text, w / 2, h / 2);
+    const lines = String(text).split('\n');
+    const lineHeight = size * 1.22;
+    const firstY = h / 2 - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((line, index) => ctx.fillText(line, w / 2, firstY + index * lineHeight));
   });
 }
 
@@ -689,7 +692,9 @@ export class World {
     this.current = null;
     this.#buildGarret();
     this.#buildGalleria();
+    this.#buildDocumenta();
     this.#buildVault();
+    this.#buildInvisibleCollection();
     this.#buildLeatherLatex();
     this.#buildGildedFork();
     this.#buildMaxPro();
@@ -734,7 +739,9 @@ export class World {
     const placements = {
       garret:       { x: 4.65,  z: 3.55,  ry: -Math.PI / 2 },
       galleria:     { x: 7.75,  z: 5.35,  ry: Math.PI },
+      documenta:    { x: -9.6, z: 6.9,   ry: Math.PI },
       vault:        { x: -5.45, z: 4.15,  ry: Math.PI / 2 },
+      invisibleCollection: { x: -7.65, z: 5.15, ry: Math.PI },
       leatherLatex: { x: -9.35, z: 4.65,  ry: Math.PI },
       gildedFork:   { x: 8.45,  z: 5.75,  ry: Math.PI },
       maxPro:       { x: -18.4, z: 9.75,  ry: Math.PI },
@@ -1056,7 +1063,7 @@ export class World {
 
     // wall works
     hangingArt(z, { x: -5.5, y: 1.9, z: -6.28, ry: 0, seed: 101 });
-    hangingArt(z, { x: -8.78, y: 1.9, z: -3.5, ry: Math.PI / 2, seed: 103 });
+    hangingArt(z, { x: -8.78, y: 1.9, z: -2.5, ry: Math.PI / 2, seed: 103 });
     hangingArt(z, { x: 6.5, y: 1.9, z: -6.28, ry: 0, seed: 107 });
     hangingArt(z, { x: -4, y: 1.9, z: 6.28, ry: Math.PI, seed: 109 });
     hangingArt(z, { x: 4.5, y: 1.9, z: 6.28, ry: Math.PI, seed: 113 });
@@ -1142,6 +1149,7 @@ export class World {
     z.group.add(new THREE.HemisphereLight(0xdad6cc, 0x3a3a40, 0.8));
 
     door(z, { x: -8.8, z: 0, ry: Math.PI / 2, label: '← THE GARRET', to: 'garret' });
+    door(z, { x: -8.8, z: -4.65, ry: Math.PI / 2, label: 'DOCUMENTA →', to: 'documenta' });
     door(z, {
       x: 8.8, z: 0, ry: -Math.PI / 2, label: 'PRIVATE VIEWING →', to: 'vault',
       lockedUnlessFlag: 'vaultOpen',
@@ -1169,6 +1177,246 @@ export class World {
       new THREE.Vector3(1, 0, -1.5), new THREE.Vector3(-5, 0, -2.5),
       new THREE.Vector3(6.8, 0, 4.2), new THREE.Vector3(-7.5, 0, -1.5),
     ];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  DOCUMENTA: THE DOCUMENTING                                */
+  /* ---------------------------------------------------------- */
+  #buildDocumenta() {
+    const z = this.#newZone('documenta');
+    shell(z, { w: 26, d: 18, floorColor: 0xb7b8b5, wallColor: 0xe8e7e1, ceilColor: 0xd8d9d7, h: 4.2 });
+    z.spawn.set(-10.45, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x181b1e, density: 0.017 };
+
+    const white = mat(0xeeeeea, { roughness: 0.42 });
+    const office = mat(0x2a2d31, { roughness: 0.5, metalness: 0.18 });
+    const cable = mat(0x18191c, { roughness: 0.7 });
+    const accent = mat(0xc8323f, { roughness: 0.6 });
+    const qrMap = canvasTexture(128, 128, (ctx, w, h) => {
+      ctx.fillStyle = '#f5f3eb'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#17191c';
+      for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) {
+        if (((x * 7 + y * 11 + x * y) % 5) < 2) ctx.fillRect(8 + x * 5.3, 8 + y * 5.3, 5.4, 5.4);
+      }
+      for (const [x, y] of [[7, 7], [84, 7], [7, 84]]) {
+        ctx.fillStyle = '#f5f3eb'; ctx.fillRect(x, y, 37, 37);
+        ctx.fillStyle = '#17191c'; ctx.fillRect(x + 3, y + 3, 31, 31);
+        ctx.fillStyle = '#f5f3eb'; ctx.fillRect(x + 9, y + 9, 19, 19);
+        ctx.fillStyle = '#17191c'; ctx.fillRect(x + 14, y + 14, 9, 9);
+      }
+    });
+
+    // Temporary architecture that has somehow become permanent.
+    box(z, { w: 0.18, h: 3.4, d: 5.6, x: -7.25, z: -5.7, material: white });
+    box(z, { w: 0.18, h: 3.4, d: 4.8, x: 2.95, z: 5.7, material: white });
+    box(z, { w: 5.4, h: 3.4, d: 0.18, x: 10.1, z: 2.85, material: white });
+    box(z, { w: 5.4, h: 3.4, d: 0.18, x: 10.1, z: -2.85, material: white });
+
+    // Fluorescent grid: very bright, very neutral, absolutely implicated.
+    const fluorescentMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, emissive: 0xe9f3ee, emissiveIntensity: 2.2, roughness: 0.2,
+    });
+    for (const x of [-9, -5, -1, 3, 7, 11]) {
+      for (const zz of [-6, 0, 6]) {
+        box(z, { w: 1.45, h: 0.055, d: 0.17, x, y: 4.02, z: zz, material: fluorescentMat, solid: false, noSplat: true });
+      }
+    }
+    z.group.add(new THREE.HemisphereLight(0xf2f5ef, 0x676a70, 1.45));
+
+    // Huge institutional heading and its smaller legal correction.
+    plane(z, {
+      w: 8.2, h: 0.82, x: -7.4, y: 3.38, z: -8.78,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('DOCUMENTA: THE DOCUMENTING', { fg: '#17191c', bg: '#efeee8', size: 43, w: 1100, h: 120 }), transparent: true }),
+      name: 'documentaMonitor',
+    });
+    plane(z, {
+      w: 5.4, h: 0.28, x: -7.4, y: 2.82, z: -8.77,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('THE EXHIBITION HAS NOT BEGUN. DOCUMENTATION IS NEARLY COMPLETE.', { fg: '#8b1f2a', size: 22, w: 1200, h: 90 }), transparent: true }),
+    });
+    for (let i = 0; i < 7; i++) {
+      plane(z, {
+        w: 0.58, h: 0.58, x: -9 + i * 3, y: 1.25 + (i % 2) * 0.35, z: 8.78, ry: Math.PI,
+        material: new THREE.MeshBasicMaterial({ map: qrMap }), name: 'documenta QR label',
+      });
+    }
+
+    // STATION ONE — Accreditation and its paper avalanche.
+    box(z, { w: 3.6, h: 1.02, d: 0.9, x: -9.0, z: -3.55, material: office, name: 'documentaBadgePrinter' });
+    const badgePrinter = box(z, { w: 1.18, h: 0.55, d: 0.72, x: -9.0, y: 1.02, z: -3.55, material: accent, solid: false, name: 'documentaBadgePrinter' });
+    for (let i = 0; i < 5; i++) {
+      const clipboard = plane(z, {
+        w: 0.36, h: 0.52, x: -10.25 + i * 0.62, y: 1.57 + i * 0.006, z: -3.48 + (i % 2) * 0.18,
+        rx: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture(i % 2 ? 'CONSENT\nASSUMED' : 'RELEASE\nPENDING', { fg: '#24262a', bg: '#eee9dc', size: 24, w: 360, h: 520 }) }),
+        name: 'documenta consent clipboard',
+      });
+      clipboard.rotation.z = (i - 2) * 0.09;
+    }
+    const badgeSign = plane(z, {
+      w: 2.9, h: 0.38, x: -9.0, y: 2.08, z: -4.02,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('1 · ACCREDITATION · PRESS E', { fg: '#17191c', bg: '#f4f2eb', size: 32, w: 900 }), transparent: true }),
+      name: 'documentaBadgePrinter',
+    });
+    const badgePapers = [];
+    for (let i = 0; i < 28; i++) {
+      const paper = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.28, 0.18),
+        new THREE.MeshBasicMaterial({ map: textTexture(i % 3 === 0 ? 'ARTIST' : i % 3 === 1 ? 'SUBJECT' : 'AVAILABLE', { fg: '#191a1d', bg: '#f4f2e8', size: 18, w: 280, h: 180 }), side: THREE.DoubleSide })
+      );
+      paper.position.set(-10.45 + (i % 8) * 0.4, 0.02 + Math.floor(i / 8) * 0.008, -2.75 + Math.floor(i / 8) * 0.42);
+      paper.rotation.set(-Math.PI / 2, 0, (i * 1.73) % Math.PI);
+      paper.visible = false;
+      paper.userData.baseY = paper.position.y;
+      paper.userData.phase = i * 0.63;
+      paper.userData.noSplat = true;
+      z.group.add(paper);
+      badgePapers.push(paper);
+    }
+    z.interactables.push({
+      id: 'documenta-accreditation', type: 'documentaAccreditation', label: 'Accredit yourself — issue several identities',
+      pos: new THREE.Vector3(-9.0, 1.2, -3.25), radius: 2.25,
+    });
+
+    // A reusable camera/tripod. The hero lens is a real paint target.
+    const documentaCameras = [];
+    const buildCamera = ({ x, zz, ry = 0, hero = false, scale = 1 }) => {
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz); g.rotation.y = ry; g.scale.setScalar(scale);
+      const legMat = mat(0x24262b, { roughness: 0.4, metalness: 0.65 });
+      for (const a of [-0.55, 0, 0.55]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, 1.35, 7), legMat);
+        leg.position.set(Math.sin(a) * 0.32, 0.68, Math.cos(a) * 0.2);
+        leg.rotation.z = Math.sin(a) * 0.16;
+        g.add(leg);
+      }
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.36, 0.42), office);
+      body.position.y = 1.46; body.name = hero ? 'documentaCameraLens' : 'documenta camera';
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.28, 18), mat(0x0a0b0e, { roughness: 0.15, metalness: 0.75 }));
+      lens.rotation.x = Math.PI / 2; lens.position.set(0, 1.46, -0.32);
+      lens.name = hero ? 'documentaCameraLens' : 'documenta camera lens';
+      lens.userData.documentaCameraLens = hero;
+      const tally = new THREE.PointLight(0xff283f, hero ? 2.2 : 0.7, 2.6, 2);
+      tally.position.set(0.21, 1.61, -0.22);
+      g.add(body, lens, tally);
+      z.group.add(g);
+      const camera = { group: g, body, lens, tally, baseRy: ry };
+      documentaCameras.push(camera);
+      return camera;
+    };
+
+    // STATION TWO — the camera staring back down the entrance axis.
+    const heroCamera = buildCamera({ x: -1.05, zz: 0, ry: Math.PI / 2, hero: true, scale: 1.18 });
+    plane(z, {
+      w: 4.1, h: 0.42, x: -1.05, y: 2.85, z: -2.0,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('2 · LIVE DOCUMENTATION · PAINT THE LENS', { fg: '#17191c', bg: '#f4f2eb', size: 29, w: 980 }), transparent: true }),
+    });
+    box(z, { w: 3.5, h: 0.12, d: 3.5, x: -1.05, z: 0, material: mat(0xd9d8d1), solid: false, name: 'documentation capture zone' });
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      buildCamera({ x: -1.05 + Math.cos(a) * 3.25, zz: Math.sin(a) * 3.2, ry: -a + Math.PI / 2, scale: 0.72 });
+    }
+
+    // Recursive feeds are deliberately fake: cheap canvas labels are funnier
+    // than an expensive real feedback buffer and do not punish low-end GPUs.
+    const monitorMats = [];
+    for (let i = 0; i < 9; i++) {
+      const mx = -3.8 + (i % 5) * 1.9;
+      const my = i < 5 ? 2.65 : 1.35;
+      const normalMap = textTexture(`LIVE ${String(i + 1).padStart(2, '0')} · CAMERA ${String((i + 2) % 9 + 1).padStart(2, '0')} FILMING CAMERA ${String(i + 1).padStart(2, '0')}`, { fg: '#d8f1df', bg: '#11161a', size: 23, w: 600, h: 350 });
+      const screenMat = new THREE.MeshBasicMaterial({ map: normalMap });
+      screenMat.userData.normalMap = normalMap;
+      box(z, { w: 1.68, h: 1.02, d: 0.12, x: mx, y: my - 0.51, z: -8.72, material: mat(0x17191d), solid: false, noSplat: true });
+      plane(z, { w: 1.55, h: 0.88, x: mx, y: my, z: -8.64, material: screenMat, name: 'documentaMonitor' });
+      monitorMats.push(screenMat);
+    }
+
+    // STATION THREE — archive intake, reached after the lens is corrupted.
+    box(z, { w: 3.3, h: 0.92, d: 1.15, x: 4.95, z: 5.3, material: office, name: 'documentaArchiveScanner' });
+    const scanner = box(z, { w: 1.45, h: 0.23, d: 0.82, x: 4.95, y: 0.92, z: 5.3, material: accent, solid: false, name: 'documentaArchiveScanner' });
+    scanner.userData.documentaArchiveScanner = true;
+    const subjectMat = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.85 });
+    const subject = plane(z, { w: 1.24, h: 1.52, x: 6.05, y: 2.05, z: 5.86, ry: Math.PI, material: subjectMat, name: 'documentaArchiveScanner' });
+    const subjectLabel = plane(z, {
+      w: 4.8, h: 0.5, x: 4.95, y: 2.96, z: 5.86, ry: Math.PI,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('3 · ARCHIVE INTAKE · PRESS Q TO APPRAISE THE SCANNER', { fg: '#17191c', bg: '#f4f2eb', size: 25, w: 1100 }), transparent: true }),
+      name: 'documentaArchiveScanner',
+    });
+    z.interactables.push({
+      id: 'documenta-archive-help', type: 'flavor', label: 'Archive Intake — press Q to appraise', title: 'ARCHIVE INTAKE',
+      pos: new THREE.Vector3(4.95, 1.1, 4.85), radius: 2.2,
+      lines: ['The scanner is waiting to value itself. Press Q while looking directly at it.', 'No intake occurs before accreditation and lens corruption. Bureaucracy respects sequence.'],
+    });
+
+    // Gate and boss office. The collider is removed when all three stations
+    // are corrupted; the bars then rise into the ceiling.
+    const gate = new THREE.Group(); gate.position.set(7.45, 0, 0); z.group.add(gate);
+    for (let i = -4; i <= 4; i++) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(0.09, 3.45, 0.09), mat(0x555a60, { roughness: 0.3, metalness: 0.82 }));
+      bar.position.set(0, 1.72, i * 0.42); gate.add(bar);
+    }
+    const gateLabel = plane(z, {
+      w: 4.0, h: 0.42, x: 7.38, y: 3.66, z: 0, ry: -Math.PI / 2,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('HEAD OF DOCUMENTATION · METADATA REQUIRED', { fg: '#c8323f', bg: '#ecebe5', size: 25, w: 1000 }), transparent: true }),
+    });
+    const gateCollider = { minX: 7.18, maxX: 7.72, minZ: -2.15, maxZ: 2.15 };
+    z.colliders.push(gateCollider);
+
+    // Boss office: a chair, a server altar, and the authoritative description.
+    box(z, { w: 3.1, h: 0.82, d: 1.2, x: 10.55, z: 0, material: office, name: 'metadata desk' });
+    for (const zz of [-2.9, 2.9]) {
+      box(z, { w: 1.4, h: 3.1, d: 1.0, x: 11.5, z: zz, material: mat(0x171a1e, { roughness: 0.25, metalness: 0.42 }), name: 'server archive' });
+      for (let i = 0; i < 7; i++) {
+        const led = new THREE.PointLight(i % 3 ? 0x60ff9c : 0xff3148, 0.45, 1.2, 2);
+        led.position.set(10.76, 0.45 + i * 0.38, zz - 0.34 + (i % 2) * 0.68); z.group.add(led);
+      }
+    }
+    const authorityMat = new THREE.MeshBasicMaterial({ map: textTexture('THE AUTHORITATIVE DESCRIPTION\nSUPERSEDES THE EVENT', { fg: '#f0eee5', bg: '#16191d', size: 37, w: 900, h: 300 }) });
+    plane(z, { w: 4.5, h: 1.5, x: 12.76, y: 2.25, z: 0, ry: -Math.PI / 2, material: authorityMat, name: 'documentaMonitor' });
+
+    // Moving camera crews: simple articulated operators on intersecting orbits.
+    const crews = [];
+    for (let i = 0; i < 4; i++) {
+      const g = new THREE.Group();
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.72, 0.24), mat(i % 2 ? 0x353941 : 0x202329)); torso.position.y = 0.92;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), mat(0xc99878)); head.position.y = 1.46;
+      const rig = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.26, 0.38), office); rig.position.set(0, 1.34, -0.34);
+      const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.35, 7), cable); boom.rotation.z = Math.PI / 2; boom.position.set(0.35, 1.72, 0);
+      g.add(torso, head, rig, boom); z.group.add(g);
+      crews.push({ group: g, torso, head, phase: i * 1.57, radiusX: 3.6 + i * 0.45, radiusZ: 2.8 + (i % 2) * 0.7, speed: 0.13 + i * 0.014 });
+    }
+
+    // Cables and empty plinths: documentation has occupied every useful path.
+    for (let i = 0; i < 11; i++) {
+      box(z, { w: 0.035, h: 0.025, d: 4.5 + (i % 3), x: -5.5 + i * 1.05, y: 0.005, z: (i % 2 ? 2.6 : -2.6), ry: (i - 5) * 0.09, material: cable, solid: false, noSplat: true });
+    }
+    for (const [x, zz] of [[-5.2, 5.2], [1.8, 5.5], [3.6, -4.7], [6.0, -5.6]]) {
+      box(z, { w: 0.72, h: 0.92, d: 0.72, x, z: zz, material: white, name: 'empty documented plinth' });
+      const tinyCam = buildCamera({ x: x + 1.0, zz, ry: Math.PI / 2, scale: 0.42 });
+      tinyCam.group.userData.plinthCamera = true;
+    }
+
+    door(z, { x: -12.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+
+    z.anchors['doc-consent'] = new THREE.Vector3(-9.6, 0, -5.2);
+    z.anchors['doc-timecode'] = new THREE.Vector3(-5.5, 0, 3.8);
+    z.anchors['doc-caption'] = new THREE.Vector3(-2.8, 0, -4.9);
+    z.anchors['doc-qr'] = new THREE.Vector3(1.7, 0, 4.0);
+    z.anchors['doc-witness'] = new THREE.Vector3(3.5, 0, -4.5);
+    z.anchors['doc-archive'] = new THREE.Vector3(5.6, 0, 6.5);
+    z.anchors['doc-head'] = new THREE.Vector3(10.35, 0, -1.35);
+    z.anchorYaws = { 'doc-head': -Math.PI / 2 };
+    z.waypoints = [
+      new THREE.Vector3(-10, 0, 4.8), new THREE.Vector3(-6.2, 0, 5.8),
+      new THREE.Vector3(-5.8, 0, -2.0), new THREE.Vector3(-2.6, 0, 4.7),
+      new THREE.Vector3(0.7, 0, -4.2), new THREE.Vector3(2.5, 0, 2.1),
+      new THREE.Vector3(4.8, 0, -5.0), new THREE.Vector3(5.7, 0, 5.8),
+    ];
+    z.animated.documenta = {
+      badgePrinter, badgeSign, badgePapers, heroCamera, monitorMats, subject, subjectLabel,
+      gate, gateLabel, gateCollider, gateOpen: false, crews, cameras: documentaCameras, authorityMat,
+      accredited: false, cameraCorrupted: false, archiveCorrupted: false,
+      complete: false, outcome: null, shutterT: 0.7, paperT: 0,
+    };
   }
 
   /* ---------------------------------------------------------- */
@@ -1254,12 +1502,163 @@ export class World {
     z.group.add(dim);
 
     door(z, { x: -6.8, z: 0, ry: Math.PI / 2, label: '← THE WHITE CUBE', to: 'galleria' });
+    door(z, { x: -4.9, z: -5.32, ry: 0, label: 'THE INVISIBLE COLLECTION →', to: 'invisibleCollection' });
 
     z.waypoints = [
       new THREE.Vector3(-4, 0, -2.5), new THREE.Vector3(-1, 0, 1.8),
       new THREE.Vector3(2.5, 0, -1.6), new THREE.Vector3(-4.5, 0, 2.6),
       new THREE.Vector3(3.4, 0, 2.8),
     ];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE INVISIBLE COLLECTION                                  */
+  /* ---------------------------------------------------------- */
+  #buildInvisibleCollection() {
+    const z = this.#newZone('invisibleCollection');
+    shell(z, { w: 20, d: 14, floorColor: 0xc8ccc6, wallColor: 0xe4e8e2, ceilColor: 0xf1f3ef });
+    z.spawn.set(-8.35, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0xd9ded8, density: 0.012 };
+
+    // Fluorescent institutional ceiling grid: elegant enough to be expensive,
+    // bleak enough to feel like a conservation office after closing.
+    const fixtureMat = mat(0xf7fff4, { emissive: 0xd9f1df, emissiveIntensity: 0.75, roughness: 0.22 });
+    for (const x of [-6, -2, 2, 6]) {
+      for (const zz of [-4.5, 0, 4.5]) {
+        box(z, { w: 2.1, h: 0.035, d: 0.34, x, y: 3.92, z: zz, material: fixtureMat, solid: false, noSplat: true, name: 'conservation fluorescent' });
+        const light = new THREE.PointLight(0xdff5e5, 2.8, 8.5, 2.2);
+        light.position.set(x, 3.65, zz);
+        z.group.add(light);
+      }
+    }
+
+    // Large live auction board. The texture is replaced only when valuation
+    // state changes, so the room can persist without a DOM overlay dependency.
+    const board = plane(z, {
+      w: 6.5, h: 2.05, x: 2.5, y: 2.48, z: -6.78,
+      material: new THREE.MeshBasicMaterial({
+        map: textTexture('LIVE VALUATION  €15,000\nNO OBJECTS ADMITTED', { fg: '#c8f7d1', bg: '#102319', size: 52, w: 1200, h: 380, font: '800' }),
+      }),
+      noSplat: true, name: 'live valuation board',
+    });
+    board.userData.value = -1;
+
+    const works = [
+      { title: 'UNTITLED — AIR ON LOAN', x: -4.8, z: -3.25, w: 2.25, d: 1.55, h: 2.2 },
+      { title: 'PORTRAIT OF THE COLLECTOR, FACING AWAY', x: 0, z: -3.2, w: 1.55, d: 1.25, h: 2.45 },
+      { title: 'THE ABSENCE OF A HORSE', x: 4.65, z: -3.0, w: 2.75, d: 1.25, h: 1.8 },
+      { title: 'MONUMENT TO SOMETHING THAT HAS LEFT', x: -2.8, z: 2.25, w: 1.7, d: 1.7, h: 3.0 },
+      { title: 'A VERY EXPENSIVE CUBE', x: 3.2, z: 2.45, w: 1.65, d: 1.65, h: 1.65 },
+    ];
+    const tapeMat = new THREE.MeshBasicMaterial({ color: 0xe5e36d, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+    const barrierMat = mat(0x222b27, { metalness: 0.52, roughness: 0.32 });
+    const invisibleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, roughness: 1 });
+    const alarmLights = [];
+    const contactZones = [];
+    const workMeshes = [];
+
+    works.forEach((work, index) => {
+      const pad = 0.48;
+      const tw = work.w + pad * 2;
+      const td = work.d + pad * 2;
+      for (const [w, d, x, zz] of [
+        [tw, 0.075, work.x, work.z - td / 2], [tw, 0.075, work.x, work.z + td / 2],
+        [0.075, td, work.x - tw / 2, work.z], [0.075, td, work.x + tw / 2, work.z],
+      ]) plane(z, { w, h: d, x, y: 0.016, z: zz, rx: -Math.PI / 2, material: tapeMat, noSplat: true, name: 'taped acquisition footprint' });
+
+      const hidden = box(z, {
+        w: work.w, h: work.h, d: work.d, x: work.x, z: work.z,
+        material: invisibleMat.clone(), solid: true, noSplat: false, name: work.title,
+      });
+      hidden.userData.invisibleWorkIndex = index;
+      workMeshes.push(hidden);
+      contactZones.push({
+        index, title: work.title,
+        minX: work.x - work.w / 2 - 0.52, maxX: work.x + work.w / 2 + 0.52,
+        minZ: work.z - work.d / 2 - 0.52, maxZ: work.z + work.d / 2 + 0.52,
+        triggered: false,
+      });
+
+      // Two severe museum posts and a hovering title card are the only proof.
+      for (const sx of [-1, 1]) {
+        cylinder(z, { rT: 0.055, rB: 0.07, h: 0.86, x: work.x + sx * tw / 2, z: work.z + td / 2 + 0.16, material: barrierMat, seg: 12, solid: false, noSplat: true });
+      }
+      box(z, { w: tw, h: 0.035, d: 0.035, x: work.x, y: 0.72, z: work.z + td / 2 + 0.16, material: mat(0x9e1f2a), solid: false, noSplat: true });
+      plane(z, {
+        w: Math.min(3.3, tw + 0.65), h: 0.48, x: work.x, y: 0.48, z: work.z + td / 2 + 0.21, ry: Math.PI,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(`${String(index + 1).padStart(2, '0')}  ${work.title}`, { fg: '#17201c', bg: '#e9ece7', size: 23, w: 900, h: 145, font: '800' }) }),
+        noSplat: true, name: 'invisible work label',
+      });
+      const alarm = new THREE.PointLight(0xff1f18, 0, 4.2, 2);
+      alarm.position.set(work.x, 0.9, work.z);
+      alarm.userData.base = 0;
+      z.group.add(alarm);
+      alarmLights.push(alarm);
+      z.interactables.push({
+        id: `invisible-work-${index}`, type: 'collectionAction', action: 'inspect', workIndex: index,
+        label: `Inspect empty work ${index + 1}`, pos: new THREE.Vector3(work.x, 1.1, work.z + td / 2 + 0.55), radius: 1.55,
+      });
+    });
+
+    // The paperwork spine: each station advances the clean institutional con.
+    const stations = [
+      ['authenticate', 'AUTHENTICATION\nEMPTY AIR / VERIFIED', -7.9, -5.95],
+      ['damageClaim', 'INSURANCE\nINCIDENT / NO DAMAGE', -4.9, -5.95],
+      ['reportStolen', 'REGISTRAR\nREPORT ABSENCE STOLEN', -1.8, -5.95],
+      ['auction', 'AUCTION DESK\nCERTIFICATE ONLY', 6.95, -5.95],
+    ];
+    for (const [action, label, x, zz] of stations) {
+      box(z, { w: 2.25, h: 0.82, d: 0.74, x, z: zz, material: mat(0x58635d, { metalness: 0.18, roughness: 0.5 }), noSplat: true, name: 'institutional desk' });
+      plane(z, { w: 2.05, h: 0.52, x, y: 1.16, z: zz + 0.39, ry: Math.PI, material: new THREE.MeshBasicMaterial({ map: textTexture(label, { fg: '#dff5e5', bg: '#17231d', size: 25, w: 800, h: 190, font: '800' }) }), noSplat: true });
+      z.interactables.push({ id: `collection-${action}`, type: 'collectionAction', action, label: label.split('\n')[0], pos: new THREE.Vector3(x, 1, zz + 0.9), radius: 1.65 });
+    }
+
+    // Final route choice occupies a freestanding acquisition gate.
+    box(z, { w: 0.12, h: 2.55, d: 4.3, x: 9.25, z: 2.35, material: mat(0x1d2923), noSplat: true, name: 'acquisition gate' });
+    for (const [action, label, zz, color] of [
+      ['accept', 'ACCEPT\nACQUISITION', 1.25, '#f3d874'],
+      ['declareEmpty', 'DECLARE THE\nCOLLECTION EMPTY', 3.45, '#c8f7d1'],
+    ]) {
+      plane(z, { w: 0.92, h: 1.2, x: 9.17, y: 1.55, z: zz, ry: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture(label, { fg: color, bg: '#111a16', size: 28, w: 500, h: 650, font: '800' }) }), noSplat: true });
+      z.interactables.push({ id: `collection-${action}`, type: 'collectionAction', action, label: label.replace('\n', ' '), pos: new THREE.Vector3(8.55, 1.2, zz), radius: 1.35 });
+    }
+
+    // Three intentionally over-serious staff figures. Faces are procedural but
+    // include brows, noses, mouths, badges and distinct silhouettes.
+    const staff = [];
+    const staffDefs = [
+      ['CHIEF CONSERVATOR OF NOTHING', -7.3, 4.95, 0xbcc8c2],
+      ['SENIOR ABSENCE GUARD', 0.3, 5.65, 0x26312c],
+      ['INSURANCE REGISTRAR', 6.6, 5.05, 0x8d918b],
+    ];
+    for (let i = 0; i < staffDefs.length; i++) {
+      const [role, x, zz, suitColor] = staffDefs[i];
+      const g = new THREE.Group();
+      g.position.set(x, 0, zz);
+      const legs = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.82, 0.32), mat(0x202522)); legs.position.y = 0.41;
+      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.92, 0.38), mat(suitColor)); torso.position.y = 1.22;
+      const headPivot = new THREE.Group(); headPivot.position.y = 1.96;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 18, 14), mat(i === 1 ? 0x8b5e43 : 0xc99170));
+      head.scale.set(0.86, 1.08, 0.88);
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 8), mat(i === 1 ? 0x82543d : 0xbe8163)); nose.rotation.x = Math.PI / 2; nose.position.set(0, -0.01, 0.25);
+      const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.018, 0.012), mat(0x4c2825)); mouth.position.set(0, -0.115, 0.242);
+      for (const ex of [-0.09, 0.09]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), mat(0x101513)); eye.position.set(ex, 0.055, 0.232); headPivot.add(eye);
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.018, 0.014), mat(0x332923)); brow.position.set(ex, 0.115, 0.228); brow.rotation.z = ex < 0 ? 0.12 : -0.12; headPivot.add(brow);
+      }
+      headPivot.add(head, nose, mouth);
+      const badge = plane(z, { w: 0.56, h: 0.19, x, y: 1.3, z: zz - 0.205, material: new THREE.MeshBasicMaterial({ map: textTexture(role, { fg: '#152019', bg: '#dff5e5', size: 16, w: 850, h: 160, font: '800' }) }), noSplat: true });
+      z.group.remove(badge); badge.position.set(0, 0.12, -0.205); badge.rotation.y = Math.PI;
+      g.add(legs, torso, headPivot, badge); g.rotation.y = Math.PI;
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      staff.push({ group: g, headPivot, baseX: x, phase: i * 1.7 });
+    }
+
+    door(z, { x: -9.8, z: 0, ry: Math.PI / 2, label: '← THE VAULT', to: 'vault' });
+    z.animated.invisibleCollection = { board, works, workMeshes, alarmLights, contactZones, staff, alarmUntil: 0, alarmIndex: -1, value: 15000, clean: true, complete: false };
+    z.waypoints = [new THREE.Vector3(-7, 0, 3), new THREE.Vector3(-4, 0, 0), new THREE.Vector3(0, 0, 0.5), new THREE.Vector3(5.5, 0, 0), new THREE.Vector3(7.5, 0, 4.5)];
   }
 
   /* ---------------------------------------------------------- */
@@ -6206,6 +6605,95 @@ export class World {
     if (z) z.animated.churchCrackleT = 0.4;
   }
 
+  /** Feed the newest painting into DOCUMENTA's intake without owning it. */
+  setDocumentaSubject(texture = null, title = 'NO WORK SUBMITTED', lotNumber = 'PENDING') {
+    const d = this.zones.get('documenta')?.animated.documenta;
+    if (!d) return;
+    d.subject.material.map = texture ?? null;
+    d.subject.material.color.set(texture ? 0xffffff : 0x17191d);
+    d.subject.material.needsUpdate = true;
+    d.subjectLabel.material.map = textTexture(
+      texture
+        ? `3 · ARCHIVE INTAKE · Q APPRAISE · ${lotNumber} · “${title}”`
+        : '3 · ARCHIVE INTAKE · NO WORK SUBMITTED',
+      { fg: '#17191c', bg: '#f4f2eb', size: 25, w: 1100 }
+    );
+    d.subjectLabel.material.needsUpdate = true;
+  }
+
+  isDocumentaCameraHit(object) {
+    return this.current === 'documenta' && Boolean(object?.userData?.documentaCameraLens || object?.name === 'documentaCameraLens');
+  }
+
+  isDocumentaArchiveHit(object) {
+    return this.current === 'documenta' && Boolean(object?.userData?.documentaArchiveScanner || object?.name === 'documentaArchiveScanner');
+  }
+
+  /** Rebuild every visible side-quest stage from run-state flags. */
+  applyDocumentaState({ accredited = false, cameraCorrupted = false, archiveCorrupted = false, complete = false, outcome = null } = {}) {
+    const z = this.zones.get('documenta');
+    const d = z?.animated.documenta;
+    if (!d) return;
+    d.accredited = accredited;
+    d.cameraCorrupted = cameraCorrupted;
+    d.archiveCorrupted = archiveCorrupted;
+    d.complete = complete;
+    d.outcome = outcome;
+    for (const paper of d.badgePapers) paper.visible = accredited;
+
+    d.heroCamera.lens.material.color.set(cameraCorrupted ? 0xc8326a : 0x0a0b0e);
+    d.heroCamera.tally.color.set(cameraCorrupted ? 0xff62bd : 0xff283f);
+    const gateOpen = archiveCorrupted || complete;
+    d.gateOpen = gateOpen;
+    d.gate.position.y = gateOpen ? 3.7 : 0;
+    d.gateLabel.visible = !gateOpen;
+    const colliderIndex = z.colliders.indexOf(d.gateCollider);
+    if (gateOpen && colliderIndex >= 0) z.colliders.splice(colliderIndex, 1);
+    if (!gateOpen && colliderIndex < 0) z.colliders.push(d.gateCollider);
+
+    for (let i = 0; i < d.cameras.length; i++) {
+      const camera = d.cameras[i];
+      camera.group.rotation.set(0, camera.baseRy, 0);
+      camera.tally.intensity = complete && outcome === 'release' ? 0 : (camera === d.heroCamera ? 2.2 : 0.7);
+      camera.group.visible = true;
+      if (complete && outcome === 'release') camera.group.rotation.z = (i % 2 ? -1 : 1) * 0.2;
+      if (complete && outcome === 'destroy') camera.group.rotation.z = (i % 2 ? -1 : 1) * (0.72 + (i % 3) * 0.11);
+    }
+
+    const key = `${cameraCorrupted}:${archiveCorrupted}:${complete}:${outcome ?? ''}`;
+    if (d.visualKey !== key) {
+      d.visualKey = key;
+      const corruptLines = ['PAINT IS THE SUBJECT', 'LENS CONSENT: REVOKED', 'GESTURE UNINDEXED', 'LIVE FEED: MAGENTA', 'CAMERA FILMING STAIN'];
+      const finalLines = outcome === 'release'
+        ? ['SUBJECT RELEASED', 'CONSENT REQUIRED', 'NAME RETURNED', 'NO AUTHORITATIVE COPY']
+        : outcome === 'corrupt'
+          ? ['FINAL_final_REAL_7', 'UNTITLED(1)(1)', 'CHECKSUM: LOL', 'ARTIST: SCANNER', 'MEDIUM: METADATA']
+          : ['SIGNAL LOST', 'TRIPOD DOWN', 'ARCHIVE OFFLINE', 'NO RECORD FOUND'];
+      for (let i = 0; i < d.monitorMats.length; i++) {
+        const material = d.monitorMats[i];
+        if (complete) {
+          material.map = textTexture(finalLines[i % finalLines.length], { fg: outcome === 'destroy' ? '#ff4d5f' : '#d8f1df', bg: '#11161a', size: 34, w: 600, h: 350 });
+        } else if (cameraCorrupted) {
+          material.map = textTexture(corruptLines[i % corruptLines.length], { fg: '#ff78c8', bg: '#171019', size: 31, w: 600, h: 350 });
+        } else {
+          material.map = material.userData.normalMap;
+        }
+        material.needsUpdate = true;
+      }
+      const authority = complete
+        ? outcome === 'release'
+          ? 'THE SUBJECT KEEPS THE NAME'
+          : outcome === 'corrupt'
+            ? 'THE DESCRIPTION DESCRIBES ITSELF'
+            : 'AUTHORITY NOT FOUND'
+        : archiveCorrupted
+          ? 'METADATA OVERFLOW · ENTER'
+          : 'THE AUTHORITATIVE DESCRIPTION SUPERSEDES THE EVENT';
+      d.authorityMat.map = textTexture(authority, { fg: complete && outcome === 'destroy' ? '#ff4d5f' : '#f0eee5', bg: '#16191d', size: 35, w: 900, h: 300 });
+      d.authorityMat.needsUpdate = true;
+    }
+  }
+
   resetRageRoom() {
     const z = this.zones.get('rageRoom');
     const rage = z?.animated.rageRoom;
@@ -6385,6 +6873,39 @@ export class World {
     z.archivePlate.material.needsUpdate = true;
   }
 
+  syncInvisibleCollection({ value = 15000, clean = true, complete = false, contacted = [] } = {}) {
+    const c = this.zones.get('invisibleCollection')?.animated.invisibleCollection;
+    if (!c) return;
+    c.value = Math.max(0, Number(value) || 0);
+    c.clean = Boolean(clean);
+    c.complete = Boolean(complete);
+    c.contactZones.forEach((contact) => { contact.triggered = contacted.includes(contact.index); });
+    const status = complete ? 'ACQUISITION CLOSED' : clean ? 'NO OBJECTS ADMITTED' : 'CONTAMINATION IS VALUE';
+    if (c.board.userData.value !== c.value || c.board.userData.status !== status) {
+      c.board.material.map?.dispose?.();
+      c.board.material.map = textTexture(`LIVE VALUATION  €${c.value.toLocaleString('en-GB')}\n${status}`, {
+        fg: clean ? '#c8f7d1' : '#ff8d7b', bg: '#102319', size: 52, w: 1200, h: 380, font: '800',
+      });
+      c.board.material.needsUpdate = true;
+      c.board.userData.value = c.value;
+      c.board.userData.status = status;
+    }
+  }
+
+  triggerInvisibleAlarm(index = 0) {
+    const c = this.zones.get('invisibleCollection')?.animated.invisibleCollection;
+    if (!c) return;
+    c.alarmIndex = Math.max(0, Math.min(c.alarmLights.length - 1, index));
+    c.alarmUntil = this.#t + 2.7;
+  }
+
+  contaminateInvisibleWork(index = 0) {
+    const c = this.zones.get('invisibleCollection')?.animated.invisibleCollection;
+    if (!c) return;
+    c.clean = false;
+    this.triggerInvisibleAlarm(index);
+  }
+
   /** Your own poster, bought at the gift shop, hung with tape. Forever. */
   hangPoster(texture) {
     const z = this.zones.get('garret');
@@ -6417,7 +6938,7 @@ export class World {
    * @param beatPhase 0..1 within the current beat, or -1 when the room is silent.
    * @param soundtrackBpm current record/room tempo for performance intensity.
    */
-  update(dt, t, beatPhase = -1, soundtrackBpm = 0) {
+  update(dt, t, beatPhase = -1, soundtrackBpm = 0, playerPosition = null) {
     const z = this.zone();
     if (!z) return;
     this.#t = t;
@@ -6425,6 +6946,35 @@ export class World {
     const beat = beatPhase >= 0;
     // a sharp percussive envelope: full on the kick, decays through the beat
     const kick = beat ? Math.pow(1 - beatPhase, 2.6) : 0;
+
+    if (z.animated.invisibleCollection) {
+      const collection = z.animated.invisibleCollection;
+      const alarmLive = t < collection.alarmUntil;
+      for (let i = 0; i < collection.alarmLights.length; i++) {
+        const light = collection.alarmLights[i];
+        light.intensity = alarmLive && (collection.alarmIndex === i || collection.alarmIndex < 0)
+          ? 7.5 + Math.pow(Math.max(0, Math.sin(t * 18)), 4) * 12
+          : 0;
+      }
+      for (const official of collection.staff) {
+        official.group.position.y = Math.sin(t * 1.1 + official.phase) * 0.008;
+        official.headPivot.rotation.y = Math.sin(t * 0.35 + official.phase) * 0.08;
+        official.headPivot.rotation.z = alarmLive ? Math.sin(t * 13 + official.phase) * 0.04 : 0;
+      }
+      if (playerPosition) {
+        for (const contact of collection.contactZones) {
+          if (contact.triggered) continue;
+          if (playerPosition.x >= contact.minX && playerPosition.x <= contact.maxX
+            && playerPosition.z >= contact.minZ && playerPosition.z <= contact.maxZ) {
+            contact.triggered = true;
+            collection.alarmIndex = contact.index;
+            collection.alarmUntil = t + 2.7;
+            event = { type: 'invisibleContact', index: contact.index, title: contact.title };
+            break;
+          }
+        }
+      }
+    }
 
     if (z.animated.listeningDrivers) {
       const breathe = beat ? kick : Math.max(0, Math.sin(t * 2.15)) * 0.018;
@@ -6530,6 +7080,41 @@ export class World {
         cribs.lineIndex++;
         cribs.lineTimer = 4.2 + (i % 3) * 0.55;
         event = { type: 'cribsLine', speaker: `BABY MONEY · ADULT HEIR ${(i % cribs.heirs.length) + 1}`, line: cribs.heirLines[i] };
+      }
+    }
+
+    if (z.animated.documenta) {
+      const doc = z.animated.documenta;
+      for (let i = 0; i < doc.crews.length; i++) {
+        const crew = doc.crews[i];
+        const a = t * crew.speed + crew.phase;
+        const x = -1.4 + Math.cos(a) * crew.radiusX;
+        const zz = Math.sin(a * 1.17) * crew.radiusZ;
+        const dx = -Math.sin(a) * crew.radiusX * crew.speed;
+        const dz = Math.cos(a * 1.17) * crew.radiusZ * crew.speed * 1.17;
+        const step = Math.sin(t * 7.2 + crew.phase);
+        crew.group.position.set(x, Math.abs(step) * 0.025, zz);
+        crew.group.rotation.y = Math.atan2(dx, dz);
+        crew.torso.rotation.z = step * 0.035;
+        crew.head.rotation.y = Math.sin(t * 0.82 + crew.phase) * 0.18;
+      }
+      if (doc.accredited) {
+        for (const paper of doc.badgePapers) {
+          paper.position.y = paper.userData.baseY + Math.sin(t * 1.8 + paper.userData.phase) * 0.008;
+        }
+      }
+      const shutterPulse = Math.pow(Math.max(0, Math.sin(t * 5.8)), 18);
+      for (let i = 0; i < doc.cameras.length; i++) {
+        const camera = doc.cameras[i];
+        if (doc.complete && doc.outcome === 'release') continue;
+        camera.tally.intensity = (camera === doc.heroCamera ? 1.3 : 0.35) + shutterPulse * (doc.cameraCorrupted ? 5.4 : 2.5);
+      }
+      if (!doc.complete || doc.outcome !== 'release') {
+        doc.shutterT -= dt;
+        if (doc.shutterT <= 0) {
+          doc.shutterT = doc.cameraCorrupted ? 0.58 + Math.random() * 0.55 : 1.35 + Math.random() * 1.2;
+          event = { type: 'documentaShutter', corrupted: doc.cameraCorrupted };
+        }
       }
     }
 

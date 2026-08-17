@@ -221,6 +221,24 @@ face. Press `E` on it: three tapes, Play/Stop/Rewind, BASS/TREBLE/SPEED faders
 (the speed fader is vinyl-style pitch shift), and ECHO + TIME knobs — drag
 knobs vertically. It keeps playing when you step back. It does not travel.
 
+### DOCUMENTA: The Documenting
+
+Galleria Bianca now opens into a 26×18-metre institutional documentation maze
+where camera crews film camera crews, accreditation printers issue contradictory
+identities, recursive monitors archive their own feeds, and empty plinths receive
+more coverage than visitors. The optional side quest corrupts three stations with
+three existing verbs: press `E` at Accreditation, splatter the main Live
+Documentation lens with `LMB`, then press `Q` to make Archive Intake appraise
+itself beside the newest finished painting.
+
+The resulting metadata overflow opens the office of Dr. Meta Dater, Head of
+Documentation, whose dialogue bar measures **METADATA** rather than ego. The
+last conversational tone produces one of three persistent room outcomes:
+released subjects, corrupted metadata, or collapsed authority. The 92 BPM room
+score and its shutter, printer, scanner, and server-collapse sounds are generated
+at runtime; all room geometry and recursive feeds are procedural, with no new
+external media assets.
+
 ## Architecture
 
 
@@ -255,6 +273,17 @@ Design decisions worth knowing:
 - **Modules talk via events**, never by reaching into each other.
 - Meters (Fame/Integrity/Cash/Heat) and the eight virtues are the *only*
   progression model — every choice routes through them.
+
+### The Invisible Collection
+
+The annex behind The Vault is an institution-sized satire: five taped empty
+footprints, invisible collision surfaces, security alarms, an escalating
+paperwork chain, and a valuation-driven score built from receipt-printer ticks,
+auction gavels, elevator chimes, shredder noise, and conservation air. Its seed
+is the real 2021 Art-Rite auction of Salvatore Garau's immaterial sculpture
+*Io sono*, catalogued at roughly 150 × 150 cm and sold with its certificate for
+about €15,000. The implementation is an original fictional system, not a
+recreation of the artist's work. Sources: [Art-Rite auction catalogue](https://www.art-rite.it/upl/cms/attach/20210510/122806772_6593.pdf) and [reported auction result](https://news.artnet.com/art-world/italian-artist-auctioned-off-invisible-sculpture-18300-literally-made-nothing-1976181).
 
 ## Tuning
 

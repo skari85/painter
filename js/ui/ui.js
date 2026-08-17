@@ -39,6 +39,9 @@ export class UIManager {
       },
       carrying: $('carrying-chip'),
       carryingTitle: $('carrying-title'),
+      collectionHud: $('collection-value'),
+      collectionValue: $('collection-value-number'),
+      collectionStatus: $('collection-value-status'),
       hitmarker: $('hitmarker'),
       interact: $('interact-prompt'),
       interactText: $('interact-text'),
@@ -439,6 +442,19 @@ export class UIManager {
     chip.classList.remove('hidden');
   }
 
+  setCollectionValue(value, { visible = true, clean = true, complete = false } = {}) {
+    const hud = this.el.collectionHud;
+    if (!hud) return;
+    hud.classList.toggle('hidden', !visible);
+    if (!visible) return;
+    this.el.collectionValue.textContent = `€${Math.max(0, Number(value) || 0).toLocaleString('en-GB')}`;
+    this.el.collectionStatus.textContent = complete
+      ? (clean ? 'ACQUISITION COMPLETE · CLEAN' : 'ACQUISITION COMPLETE · CONTAMINATED')
+      : `${clean ? 'CLEAN' : 'CONTAMINATED'} · GOAL €1,000,000`;
+    hud.classList.toggle('contaminated', !clean);
+    hud.classList.toggle('complete', complete);
+  }
+
   bindNowPlaying(onOpen, onNext, onStop) {
     $('np-open').addEventListener('click', () => onOpen());
     $('np-next').addEventListener('click', () => onNext());
@@ -513,7 +529,7 @@ export class UIManager {
      Dialogue view
      ============================================================ */
 
-  openDialogue({ name, role, hint, face }) {
+  openDialogue({ name, role, hint, face, egoLabel = 'EGO' }) {
     this.el.dlgName.textContent = name;
     this.el.dlgRole.textContent = role ?? '';
     this.el.dlgHint.textContent = hint ?? '';
@@ -527,6 +543,9 @@ export class UIManager {
       img.removeAttribute('src');
       img.alt = '';
     }
+    const egoLabelEl = $('dlg-ego-label');
+    egoLabelEl.textContent = egoLabel;
+    $('dlg-ego').setAttribute('aria-label', egoLabel === 'EGO' ? 'Their ego' : egoLabel);
     this.setEgo(1);
     this.show('dialogue');
   }
@@ -988,6 +1007,8 @@ const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
+  { key: 'documenta', name: 'DOCUMENTA: THE DOCUMENTING', desc: 'Accreditation, cameras, metadata and an exhibition nobody has time to experience.' },
+  { key: 'invisibleCollection', name: 'THE INVISIBLE COLLECTION', desc: 'Five empty footprints, three grave officials, and a valuation rising faster than the evidence.' },
   { key: 'leatherLatex', name: 'THE LEATHER & LATEX ROOMS', desc: 'The collector\'s house. Warm hide up front, black gloss in the back — one bassline, two moods.' },
   { key: 'gildedFork', name: 'THE GILDED FORK', desc: 'One long table. Every big shot. All of them drunk and messed up.' },
   { key: 'maxPro', name: 'MAX PRO KUNST 2000', desc: 'Football broadcast. Berlin club. Office boxing. No result.' },
