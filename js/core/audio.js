@@ -41,6 +41,8 @@ export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
    detuned Rhodes-ish keys, a sub that forgets the changes, and little
    synth ghosts wandering the upper register. 96 BPM, swing optional,
    taste negotiable. */
+const SINGER_VOCAL_URL = 'puplic/songs/singer-yhea.mp3';
+
 const JAZZ = {
   bpm: 88,
   level: 0.3,
@@ -78,6 +80,8 @@ export class AudioEngine {
   #roomScoreKey = null;
   #roomScoreStep = 0;
   #roomScoreDrive = 0;
+  #singerBufferPromise = null;   // decoded, cached vocal sample for the listening room
+  #singerReverbBuffer = null;    // synthetic impulse response, generated once
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -828,6 +832,76 @@ export class AudioEngine {
     if (p.rap?.steps.includes(step)) {
       this.#scoreRapChop(swung, s, p.rap, p.rap.steps.indexOf(step));
     }
+  }
+
+  /* ---------------- the listening room's recorded ad-lib ---------------- */
+
+  /** Lazily fetch and decode the singer's sample; cached across calls. */
+  #loadSingerBuffer() {
+    if (!this.#ctx) return Promise.resolve(null);
+    if (!this.#singerBufferPromise) {
+      this.#singerBufferPromise = fetch(encodeURI(SINGER_VOCAL_URL))
+        .then((res) => res.arrayBuffer())
+        .then((data) => this.#ctx.decodeAudioData(data))
+        .catch(() => null);
+    }
+    return this.#singerBufferPromise;
+  }
+
+  /** A synthetic impulse response: exponentially-decaying stereo noise,
+      cheap to build and plenty convincing for a small live room. */
+  #singerReverbImpulse() {
+    if (this.#singerReverbBuffer) return this.#singerReverbBuffer;
+    const rate = this.#ctx.sampleRate;
+    const len = Math.floor(rate * 2.2);
+    const buffer = this.#ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+      }
+    }
+    this.#singerReverbBuffer = buffer;
+    return buffer;
+  }
+
+  /** The singer's recorded ad-lib: dry call, a tiny slapback, and a wash of
+      reverb tail — the same sample the house band keeps returning to. */
+  async singerVocal() {
+    if (!this.#ctx) return;
+    const buffer = await this.#loadSingerBuffer();
+    if (!buffer || !this.#ctx) return;
+
+    const t = this.#ctx.currentTime + 0.02;
+    const src = this.#ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const dry = this.#ctx.createGain();
+    dry.gain.value = 0.85;
+    src.connect(dry).connect(this.#master);
+
+    // tiny delay: a short slapback, one soft repeat
+    const delay = this.#ctx.createDelay(0.5);
+    delay.delayTime.value = 0.09;
+    const delayGain = this.#ctx.createGain();
+    delayGain.gain.value = 0.22;
+    const delayFeedback = this.#ctx.createGain();
+    delayFeedback.gain.value = 0.16;
+    src.connect(delay);
+    delay.connect(delayGain).connect(this.#master);
+    delay.connect(delayFeedback).connect(delay);
+
+    // reverb: convolved tail, darkened so it sits behind the dry call
+    const convolver = this.#ctx.createConvolver();
+    convolver.buffer = this.#singerReverbImpulse();
+    const reverbFilter = this.#ctx.createBiquadFilter();
+    reverbFilter.type = 'lowpass';
+    reverbFilter.frequency.value = 3600;
+    const reverbGain = this.#ctx.createGain();
+    reverbGain.gain.value = 0.4;
+    src.connect(convolver).connect(reverbFilter).connect(reverbGain).connect(this.#master);
+
+    src.start(t);
   }
 
   /* ---------------- game verbs ---------------- */

@@ -2148,6 +2148,9 @@ class Game {
       if (worldEvent?.type === 'invisibleContact') {
         this.#onInvisibleContact(worldEvent.index, worldEvent.title);
       }
+      if (worldEvent?.type === 'singerVocal') {
+        this.audio.singerVocal();
+      }
 
       this.npcs.update(dt, now, this.player.position);
       this.ghosts.update(dt);

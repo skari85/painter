@@ -6346,7 +6346,7 @@ export class World {
     for (const [x, color] of [[-4.2, 0xffb85c], [-1.4, 0xe76f51], [1.4, 0x66b7d3], [4.2, 0xffd994]]) {
       const spot = new THREE.SpotLight(color, 4.5, 10, 0.34, 0.72, 1.7); spot.position.set(x, 4.75, -4.0); spot.target.position.set(x * 0.55, 1.0, -5.1); spot.userData.base = 3.8; z.group.add(spot, spot.target); bandLights.push(spot);
     }
-    z.animated.listeningBand = { performers: [guitarist, bassist, singer, drummer], guitarist, bassist, singer, drummer, kit, kickDrum, cymbals, sticks, bandLights };
+    z.animated.listeningBand = { performers: [guitarist, bassist, singer, drummer], guitarist, bassist, singer, drummer, kit, kickDrum, cymbals, sticks, bandLights, nextVocal: 0 };
     z.colliders.push({ minX: -5.35, maxX: 5.35, minZ: -6.95, maxZ: -3.72 });
     z.interactables.push({
       id: 'listening-live-band', type: 'flavor', label: 'Watch the live take', title: 'THE HOUSE BAND',
@@ -7079,6 +7079,12 @@ export class World {
       band.singer.arms[1].rotation.z = 0.18 + downbeat * (0.16 + intensity * 0.72);
       band.singer.arms[1].rotation.x = -0.55 - downbeat * intensity * 0.5;
       band.singer.group.rotation.y = Math.sin(t * beatRate * Math.PI) * (0.03 + intensity * 0.13);
+
+      // A recorded ad-lib the singer keeps coming back to, one call every 10s.
+      if (t >= band.nextVocal) {
+        band.nextVocal = t + 10;
+        event = { type: 'singerVocal' };
+      }
 
       // Alternating stick travel lands snare/hat gestures between the kicks.
       band.drummer.arms[0].rotation.x = -0.48 - downbeat * travel;
