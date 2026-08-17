@@ -2,10 +2,9 @@ name = "painter-ghosts"
 main = "index.js"
 compatibility_date = "2024-09-23"
 
-# Locks CORS to your deployed frontend. Update for your actual domain(s)
-# (add a second [vars] entry or a small allowlist array if you need more than one).
+# Comma-separated exact origins. Localhost is included for local browser testing.
 [vars]
-ALLOWED_ORIGIN = "https://painter.vercel.app"
+ALLOWED_ORIGINS = "https://painter-iota.vercel.app,http://localhost:4173"
 
 # Fill in `database_id` after running:
 #   wrangler d1 create painter-ghosts

@@ -6,7 +6,7 @@
  */
 
 import { clamp, rand, pick } from './utils.js';
-import { MUSIC_LEVEL, ROOM_SCORES } from './config.js';
+import { MUSIC_BPMS, MUSIC_LEVEL, ROOM_SCORE_FEEL, ROOM_SCORES } from './config.js';
 
 
 /* Vowel formant pairs (F1, F2) — the mumble alphabet: a, e, i, o, u. */
@@ -25,11 +25,11 @@ const MOODS = {
 
 /* The leather room's rig: 4-on-the-floor at 126 BPM, murk in A minor. */
 const TECHNO = {
-  bpm: 126,
+  bpm: 116,
   root: 55,                                   // A1 — the rumble lives here
   pad: [110, 130.8, 164.8, 196],              // Am add7-ish smear
   bassPattern: [0, 0, 12, 0, 7, 0, 3, 0],     // semitone offsets per 8th
-  level: 0.5,
+  level: 0.44,
   // through-the-wall voicing: the same loop, heard from the hallway
   muffleCutoff: 210,
   muffleLevel: 0.22,
@@ -42,9 +42,9 @@ export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
    synth ghosts wandering the upper register. 96 BPM, swing optional,
    taste negotiable. */
 const JAZZ = {
-  bpm: 96,
-  level: 0.34,
-  swing: 0.62,        // how drunk the ride pattern is
+  bpm: 88,
+  level: 0.3,
+  swing: 0.54,        // still crooked, but less eager to fall down the stairs
   chords: [           // Fm9 → Bbm7 → Dbmaj7#11 → C7alt — the court's changes, broken
     [174.61, 207.65, 261.63, 311.13, 392.0],
     [116.54, 174.61, 207.65, 261.63, 311.13],
@@ -77,6 +77,7 @@ export class AudioEngine {
   #roomScore = null;   // one profile-driven procedural rig for the current room
   #roomScoreKey = null;
   #roomScoreStep = 0;
+  #roomScoreDrive = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -114,22 +115,38 @@ export class AudioEngine {
   /* ---------------- music (the record collection) ---------------- */
 
   /** Crossfade to a track (key into MUSIC map), or null to stop. Fail-soft. */
-  setMusic(key, tracks) {
-    if (this.#musicKey === key) return;
+  setMusic(key, tracks, onError = null) {
+    if (this.#musicKey === key) return true;
     this.#stopMusic();
     this.#musicKey = key;
-    if (!key || !tracks?.[key]) return;
+    if (!key) return true;
+    if (!tracks?.[key]) {
+      this.#musicKey = null;
+      onError?.(key);
+      return false;
+    }
     try {
       const a = new Audio(encodeURI(tracks[key]));
       a.loop = true;
       a.volume = 0;
-      a.addEventListener('error', () => { if (this.#music === a) this.#music = null; });
+      a.addEventListener('error', () => {
+        if (this.#music !== a) return;
+        this.#music = null;
+        this.#musicKey = null;
+        onError?.(key);
+      });
       this.#music = a;
       this.#musicTarget = this.#volume * MUSIC_LEVEL;
       const p = a.play();
       if (p?.catch) p.catch(() => {});   // pre-gesture: ensure() will retry
       this.#fadeMusic();
-    } catch { /* music is a garnish, never a dependency */ }
+      return true;
+    } catch {
+      this.#music = null;
+      this.#musicKey = null;
+      onError?.(key);
+      return false;
+    }
   }
 
   #fadeMusic() {
@@ -143,16 +160,41 @@ export class AudioEngine {
     }, 50);
   }
 
-  #stopMusic() {
+  #stopMusic(durationMs = 180) {
     clearInterval(this.#fadeTimer);
     if (!this.#music) { this.#musicKey = null; return; }
     const a = this.#music;
     this.#music = null;
     this.#musicKey = null;
+    if (durationMs <= 0) {
+      a.pause();
+      a.volume = 0;
+      return;
+    }
+    const started = performance.now();
+    const startVolume = a.volume;
     const t = setInterval(() => {
-      a.volume = Math.max(0, a.volume - 0.08);
-      if (a.volume <= 0) { a.pause(); clearInterval(t); }
-    }, 40);
+      const progress = Math.min(1, (performance.now() - started) / durationMs);
+      a.volume = Math.max(0, startVolume * (1 - progress));
+      if (progress >= 1) { a.pause(); clearInterval(t); }
+    }, 16);
+  }
+
+  /**
+   * Fade every continuous musical source to silence before another one starts.
+   * Returns the handoff delay so the game can cancel stale transitions.
+   */
+  fadeOutSoundtrack(durationMs = 180) {
+    const ms = Math.max(0, durationMs);
+    this.#stopMusic(ms);
+    this.#roomScoreKey = null;
+    this.#stopRoomScoreRig(ms === 0, ms);
+    this.stopJazz(ms === 0, ms);
+    this.stopTechno(ms);
+    this.setMood('off');
+    // Leave one animation frame after the ramp so the outgoing HTML audio
+    // element is definitely paused before the replacement becomes audible.
+    return ms > 0 ? ms + 20 : 0;
   }
 
   /** Hard boundary for acoustically sealed rooms. */
@@ -231,12 +273,26 @@ export class AudioEngine {
   get roomScorePlaying() { return !!this.#roomScore; }
   get roomScoreName() { return this.#roomScoreKey; }
 
-  /** 0..1 phase of the current quarter-note beat; -1 while records override it. */
+  /** 0..1 phase of the current quarter-note beat for records or room scores. */
   get roomBeatPhase() {
+    if (this.#music && !this.#music.paused) {
+      const bpm = MUSIC_BPMS[this.#musicKey] ?? 96;
+      const beatDur = 60 / bpm;
+      return (this.#music.currentTime % beatDur) / beatDur;
+    }
     const s = this.#roomScore;
     if (!s || !this.#ctx) return -1;
     const beatDur = s.stepDur * 4;
     return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
+  }
+
+  /** Current quarter-note tempo, shared with tempo-reactive scene animation. */
+  get soundtrackBpm() {
+    if (this.#music && !this.#music.paused) return MUSIC_BPMS[this.#musicKey] ?? 96;
+    if (this.#roomScore) return 60 / (this.#roomScore.stepDur * 4);
+    if (this.#jazz) return JAZZ.bpm;
+    if (this.#techno) return TECHNO.bpm;
+    return 0;
   }
 
   #startRoomScore(key) {
@@ -251,7 +307,7 @@ export class AudioEngine {
 
     const bus = this.#ctx.createGain();
     bus.gain.value = 0.0001;
-    bus.gain.setTargetAtTime(profile.level, t, 0.65);
+    bus.gain.setTargetAtTime(profile.level * ROOM_SCORE_FEEL.levelScale, t, 0.65);
     bus.connect(filter);
 
     const lofi = profile.lofi
@@ -271,7 +327,7 @@ export class AudioEngine {
       hissLowpass.type = 'lowpass';
       hissLowpass.frequency.value = lofi.hissLowpass ?? 5600;
       const hissGain = this.#ctx.createGain();
-      hissGain.gain.value = lofi.hissLevel ?? 0.009;
+      hissGain.gain.value = (lofi.hissLevel ?? 0.009) * ROOM_SCORE_FEEL.textureScale;
       hiss.connect(hissHighpass).connect(hissLowpass).connect(hissGain).connect(bus);
       hiss.start(t, rand(0, Math.max(0.01, this.#noiseBuffer.duration - 0.01)));
 
@@ -285,16 +341,17 @@ export class AudioEngine {
       lofiNodes = { hiss, hissHighpass, hissLowpass, hissGain, wow, wowDepth };
     }
 
-    const stepDur = 60 / profile.bpm / 4;
+    const bpm = profile.office ? 72 + this.#roomScoreDrive * 54 : profile.bpm * ROOM_SCORE_FEEL.tempoScale;
+    const stepDur = 60 / bpm / 4;
     this.#roomScore = {
       key, profile, lofi, bus, filter, lofiNodes,
-      stepDur, startTime: t, nextTime: t + 0.06,
+      stepDur, targetStepDur: stepDur, startTime: t, nextTime: t + 0.06,
       timer: setInterval(() => this.#roomScoreTick(), 40),
     };
     this.#roomScoreStep = 0;
   }
 
-  #stopRoomScoreRig(immediate = false) {
+  #stopRoomScoreRig(immediate = false, fadeMs = null) {
     const s = this.#roomScore;
     if (!s) return;
     this.#roomScore = null;
@@ -302,11 +359,15 @@ export class AudioEngine {
     if (!this.#ctx) return;
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
-    if (immediate) s.bus.gain.setValueAtTime(0.0001, t);
-    else s.bus.gain.setTargetAtTime(0.0001, t, 0.28);
+    const fadeSeconds = Math.max(0, fadeMs ?? (immediate ? 0 : 900)) / 1000;
+    if (immediate || fadeSeconds === 0) s.bus.gain.setValueAtTime(0.0001, t);
+    else {
+      s.bus.gain.setValueAtTime(Math.max(s.bus.gain.value, 0.0001), t);
+      s.bus.gain.linearRampToValueAtTime(0.0001, t + fadeSeconds);
+    }
     if (s.lofiNodes) {
-      try { s.lofiNodes.hiss.stop(t + (immediate ? 0.02 : 1.5)); } catch { /* already composted */ }
-      try { s.lofiNodes.wow.stop(t + (immediate ? 0.02 : 1.5)); } catch { /* already composted */ }
+      try { s.lofiNodes.hiss.stop(t + fadeSeconds + 0.02); } catch { /* already composted */ }
+      try { s.lofiNodes.wow.stop(t + fadeSeconds + 0.02); } catch { /* already composted */ }
     }
     setTimeout(() => {
       if (s.lofiNodes) {
@@ -316,18 +377,28 @@ export class AudioEngine {
       }
       try { s.bus.disconnect(); } catch { /* garnish */ }
       try { s.filter.disconnect(); } catch { /* garnish */ }
-    }, immediate ? 80 : 1800);
+    }, Math.max(80, fadeSeconds * 1000 + 100));
   }
 
   #roomScoreTick() {
     const s = this.#roomScore;
     if (!s || !this.#ctx) return;
     const horizon = this.#ctx.currentTime + 0.12;
+    s.stepDur += (s.targetStepDur - s.stepDur) * 0.08;
     while (s.nextTime < horizon) {
       this.#roomScoreStep16(this.#roomScoreStep, s.nextTime, s);
       this.#roomScoreStep = (this.#roomScoreStep + 1) % 64;
       s.nextTime += s.stepDur;
     }
+  }
+
+  /** Drive an adaptive room score without disturbing a selected record. */
+  setRoomScoreDrive(value = 0) {
+    this.#roomScoreDrive = clamp(value, 0, 1);
+    const s = this.#roomScore;
+    if (!s?.profile.office) return;
+    const bpm = 72 + this.#roomScoreDrive * 54;
+    s.targetStepDur = 60 / bpm / 4;
   }
 
   #scoreTone(t, freq, {
@@ -373,7 +444,7 @@ export class AudioEngine {
       this.#scoreTone(t + voice * (jazz.spread ?? 0.012), freq, {
         bus: s.bus,
         type: voice % 2 ? 'sine' : 'triangle',
-        peak: (jazz.level ?? 0.014) * (voice === 0 ? 1.12 : 1),
+        peak: (jazz.level ?? 0.014) * ROOM_SCORE_FEEL.leadScale * (voice === 0 ? 1.12 : 1),
         attack: (jazz.attack ?? 0.05) + voice * 0.006,
         decay,
         cutoff: jazz.cutoff ?? 1800,
@@ -424,7 +495,7 @@ export class AudioEngine {
     body.connect(bodyGain).connect(throat);
 
     const mouth = this.#ctx.createGain();
-    const peak = vocal.level ?? 0.032;
+    const peak = (vocal.level ?? 0.032) * ROOM_SCORE_FEEL.leadScale;
     mouth.gain.setValueAtTime(0.0001, t);
     mouth.gain.exponentialRampToValueAtTime(peak * 0.72, t + dur * 0.16);
     mouth.gain.exponentialRampToValueAtTime(peak, t + dur * 0.46);
@@ -473,7 +544,7 @@ export class AudioEngine {
     carrier.connect(throat);
 
     const mouth = this.#ctx.createGain();
-    const peak = rap.level ?? 0.035;
+    const peak = (rap.level ?? 0.035) * ROOM_SCORE_FEEL.leadScale;
     mouth.gain.setValueAtTime(0.0001, t);
     mouth.gain.exponentialRampToValueAtTime(peak, t + 0.008);
     mouth.gain.exponentialRampToValueAtTime(peak * 0.58, t + dur * 0.34);
@@ -657,6 +728,40 @@ export class AudioEngine {
     }
   }
 
+  #scoreOfficeStep(step, t, s) {
+    const office = s.profile.office;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
+    const drive = this.#roomScoreDrive;
+
+    // Receipt-printer pin strikes: clipped, pitched ticks in anxious clusters.
+    if (office.printer.includes(pos)) {
+      const repeats = drive > 0.72 && pos % 2 ? 2 : 1;
+      for (let i = 0; i < repeats; i++) {
+        this.#scoreTone(swung + i * s.stepDur * 0.28, 1620 + ((step + i) % 5) * 155, {
+          bus: s.bus, type: 'square', peak: 0.018 + drive * 0.012, attack: 0.002,
+          decay: 0.026, cutoff: 5200, slide: 0.96,
+        });
+      }
+    }
+    // Auction gavel — a wooden low knock, never a club kick.
+    if (office.gavel.includes(pos)) {
+      this.#scoreTone(swung, 118, { bus: s.bus, type: 'triangle', peak: 0.12, attack: 0.002, decay: 0.11, cutoff: 460, slide: 0.52 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.026, decay: 0.045, freq: 780, type: 'bandpass' });
+    }
+    // Elevator confirmation chimes remain calm while the valuation does not.
+    if (office.chimes.includes(pos)) {
+      const f = pos === 4 ? 659.25 : 783.99;
+      this.#scoreTone(swung, f, { bus: s.bus, type: 'sine', peak: 0.027, attack: 0.006, decay: s.stepDur * 1.45, cutoff: 2400 });
+    }
+    // Short filtered shredder breath, kept sparse to preserve the groove.
+    if (office.shredder.includes(pos) && (drive > 0.18 || step % 32 === 14)) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.015 + drive * 0.014, decay: s.stepDur * (0.7 + drive * 0.7), freq: 980, type: 'bandpass' });
+    }
+    // Conservation air system: one restrained inhale per bar.
+    if (pos === 15) this.#scoreNoise(swung, { bus: s.bus, peak: 0.009, decay: s.stepDur * 2.4, freq: 3800, type: 'lowpass' });
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
     const lofi = s.lofi;
@@ -667,12 +772,16 @@ export class AudioEngine {
       this.#scoreRestroomStep(step, t, s);
       return;
     }
+    if (p.office) {
+      this.#scoreOfficeStep(step, t, s);
+      return;
+    }
 
     if (p.kick.includes(pos)) {
-      this.#scoreTone(swung, 145, { bus: s.bus, peak: p.kickLevel ?? 0.56, decay: 0.22, cutoff: 500, slide: 0.24 });
+      this.#scoreTone(swung, 145, { bus: s.bus, peak: (p.kickLevel ?? 0.56) * ROOM_SCORE_FEEL.percussionScale, decay: 0.22, cutoff: 500, slide: 0.24 });
     }
-    if (p.snare.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: p.snareLevel ?? 0.12, decay: 0.12, freq: 1100, type: 'bandpass' });
-    if (p.hats.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: p.hatLevel ?? 0.045, decay: 0.045, freq: 6500 });
+    if (p.snare.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: (p.snareLevel ?? 0.12) * ROOM_SCORE_FEEL.percussionScale, decay: 0.12, freq: 1100, type: 'bandpass' });
+    if (p.hats.includes(pos)) this.#scoreNoise(swung, { bus: s.bus, peak: (p.hatLevel ?? 0.045) * ROOM_SCORE_FEEL.percussionScale, decay: 0.045, freq: 6500 });
 
     if (pos % 2 === 0) {
       const semi = p.bass[pos / 2];
@@ -681,7 +790,7 @@ export class AudioEngine {
         this.#scoreTone(swung, freq, {
           bus: s.bus,
           type: p.bassWave,
-          peak: p.bassLevel ?? 0.16,
+          peak: (p.bassLevel ?? 0.16) * ROOM_SCORE_FEEL.bassScale,
           decay: s.stepDur * (p.bassDecay ?? 1.7),
           cutoff: Math.min(p.cutoff, 520),
           slide: p.bassSlide ?? (s.key === 'vault' ? 0.92 : 1),
@@ -697,7 +806,7 @@ export class AudioEngine {
       this.#scoreTone(swung, freq, {
         bus: s.bus,
         type: p.wave,
-        peak: p.leadLevel ?? 0.035,
+        peak: (p.leadLevel ?? 0.035) * ROOM_SCORE_FEEL.leadScale,
         attack: lofi ? (lofi.leadAttack ?? 0.022) : 0.006,
         decay: s.stepDur * (s.key === 'dildoBall' ? 3 : lofi ? (lofi.leadDecay ?? 1.75) : 1.35),
         cutoff: p.cutoff * (lofi ? (lofi.cutoffScale ?? 1.2) : 1.4),
@@ -706,8 +815,8 @@ export class AudioEngine {
       });
     }
 
-    if (p.texture > 0 && pos === 15 && Math.random() < p.texture) {
-      this.#scoreNoise(swung, { bus: s.bus, peak: 0.055, decay: s.stepDur * 4, freq: 2600, type: 'bandpass' });
+    if (p.texture > 0 && pos === 15 && Math.random() < p.texture * ROOM_SCORE_FEEL.textureScale) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.04, decay: s.stepDur * 4, freq: 2600, type: 'bandpass' });
     }
 
     if (p.jazz?.steps.includes(step)) {
@@ -729,6 +838,17 @@ export class AudioEngine {
 
   restroomPiss(variant = 0) {
     if (this.#ctx) this.#scoreRestroomPiss(this.#ctx.currentTime + 0.012, this.#master, variant, true);
+  }
+
+  museumAlarm(variant = 0) {
+    if (!this.#ctx) return;
+    this.#tone({ freq: 740 + (variant % 3) * 70, type: 'square', peak: 0.09, decay: 0.12 });
+    setTimeout(() => this.#tone({ freq: 540 + (variant % 2) * 80, type: 'square', peak: 0.075, decay: 0.14 }), 135);
+  }
+
+  valuationStamp(variant = 0) {
+    this.#noise({ peak: 0.075, decay: 0.055, filterFreq: 760 + variant * 90, q: 4, type: 'bandpass' });
+    this.#tone({ freq: 132 + variant * 8, type: 'triangle', peak: 0.065, decay: 0.09 });
   }
 
   uiMove()    { this.#tone({ freq: 1150, type: 'sine', peak: 0.06, decay: 0.05 }); }
@@ -761,6 +881,33 @@ export class AudioEngine {
 
   gasp() {
     this.#tone({ freq: 380, freqEnd: 760, type: 'sine', peak: 0.1, decay: 0.18 });
+  }
+
+  documentaShutter(corrupted = false) {
+    this.#noise({ peak: corrupted ? 0.13 : 0.09, decay: 0.035, filterFreq: 5200, filterEnd: 1600, q: 1.6, type: 'bandpass' });
+    this.#tone({ freq: corrupted ? 1880 : 1420, freqEnd: corrupted ? 740 : 980, type: 'square', peak: 0.035, decay: 0.045 });
+  }
+
+  documentaPaper() {
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => this.#noise({ peak: 0.075, decay: 0.09, filterFreq: 2600 + i * 450, filterEnd: 620, q: 0.8, type: 'bandpass' }), i * 58);
+    }
+    this.#tone({ freq: 96, freqEnd: 72, type: 'square', peak: 0.045, decay: 0.24 });
+  }
+
+  documentaScanner() {
+    [620, 930, 1395, 465].forEach((freq, i) => {
+      setTimeout(() => this.#tone({ freq, freqEnd: freq * 1.04, type: 'sine', peak: 0.065, decay: 0.12 }), i * 82);
+    });
+    this.#noise({ peak: 0.08, decay: 0.48, filterFreq: 1750, filterEnd: 420, q: 1.8, type: 'bandpass' });
+  }
+
+  metadataCollapse(outcome = 'corrupt') {
+    const freqs = outcome === 'release' ? [440, 660, 880] : outcome === 'destroy' ? [190, 132, 74] : [740, 555, 1110, 370];
+    freqs.forEach((freq, i) => {
+      setTimeout(() => this.#tone({ freq, freqEnd: outcome === 'destroy' ? freq * 0.45 : freq * 1.03, type: outcome === 'release' ? 'sine' : 'square', peak: 0.09, decay: 0.3 }), i * 85);
+    });
+    if (outcome === 'destroy') this.#noise({ peak: 0.22, decay: 0.7, filterFreq: 4800, filterEnd: 180, q: 0.7, type: 'highpass' });
   }
 
   /** A short two-formant boxer moan. It is fully synthesized: pitched throat,
@@ -1188,7 +1335,7 @@ export class AudioEngine {
     return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
   }
 
-  stopTechno() {
+  stopTechno(fadeMs = 500) {
     const s = this.#techno;
     if (!s) return;
     this.#techno = null;
@@ -1196,11 +1343,13 @@ export class AudioEngine {
     if (!this.#ctx) return;
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
-    s.bus.gain.setTargetAtTime(0.0001, t, 0.5);
-    const kill = t + 2.5;
+    const fadeSeconds = Math.max(0, fadeMs) / 1000;
+    s.bus.gain.setValueAtTime(Math.max(s.bus.gain.value, 0.0001), t);
+    s.bus.gain.linearRampToValueAtTime(0.0001, t + fadeSeconds);
+    const kill = t + fadeSeconds + 0.05;
     s.padOscs.forEach((o) => o.stop(kill));
     try { s.lfo.stop(kill); s.wob.stop(kill); } catch { /* already gone */ }
-    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, 3000);
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, Math.max(80, fadeMs + 100));
   }
 
   get technoPlaying() { return !!this.#techno; }
@@ -1366,7 +1515,7 @@ export class AudioEngine {
     return ((this.#ctx.currentTime - s.startTime) % beatDur) / beatDur;
   }
 
-  stopJazz(immediate = false) {
+  stopJazz(immediate = false, fadeMs = null) {
     this.#jazzRequested = false;
     const s = this.#jazz;
     if (!s) return;
@@ -1375,10 +1524,14 @@ export class AudioEngine {
     if (!this.#ctx) return;
     const t = this.#ctx.currentTime;
     s.bus.gain.cancelScheduledValues(t);
-    if (immediate) s.bus.gain.setValueAtTime(0.0001, t);
-    else s.bus.gain.setTargetAtTime(0.0001, t, 0.6);
-    try { s.hushSrc.stop(t + (immediate ? 0.02 : 3)); } catch { /* already gone */ }
-    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, immediate ? 80 : 3200);
+    const fadeSeconds = Math.max(0, fadeMs ?? (immediate ? 0 : 900)) / 1000;
+    if (immediate || fadeSeconds === 0) s.bus.gain.setValueAtTime(0.0001, t);
+    else {
+      s.bus.gain.setValueAtTime(Math.max(s.bus.gain.value, 0.0001), t);
+      s.bus.gain.linearRampToValueAtTime(0.0001, t + fadeSeconds);
+    }
+    try { s.hushSrc.stop(t + fadeSeconds + 0.02); } catch { /* already gone */ }
+    setTimeout(() => { try { s.bus.disconnect(); } catch { /* garnish */ } }, Math.max(80, fadeSeconds * 1000 + 100));
   }
 
   get jazzPlaying() { return !!this.#jazz; }

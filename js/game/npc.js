@@ -742,6 +742,15 @@ export class NPCManager extends Emitter {
 
   byId(id) { return this.#all.find((n) => n.def.id === id) ?? null; }
 
+  /** Permanently remove one authored NPC from the active run. Safe to repeat. */
+  retire(id) {
+    const npc = this.byId(id);
+    if (!npc) return false;
+    npc.dead = true;
+    npc.group.visible = false;
+    return true;
+  }
+
   /** Nearest duelable/talkable npc within range & rough facing. */
   nearest(playerPos, forward, range) {
     let best = null, bestScore = Infinity;

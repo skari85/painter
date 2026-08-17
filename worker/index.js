@@ -14,9 +14,18 @@ const RATE_LIMIT_WINDOW_SECONDS = 60;
 const NOTE_TTL_MS = 24 * 60 * 60 * 1000;
 const CONTROL_CHARS = new RegExp('[\\u0000-\\u001F\\u007F]', 'g');
 
-function corsHeaders(allowedOrigin) {
+function corsHeaders(request, configuredOrigins = '') {
+  const requestOrigin = request.headers.get('Origin');
+  const allowedOrigins = configuredOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const allowedOrigin = requestOrigin && allowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : null;
+
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    ...(allowedOrigin ? { 'Access-Control-Allow-Origin': allowedOrigin } : {}),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     Vary: 'Origin',
@@ -135,10 +144,13 @@ async function handleGet(url, env, headers) {
 
 export default {
   async fetch(request, env) {
-    const headers = corsHeaders(env.ALLOWED_ORIGIN);
+    const headers = corsHeaders(request, env.ALLOWED_ORIGINS || env.ALLOWED_ORIGIN);
     const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
+      if (!headers['Access-Control-Allow-Origin']) {
+        return json({ error: 'origin not allowed' }, { status: 403 }, headers);
+      }
       return new Response(null, { status: 204, headers });
     }
 

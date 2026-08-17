@@ -13,6 +13,7 @@ const CLUE_REVEALS = {
   brandSeen: 'The room has a treatment plan for your identity.',
   theorySeen: 'The language changes. The transaction does not.',
   privateCollectionSeen: 'Someone has made a room for the version of you they can own.',
+  documentationSeen: 'The archive has catalogued you and the work as an Edition of One.',
 };
 
 const STORY_LINES = {
@@ -78,6 +79,14 @@ const STORY_LINES = {
         ],
       },
     },
+    {
+      when: ['documentationSeen'],
+      pools: {
+        reactions: [
+          'DOCUMENTA gave you a number. I merely acquired the confidence behind it.',
+        ],
+      },
+    },
   ],
 };
 
@@ -85,6 +94,10 @@ const TRANSITIONS = {
   'garret>galleria': 'Your hands still smell like paint. The gallery has already decided what it means.',
   'galleria>gildedFork': 'The title travels faster than you do.',
   'galleria>vault': 'The white cube ends. The paperwork continues.',
+  'galleria>documenta': 'The artwork stops. The documentation continues without supervision.',
+  'documenta>galleria': 'The shutters fade. The white cube feels almost undocumented.',
+  'vault>invisibleCollection': 'The cages end. The empty paperwork has its own annex.',
+  'invisibleCollection>vault': 'The alarms fade behind you. The Vault suddenly looks burdened with objects.',
   'vault>garret': 'Home is smaller when you know who has measured it.',
   'galleria>leatherLatex': 'The public room gives way to the room where taste gets comfortable.',
   'galleria>vacantEditions': 'The work leaves the wall and enters a catalogue.',
@@ -94,6 +107,10 @@ const TRANSITIONS = {
   'rageRoom>galleria': 'The glass doors close behind you. The red dot is still waiting in the gallery.',
   'galleria>deathMetal': 'The gallery calls it a theme. The basement calls it a riff. Barbie gets the better entrance.',
   'deathMetal>galleria': 'The amps keep arguing behind you. The white cube is waiting to call the argument context.',
+  'galleria>listeningRoom': 'The white cube lowers its voice. Two speakers take over the argument.',
+  'listeningRoom>galleria': 'The last note follows you out and becomes market ambience.',
+  'listeningRoom>mtvCribs': 'The sweet spot opens into a money shot. Someone yells rolling.',
+  'mtvCribs>listeningRoom': 'The crew keeps filming. The listening room remembers how silence works.',
 };
 
 const DEFAULT_TRANSITION = 'The scene rearranges itself around you. It calls this movement.';
