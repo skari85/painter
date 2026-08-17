@@ -221,7 +221,7 @@ const defaultSettings = () => ({
 });
 
 const defaultMeta = () => ({
-  lastVisit: '', streak: 0, visits: 0, cowVisits: 0, completedDays: [],
+  lastVisit: '', streak: 0, visits: 0, cowVisits: 0, completedDays: [], documentaScarred: false,
 });
 
 export function loadSettings() {
@@ -263,6 +263,7 @@ export function loadMeta() {
     visits: Number.isFinite(meta.visits) ? Math.max(0, meta.visits) : 0,
     cowVisits: Number.isFinite(meta.cowVisits) ? Math.max(0, meta.cowVisits) : 0,
     completedDays: Array.isArray(meta.completedDays) ? meta.completedDays.filter((d) => typeof d === 'string') : [],
+    documentaScarred: Boolean(meta.documentaScarred),
   };
 }
 
@@ -285,6 +286,16 @@ export function recordCowVisit() {
   meta.cowVisits++;
   write(STORAGE.meta, meta);
   return meta.cowVisits;
+}
+
+/** Permanent, cross-run tell: once true, it survives every future new game. */
+export function markDocumentaScarred() {
+  const meta = loadMeta();
+  if (!meta.documentaScarred) {
+    meta.documentaScarred = true;
+    write(STORAGE.meta, meta);
+  }
+  return meta;
 }
 
 export function dailyComplete(stamp = dayStamp()) {

@@ -684,10 +684,12 @@ export class World {
   #scene;
   #splatTex;
   #t = 0;
+  #documentaScarred;
 
-  constructor(scene) {
+  constructor(scene, { documentaScarred = false } = {}) {
     this.#scene = scene;
     this.#splatTex = splatTexture();
+    this.#documentaScarred = documentaScarred;
     this.zones = new Map();
     this.current = null;
     this.#buildGarret();
@@ -1330,6 +1332,17 @@ export class World {
       monitorMats.push(screenMat);
     }
 
+    // A permanent tell from a past run: one monitor never came back online.
+    const staticTex = this.#documentaScarred
+      ? canvasTexture(96, 54, (ctx, w, h) => {
+          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const v = (Math.random() * 255) | 0;
+            ctx.fillStyle = `rgb(${v},${v},${v})`;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        })
+      : null;
+
     // STATION THREE — archive intake, reached after the lens is corrupted.
     box(z, { w: 3.3, h: 0.92, d: 1.15, x: 4.95, z: 5.3, material: office, name: 'documentaArchiveScanner' });
     const scanner = box(z, { w: 1.45, h: 0.23, d: 0.82, x: 4.95, y: 0.92, z: 5.3, material: accent, solid: false, name: 'documentaArchiveScanner' });
@@ -1346,6 +1359,47 @@ export class World {
       pos: new THREE.Vector3(4.95, 1.1, 4.85), radius: 2.2,
       lines: ['The scanner is waiting to value itself. Press Q while looking directly at it.', 'No intake occurs before accreditation and lens corruption. Bureaucracy respects sequence.'],
     });
+
+    // A permanent tell from a past run: nobody ever explains these.
+    if (this.#documentaScarred) {
+      const crackTex = canvasTexture(256, 256, (ctx, w, h) => {
+        ctx.strokeStyle = 'rgba(20,18,16,0.55)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        let cx = w * 0.5, cy = 0;
+        ctx.moveTo(cx, cy);
+        for (let i = 0; i < 9; i++) {
+          cx += (Math.random() - 0.5) * 46;
+          cy += h / 9;
+          ctx.lineTo(cx, cy);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        for (let b = 0; b < 3; b++) {
+          const bx = w * (0.3 + Math.random() * 0.4), by = h * (0.2 + Math.random() * 0.6);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + (Math.random() - 0.5) * 60, by + (Math.random() - 0.5) * 60);
+          ctx.stroke();
+        }
+      });
+      const scorchTex = canvasTexture(256, 256, (ctx, w, h) => {
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
+        grad.addColorStop(0, 'rgba(15,12,10,0.5)');
+        grad.addColorStop(0.6, 'rgba(15,12,10,0.22)');
+        grad.addColorStop(1, 'rgba(15,12,10,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      });
+      plane(z, {
+        w: 1.8, h: 2.0, x: 8.3, y: 0.011, z: 0, rx: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ map: crackTex, transparent: true }), name: 'documenta scar',
+      });
+      plane(z, {
+        w: 2.8, h: 2.8, x: 10.6, y: 0.012, z: 0, rx: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ map: scorchTex, transparent: true }), name: 'documenta scar',
+      });
+    }
 
     // Gate and boss office. The collider is removed when all three stations
     // are corrupted; the bars then rise into the ceiling.
@@ -1416,6 +1470,7 @@ export class World {
       gate, gateLabel, gateCollider, gateOpen: false, crews, cameras: documentaCameras, authorityMat,
       accredited: false, cameraCorrupted: false, archiveCorrupted: false,
       complete: false, outcome: null, shutterT: 0.7, paperT: 0,
+      scarred: this.#documentaScarred, staticTex,
     };
   }
 
@@ -6676,7 +6731,7 @@ export class World {
         } else if (cameraCorrupted) {
           material.map = textTexture(corruptLines[i % corruptLines.length], { fg: '#ff78c8', bg: '#171019', size: 31, w: 600, h: 350 });
         } else {
-          material.map = material.userData.normalMap;
+          material.map = (d.scarred && i === 4) ? d.staticTex : material.userData.normalMap;
         }
         material.needsUpdate = true;
       }

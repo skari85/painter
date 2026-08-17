@@ -35,6 +35,7 @@ export const DUEL = {
   wittyFame: 4,
   kindSoul: 3,
   roundsBeforeDismiss: 4,   // npcs get bored after this many unanswered jabs
+  quickWitBonus: 1,         // extra virtue point for answering before the line finishes typing
 };
 
 export const PAINT = {

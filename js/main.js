@@ -21,7 +21,7 @@ if (window.location.hostname === 'painter-iota.vercel.app') {
 }
 
 
-import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
+import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, markDocumentaScarred, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
 import { Ghostwriter } from './core/ai.js';
@@ -87,6 +87,8 @@ class Game {
   #runActive = false;
   #saveTimer = 0;
   #savedRun = null;
+  #lastTone = null;
+  #toneStreak = 0;
 
   /* ============================================================
      Boot
@@ -125,7 +127,7 @@ class Game {
     this.audio = new AudioEngine();
     this.input = new InputManager(canvas);
 
-    this.world = new World(this.scene);
+    this.world = new World(this.scene, { documentaScarred: this.#meta.documentaScarred });
     this.player = new PlayerController(this.camera, this.input);
     this.hand = new HandRig(this.camera);
     this.paint = new PaintSystem();
@@ -324,6 +326,7 @@ class Game {
 
 
     // ---- dialogue engine → view ----
+    this.dialogue.on('tone', ({ tone }) => this.#trackToneStreak(tone));
     this.dialogue.on('start', ({ npc, line, options, hint }) => {
       this.mode = 'dialogue';
       ui.setHotkeys('dialogue');
@@ -1124,9 +1127,17 @@ class Game {
       return;
     }
     if (this.mode !== 'dialogue') return;
-    if (this.ui.isTyping) { this.ui.completeLine(); return; }
+    const wasTyping = this.ui.isTyping;
+    if (wasTyping) this.ui.completeLine();
     this.audio.uiMove();
-    this.dialogue.choose(i);
+    this.dialogue.choose(i, wasTyping);
+  }
+
+  /** Three same-tone answers in a row give the world a barely-there mood. Never explained. */
+  #trackToneStreak(tone) {
+    if (tone === this.#lastTone) this.#toneStreak++;
+    else { this.#lastTone = tone; this.#toneStreak = 1; }
+    if (this.#toneStreak >= 3 && (tone === 'brutal' || tone === 'kind')) this.ui.setMoodGrade(tone);
   }
 
   #onSwing() {
@@ -1740,6 +1751,7 @@ class Game {
       this.state.shiftVirtue('valor', 4, 'Authority lost its footing');
       this.state.shiftVirtue('compassion', -2, 'Some subjects were still in the folders');
       this.ui.toast('AUTHORITY NOT FOUND', 'Tripods fall in sequence. The server altar loses the authoritative description and keeps only the impact footage.', 'bad');
+      markDocumentaScarred();
     }
     this.state.record(`Resolved DOCUMENTA through ${outcome}`, null);
     this.audio.metadataCollapse(outcome);

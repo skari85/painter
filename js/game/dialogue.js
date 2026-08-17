@@ -163,7 +163,7 @@ export class DialogueEngine extends Emitter {
     return line;
   }
 
-  choose(index) {
+  choose(index, wasTyping = false) {
     const a = this.active;
     if (!a) return;
     const opt = a.options?.[index];
@@ -182,20 +182,24 @@ export class DialogueEngine extends Emitter {
     const def = npc.def;
     const tone = opt.tone;
     a.finalTone = tone;
+    this.emit('tone', { tone });
 
     // ---- tone economics ----
+    // answering before the line finishes typing reads as quick-witted —
+    // a hair more of the virtue that tone was already earning.
     const s = this.#state;
+    const quick = wasTyping ? DUEL.quickWitBonus : 0;
     if (tone === 'brutal') {
       s.addMeter('heat', DUEL.brutalHeat, 'Brutality in public');
       s.addMeter('soul', -DUEL.brutalSoulCost, 'It cost you something');
       s.shiftVirtue('compassion', -1, '');
-      s.shiftVirtue('valor', 2, '');
+      s.shiftVirtue('valor', 2 + quick, '');
     } else if (tone === 'witty') {
       s.addMeter('fame', DUEL.wittyFame, 'The room laughed');
-      s.shiftVirtue('vision', 1, '');
+      s.shiftVirtue('vision', 1 + quick, '');
     } else {
       s.addMeter('soul', DUEL.kindSoul, 'A moment of actual grace');
-      s.shiftVirtue('compassion', 1, '');
+      s.shiftVirtue('compassion', 1 + quick, '');
     }
 
     // ---- damage ----

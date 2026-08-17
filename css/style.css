@@ -96,6 +96,13 @@ kbd {
 }
 #cred-pulse.on { opacity: 1; transition-duration: var(--dur-fast); }
 
+#mood-grade {
+  position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0;
+  transition: opacity 3s ease;
+}
+#mood-grade.brutal { opacity: 0.14; background: hsl(0, 0%, 50%); mix-blend-mode: saturation; }
+#mood-grade.kind   { opacity: 0.10; background: #ff9d52;         mix-blend-mode: color; }
+
 #curtain {
   position: fixed; inset: 0; background: #000; z-index: 60;
   opacity: 0; pointer-events: none;

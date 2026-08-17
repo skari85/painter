@@ -62,6 +62,7 @@ export class UIManager {
       dlgHint: $('dlg-weakness-hint'),
       curtain: $('curtain'),
       credPulse: $('cred-pulse'),
+      moodGrade: $('mood-grade'),
       title: $('title-screen'),
       resumeRun: $('btn-resume'),
       onboarding: $('onboarding'),
@@ -353,6 +354,7 @@ export class UIManager {
   }
 
   #hotkeyMode = null;
+  #moodGradeTimer = null;
 
   hitmarker(brutal = false) {
     const h = this.el.hitmarker;
@@ -366,6 +368,16 @@ export class UIManager {
     const c = this.el.credPulse;
     c.classList.add('on');
     setTimeout(() => c.classList.remove('on'), 220);
+  }
+
+  /** A barely-there color wash for a sustained run of tone. Never announced. */
+  setMoodGrade(kind) {
+    const el = this.el.moodGrade;
+    el.classList.remove('brutal', 'kind');
+    void el.offsetWidth;
+    el.classList.add(kind);
+    clearTimeout(this.#moodGradeTimer);
+    this.#moodGradeTimer = setTimeout(() => el.classList.remove(kind), 60000);
   }
 
   /** World-space → screen-space damage number. */
