@@ -699,6 +699,7 @@ export class World {
     this.#buildGalleria();
     this.#buildDocumenta();
     this.#buildBiennaleWaiting();
+    this.#buildNowOrNever();
     this.#buildVault();
     this.#buildInvisibleCollection();
     this.#buildLeatherLatex();
@@ -742,6 +743,109 @@ export class World {
     return zone;
   }
 
+  /* ---------------------------------------------------------- */
+  /*  THE LAST STANDING BLUE CHIP GALLERY                       */
+  /* ---------------------------------------------------------- */
+  #buildLastStandingGallery() {
+    const z = this.#newZone('lastStandingGallery');
+    shell(z, { w: 24, d: 16, floorColor: 0x171b25, wallColor: 0x34363c, ceilColor: 0x11151f, h: 4.4 });
+    z.spawn.set(9.6, 0, 0);
+    z.spawnYaw = Math.PI / 2;
+    z.fog = { color: 0x07101b, density: 0.012 };
+
+    const blue = latexMat(0x0b2a68);
+    const gold = mat(0xc98c2b, { metalness: 0.86, roughness: 0.2 });
+    const chrome = mat(0xb8c8d5, { metalness: 0.9, roughness: 0.15 });
+    const marble = mat(0xb6aa93, { roughness: 0.75 });
+    const blackGlass = new THREE.MeshPhysicalMaterial({ color: 0x071321, transparent: true, opacity: 0.5, roughness: 0.08, metalness: 0.22, transmission: 0.12 });
+    const ocean = mat(0x06111d, { roughness: 0.2, metalness: 0.35 });
+    box(z, { w: 23.8, h: 0.04, d: 15.8, y: -0.62, material: ocean, solid: false, noSplat: true, name: 'black ocean below the vault' });
+
+    // A transparent central runway makes the tiny auction crowd below part of the joke.
+    box(z, { w: 6.2, h: 0.07, d: 13.8, y: 0.02, material: blackGlass, solid: false, noSplat: true, name: 'transparent floor over auctioneers' });
+    for (const x of [-3.1, 3.1]) box(z, { w: 0.035, h: 0.035, d: 13.8, x, y: 0.07, material: chrome, solid: false, noSplat: true });
+    for (let zz = -6.5; zz <= 6.5; zz += 2.15) box(z, { w: 6.2, h: 0.03, d: 0.035, z: zz, y: 0.07, material: chrome, solid: false, noSplat: true });
+    for (let i = 0; i < 12; i++) {
+      const diver = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), mat(0x202c3d, { roughness: 0.65 }));
+      diver.position.set((i % 4 - 1.5) * 1.05, -0.42 - (i % 3) * 0.11, -6.1 + i * 1.05);
+      diver.scale.set(0.7, 1.5, 0.7); diver.userData.noSplat = true; z.group.add(diver);
+    }
+
+    // Marble wall panels and absurd cobalt works.
+    for (const x of [-8.9, -5.9, 5.9, 8.9]) {
+      box(z, { w: 2.35, h: 3.65, d: 0.12, x, y: 0.2, z: -7.88, material: marble, solid: false, noSplat: true });
+      hangingArt(z, { x, y: 2.05, z: -7.8, ry: 0, w: 1.55, h: 2.35, seed: 8200 + Math.round(x * 10) });
+    }
+    for (const x of [-8.9, 8.9]) {
+      hangingArt(z, { x, y: 2.1, z: 7.8, ry: Math.PI, w: 1.55, h: 2.35, seed: 8300 + Math.round(x * 10) });
+    }
+    const ticker = plane(z, { w: 5.8, h: 3.1, x: 0, y: 2.35, z: -7.67, material: new THREE.MeshBasicMaterial({ map: textTexture('BLUE CHIP / 4.7B / HOLD', { fg: '#35a9ff', bg: '#06132a', size: 28 }), transparent: false }), name: 'live blue chip ticker wall' });
+    ticker.userData.noSplat = true;
+
+    // The tiny blue duck is the room's actual “masterpiece”.
+    cylinder(z, { rT: 0.72, rB: 0.86, h: 0.22, x: 0, z: 0, material: marble, seg: 32 });
+    box(z, { w: 1.2, h: 0.035, d: 1.2, x: 0, y: 0.23, z: 0, material: gold, solid: false, noSplat: true });
+    const duck = new THREE.Group(); duck.position.set(0, 0.27, 0);
+    const duckBody = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 16), blue); duckBody.scale.set(1.15, 0.78, 0.95);
+    const duckHead = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 14), blue); duckHead.position.set(0.22, 0.31, 0);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 12), gold); beak.rotation.z = -Math.PI / 2; beak.position.set(0.45, 0.29, 0);
+    duck.add(duckBody, duckHead, beak); duck.traverse((o) => { o.userData.noSplat = true; }); z.group.add(duck);
+    z.animated.blueChipDuck = { duck, phase: 0 };
+
+    // Platinum benches, velvet ropes, and a champagne fountain make the room maximally unserious.
+    for (const x of [-7, 7]) {
+      box(z, { w: 3.1, h: 0.28, d: 0.68, x, y: 0.48, z: 2.2, material: leatherMat(0x2a1516), name: 'platinum leather bench' });
+      box(z, { w: 3.3, h: 0.04, d: 0.76, x, y: 0.76, z: 2.2, material: chrome, solid: false, noSplat: true });
+    }
+    const fountain = new THREE.Group(); fountain.position.set(-9.4, 0, -1.8);
+    fountain.add(new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.86, 0.18, 32), chrome));
+    for (let i = 0; i < 3; i++) { const tier = new THREE.Mesh(new THREE.CylinderGeometry(0.52 - i * 0.13, 0.62 - i * 0.13, 0.1, 24), gold); tier.position.y = 0.22 + i * 0.25; fountain.add(tier); }
+    fountain.traverse((o) => { o.userData.noSplat = true; }); z.group.add(fountain);
+
+    // Helicopter-shaped spot rigs. They are deliberately too close to the art.
+    for (const x of [-4.5, 4.5]) {
+      const rig = new THREE.Group(); rig.position.set(x, 4.05, -1.1);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 10), chrome); body.scale.set(1.45, 0.6, 0.75);
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.4, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xd6f0ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+      beam.rotation.x = Math.PI; beam.position.y = -1.2;
+      const light = new THREE.SpotLight(0xdaf3ff, 18, 13, Math.PI / 7, 0.45, 1.2); light.position.y = -0.25; light.target.position.set(x * 0.35, 0, 0);
+      rig.add(body, beam, light, light.target); rig.traverse((o) => { o.userData.noSplat = true; }); z.group.add(rig);
+    }
+
+    // Adult gallery visitors: stylized, non-explicit figures in black latex bras/underwear.
+    const skin = (color) => mat(color, { roughness: 0.52 });
+    const makeVisitor = ({ x, zz, scale = 1, skinColor = 0xc78968, pose = 0 }) => {
+      const g = new THREE.Group(); g.position.set(x, 0, zz); g.scale.setScalar(scale); g.userData.phase = x * 0.7 + zz; g.userData.noSplat = true;
+      const flesh = skin(skinColor); const latex = latexMat(0x090a0f);
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 14), flesh); torso.scale.set(0.92, 1.5, 0.56); torso.position.y = 1.15;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 14), flesh); head.position.y = 2.05;
+      const briefs = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 12), latex); briefs.scale.set(0.92, 0.48, 0.68); briefs.position.y = 0.78;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.08, 0.58), latex); band.position.y = 0.91;
+      const leg = (px) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.125, 0.8, 12), flesh); m.position.set(px, 0.36, 0); return m; };
+      const arm = (px, rz) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.82, 12), flesh); m.position.set(px, 1.18, 0); m.rotation.z = rz; return m; };
+      g.add(torso, head, briefs, band, leg(-0.16), leg(0.16), arm(-0.48, pose ? -0.45 : 0.22), arm(0.48, pose ? 0.45 : -0.22));
+      if (pose === 1 || pose === 2) {
+        const braBand = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.09, 0.45), latex); braBand.position.set(0, 1.36, 0.02); g.add(braBand);
+        for (const px of [-0.16, 0.16]) { const cup = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 10), latex); cup.scale.set(1, 0.62, 0.72); cup.position.set(px, 1.38, 0.18); g.add(cup); }
+        for (const px of [-0.28, 0.28]) { const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.42, 8), latex); strap.position.set(px, 1.63, 0.03); strap.rotation.z = px > 0 ? -0.25 : 0.25; g.add(strap); }
+      }
+      g.traverse((o) => { o.userData.noSplat = true; }); z.group.add(g); return g;
+    };
+    const visitors = [
+      makeVisitor({ x: -5.7, zz: -3.2, scale: 1.05, skinColor: 0xb66f4f, pose: 1 }),
+      makeVisitor({ x: 5.6, zz: -3.0, scale: 1.0, skinColor: 0xd6a07d, pose: 2 }),
+      makeVisitor({ x: -8.5, zz: 4.7, scale: 0.96, skinColor: 0x8f573d, pose: 0 }),
+      makeVisitor({ x: 7.9, zz: 4.8, scale: 1.02, skinColor: 0xc68465, pose: 1 }),
+    ];
+    z.animated.adultVisitors = visitors;
+    z.group.add(new THREE.HemisphereLight(0x8ebdff, 0x17131a, 1.15));
+    for (const [x, color] of [[-8, 0x3b8dff], [0, 0xffc35d], [8, 0x3b8dff]]) { const l = new THREE.PointLight(color, 8, 11, 1.8); l.position.set(x, 3.2, 0); z.group.add(l); }
+    const title = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 0.5), new THREE.MeshBasicMaterial({ map: textTexture('THE LAST STANDING BLUE CHIP GALLERY', { fg: '#f1d27c', bg: '#0a0d16', size: 30 }), transparent: true }));
+    title.position.set(0, 3.65, 7.76); title.rotation.y = Math.PI; title.userData.noSplat = true; z.group.add(title);
+    door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.waypoints = [new THREE.Vector3(-8, 0, -3), new THREE.Vector3(0, 0, 0), new THREE.Vector3(8, 0, 3)];
+  }
+
   /** A synchronized communal turntable in every room. */
   #buildRecordPlayers() {
     const placements = {
@@ -749,6 +853,7 @@ export class World {
       galleria:     { x: 7.75,  z: 5.35,  ry: Math.PI },
       documenta:    { x: -9.6, z: 6.9,   ry: Math.PI },
       biennaleWaiting: { x: -14.7, z: 8.9, ry: Math.PI },
+      nowOrNever:   { x: -13.4, z: 7.8,   ry: Math.PI },
       vault:        { x: -5.45, z: 4.15,  ry: Math.PI / 2 },
       invisibleCollection: { x: -7.65, z: 5.15, ry: Math.PI },
       leatherLatex: { x: -9.35, z: 4.65,  ry: Math.PI },
@@ -759,6 +864,7 @@ export class World {
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
       vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
       rageRoom: { x: 9.1, z: 5.1, ry: Math.PI },
+      lastStandingGallery: { x: 9.8, z: 5.0, ry: Math.PI },
       listeningRoom: { x: 0, z: -1.85, ry: 0 },
     };
 
@@ -1176,6 +1282,8 @@ export class World {
     door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
     door(z, { x: 3.45, z: -6.62, ry: 0, label: 'THE LISTENING ROOM →', to: 'listeningRoom' });
     door(z, { x: 3.45, z: 6.62, ry: Math.PI, label: 'THE BIENNALE OF WAITING →', to: 'biennaleWaiting' });
+    door(z, { x: -3.45, z: 6.62, ry: Math.PI, label: 'LAST STANDING BLUE CHIP GALLERY →', to: 'lastStandingGallery' });
+    door(z, { x: 1.8, z: -6.62, ry: 0, label: 'NOW OR NEVER: THE GROUP SHOW →', to: 'nowOrNever' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -1681,6 +1789,153 @@ export class World {
       stage: 0, activeQueue: null, finalStarted: false, finalElapsed: 0,
       pavilions: {}, complete: false, winner: null, visualKey: '',
     };
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  NOW OR NEVER: THE GROUP SHOW                             */
+  /* ---------------------------------------------------------- */
+  #buildNowOrNever() {
+    const z = this.#newZone('nowOrNever');
+    shell(z, { w: 30, d: 20, floorColor: 0x53565d, wallColor: 0xe6e2da, ceilColor: 0x171b21, h: 5.6 });
+    z.spawn.set(-13.2, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x171a20, density: 0.014 };
+
+    const floor = new THREE.MeshPhysicalMaterial({ color: 0x767a80, roughness: 0.12, metalness: 0.18, clearcoat: 0.72, clearcoatRoughness: 0.08 });
+    plane(z, { w: 29.4, h: 19.4, y: 0.012, rx: -Math.PI / 2, material: floor, noSplat: true, name: 'nowOrNever terminal floor' });
+    z.group.add(new THREE.HemisphereLight(0xcbd4df, 0x171a20, 1.15));
+    for (const [x, zz, color] of [[-10, -6, 0xf5f2de], [-2, -6, 0xdce8ff], [6, -6, 0xf8e7c5], [12, -6, 0xdde9ff], [-6, 5, 0xe7f0ff], [6, 5, 0xf5e6ca]]) {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.05, 0.16), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 }));
+      strip.position.set(x, 4.38, zz); strip.userData.noSplat = true; z.group.add(strip);
+      const light = new THREE.PointLight(color, 8.5, 8.5, 1.8); light.position.set(x, 4.0, zz); z.group.add(light);
+    }
+
+    const black = mat(0x11151c, { roughness: 0.38, metalness: 0.42 });
+    const chrome = mat(0x8b929a, { roughness: 0.2, metalness: 0.78 });
+    const yellow = mat(0xd4ad42, { roughness: 0.3, metalness: 0.55 });
+    const red = mat(0x9c2434, { roughness: 0.5 });
+    const blue = mat(0x2b526f, { roughness: 0.5 });
+    const cream = mat(0xe8e1d4, { roughness: 0.72 });
+
+    const boardRows = [
+      { code: 'N0W-00', artist: 'THE ARTIST', destination: 'THE NEXT BIG THING', schedule: [0, 2, 3, 4, 5, 9] },
+      { code: 'N0W-01', artist: 'KREYO', destination: 'PERMANENT RELEVANCE', schedule: [0, 1, 2, 3, 6, 7] },
+      { code: 'N0W-02', artist: 'VICTORIA VANE', destination: 'MARKET TERMINAL', schedule: [1, 0, 3, 2, 8, 1] },
+      { code: 'N0W-03', artist: 'DOLORES PANG', destination: 'THE NEXT PANEL', schedule: [2, 3, 0, 6, 4, 8] },
+      { code: 'N0W-04', artist: 'MIRA LASTCALL', destination: 'PLATFORM 0', schedule: [3, 4, 5, 9, 6, 10] },
+      { code: 'N0W-05', artist: 'JUNE BREAKOUT', destination: 'THE MOMENT', schedule: [1, 2, 3, 0, 4, 5] },
+      { code: 'N0W-06', artist: 'THE EMERGING ARTIST', destination: 'SINCE 2019', schedule: [4, 6, 7, 8, 9, 10] },
+      { code: 'N0W-07', artist: 'EVERYONE ELSE', destination: 'LOST PROPERTY', schedule: [7, 8, 9, 10, 6, 4] },
+    ];
+    const statuses = ['BOARDING', 'JUST LANDED', 'DELAYED', 'JUST DEPARTED', 'LOST CAUSE', 'NO LONGER TRENDING', 'MISSED CONNECTION', 'RETURNED TO SENDER', 'CANCELLED FOR CONTEXT', 'BOARDING DENIED', 'THE MOMENT HAS PASSED'];
+    const statusColors = ['#b9f2c6', '#77e6ee', '#e9c867', '#f4f0db', '#ff6875', '#ff6875', '#ef9b57', '#c8a1ff', '#ff6875', '#ff6875', '#ff6875'];
+    const drawBoard = (canvas, board, t) => {
+      const ctx = canvas.getContext('2d'); const w = canvas.width; const h = canvas.height;
+      ctx.fillStyle = '#0b1015'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = board.flash > 0 ? '#202a31' : '#121a20'; ctx.fillRect(22, 22, w - 44, h - 44);
+      ctx.strokeStyle = '#727d84'; ctx.lineWidth = 8; ctx.strokeRect(20, 20, w - 40, h - 40);
+      ctx.textAlign = 'left'; ctx.font = '900 31px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#e3c561';
+      ctx.fillText('NOW OR NEVER · DEPARTURES / ARRIVALS / REGRETS', 52, 68);
+      ctx.textAlign = 'right'; ctx.font = '700 26px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#83929b';
+      const now = new Date(); ctx.fillText(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, w - 52, 68);
+      const x = [52, 220, 530, 935, 1220];
+      ctx.textAlign = 'left'; ctx.font = '800 19px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#7d8a91';
+      ['CODE', 'ARTIST', 'DESTINATION', 'STATUS', 'TIME'].forEach((label, i) => ctx.fillText(label, x[i], 112));
+      ctx.strokeStyle = '#425057'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(48, 128); ctx.lineTo(w - 48, 128); ctx.stroke();
+      const cycle = Math.floor(t / 5.6);
+      board.rows.forEach((row, i) => {
+        const y = 180 + i * 67;
+        const active = board.activeRow === i;
+        if (active) { ctx.fillStyle = board.flash > 0 ? 'rgba(225,196,96,0.24)' : 'rgba(225,196,96,0.12)'; ctx.fillRect(42, y - 34, w - 84, 49); }
+        const statusIndex = i === 0
+          ? (board.context.hasPainting ? [0, 1, 3, 5, 10][cycle % 5] : [0, 2, 6, 5, 9][cycle % 5])
+          : row.schedule[(cycle + i) % row.schedule.length];
+        const destination = i === 0 && board.context.title ? `“${board.context.title.slice(0, 25)}”` : row.destination;
+        ctx.font = '800 22px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = active ? '#fff1a8' : '#d9e2e4';
+        ctx.fillText(row.code, x[0], y);
+        ctx.font = '800 20px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillText(row.artist, x[1], y);
+        ctx.fillStyle = '#aebbc0'; ctx.fillText(destination, x[2], y);
+        ctx.fillStyle = statusColors[statusIndex]; ctx.fillText(statuses[statusIndex], x[3], y);
+        ctx.fillStyle = '#88969c'; ctx.fillText(`${String((18 + i + cycle) % 24).padStart(2, '0')}:${String((11 * i + cycle * 3) % 60).padStart(2, '0')}`, x[4], y);
+      });
+      ctx.font = '700 18px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#68767d';
+      ctx.fillText('PLEASE HAVE YOUR RELEVANCE READY · BOARDING IS NOT GUARANTEED', 52, h - 43);
+    };
+    const boardCanvas = document.createElement('canvas'); boardCanvas.width = 1600; boardCanvas.height = 760;
+    const board = { rows: boardRows, statuses, statusColors, canvas: boardCanvas, texture: null, activeRow: 0, flash: 0, lastRender: -1, context: { hasPainting: false, title: '' } };
+    drawBoard(boardCanvas, board, 0);
+    board.texture = new THREE.CanvasTexture(boardCanvas); board.texture.colorSpace = THREE.SRGBColorSpace; board.texture.anisotropy = 4;
+    board.render = (t) => { drawBoard(boardCanvas, board, t); board.texture.needsUpdate = true; };
+    const boardFrame = box(z, { w: 15.2, h: 4.45, d: 0.38, x: 0, y: 1.15, z: -9.36, material: black, name: 'nowOrNeverBoardFrame' });
+    boardFrame.userData.noSplat = true;
+    const boardMesh = plane(z, { w: 14.4, h: 4.1, x: 0, y: 3.05, z: -9.58, material: new THREE.MeshBasicMaterial({ map: board.texture, toneMapped: false }), noSplat: false, name: 'nowOrNeverBoard' });
+    boardMesh.userData.nowOrNeverBoard = true; boardMesh.userData.noSplat = false;
+    const boardGlow = new THREE.PointLight(0x8aa7b2, 1.4, 7, 2); boardGlow.position.set(0, 3.05, -8.9); z.group.add(boardGlow);
+
+    const makeLabel = (text, x, zz, opts = {}) => plane(z, { w: opts.w ?? 3.5, h: opts.h ?? 0.52, x, y: opts.y ?? 2.55, z: zz, ry: opts.ry ?? 0, material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg: opts.fg ?? '#17191d', bg: opts.bg ?? '#efe9dd', size: opts.size ?? 30, w: 980, h: 160, font: '900' }), transparent: true }), name: opts.name ?? '' });
+    makeLabel('NOW OR NEVER: THE GROUP SHOW', 0, 9.82, { w: 7.7, h: 0.78, fg: '#f4d36d', bg: '#1a2028', size: 39, name: 'nowOrNeverTitle' });
+    makeLabel('PLATFORM 0 · THE TRAIN HAS BEEN POSTPONED INTO A CATEGORY', 0, 7.85, { w: 7.6, h: 0.48, fg: '#d5dce0', bg: '#2a333d', size: 24, name: 'nowOrNeverPlatform' });
+
+    const gateSigns = [];
+    for (let i = 0; i < 4; i++) {
+      const x = -10.4 + i * 6.9;
+      const gate = box(z, { w: 4.6, h: 0.18, d: 2.15, x, y: 0.92, z: 5.9, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverGate' });
+      gateSigns.push(makeLabel(`GATE ${String.fromCharCode(65 + i)}\n${['THE NEXT BIG THING', 'DELAYED UNTIL FURTHER NOTICE', 'BOARDING DENIED', 'NO LONGER TRENDING'][i]}`, x, 5.86, { w: 4.2, h: 0.85, fg: '#f0d98a', bg: i === 2 ? '#7b2536' : '#1b2731', size: 24, name: 'nowOrNeverGate' }));
+    }
+
+    // The empty platform is the room's central negative space: rails, a
+    // departure line, and no vehicle for any of the people waiting.
+    box(z, { w: 16.6, h: 0.08, d: 0.08, x: 0, y: 0.02, z: -0.8, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverRail' });
+    box(z, { w: 16.6, h: 0.08, d: 0.08, x: 0, y: 0.02, z: 1.1, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverRail' });
+    makeLabel('PLATFORM 0', 0, -0.78, { w: 2.1, h: 0.42, y: 0.04, fg: '#151a20', bg: '#e3c561', size: 27, name: 'nowOrNeverPlatform' });
+    for (let i = 0; i < 11; i++) {
+      const sleeper = box(z, { w: 0.18, h: 0.06, d: 2.35, x: -8.2 + i * 1.64, y: 0.02, z: 0.15, material: mat(0x383b40), solid: false, noSplat: true, name: 'nowOrNeverRail' });
+      sleeper.rotation.y = 0;
+    }
+
+    // Temporary booths and the relics of a trend that was packed too quickly.
+    const boothXs = [-10.6, -5.3, 5.3, 10.6];
+    boothXs.forEach((x, i) => {
+      box(z, { w: 3.8, h: 2.65, d: 0.12, x, z: -5.1, material: cream, solid: false, name: 'nowOrNeverTemporaryBooth' });
+      makeLabel(['EMERGING ARTIST\nSINCE 2019', 'PRESS PREVIEW\nLAST WEEK', 'THE MOMENT\nHAS PASSED', 'ARTIST\nNOT FOUND'][i], x, -5.0, { w: 3.35, h: 1.0, y: 2.05, fg: i === 2 ? '#f4e7d2' : '#1d2025', bg: i === 2 ? '#8e2d3d' : '#f0eadf', size: 23, name: 'nowOrNeverBoothLabel' });
+      const spotlight = new THREE.SpotLight(i === 2 ? 0xff6475 : 0xffe7b1, 9, 6, 0.42, 0.65, 1.4); spotlight.position.set(x, 4.25, -3.7); spotlight.target.position.set(x, 0, -5.1); z.group.add(spotlight, spotlight.target);
+    });
+
+    const suitcases = [];
+    for (let i = 0; i < 10; i++) {
+      const suitcase = box(z, { w: 0.65 + (i % 3) * 0.12, h: 0.48, d: 0.22, x: -12.2 + (i % 5) * 0.72, y: 0.04, z: 3.05 + Math.floor(i / 5) * 0.48, material: i % 3 ? blue : red, solid: false, noSplat: true, name: 'nowOrNeverLuggage' });
+      suitcase.rotation.y = (i % 2 ? -1 : 1) * 0.08; suitcases.push(suitcase);
+    }
+    makeLabel('LOST PROPERTY\nCONCEPTS ONLY', -10.45, 3.3, { w: 2.8, h: 0.72, y: 1.35, fg: '#f5e6a8', bg: '#1b2731', size: 22, name: 'nowOrNeverLuggage' });
+    makeLabel('PLEASE HAVE YOUR RELEVANCE READY', 9.0, 3.3, { w: 4.4, h: 0.55, y: 1.8, fg: '#8b202f', bg: '#eee5d7', size: 22, name: 'nowOrNeverClock' });
+
+    const clockCanvas = canvasTexture(420, 170, (ctx, w, h) => {
+      ctx.fillStyle = '#111820'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#d4ad42'; ctx.lineWidth = 7; ctx.strokeRect(5, 5, w - 10, h - 10);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#f2d77f'; ctx.font = '900 54px ui-monospace, monospace'; ctx.fillText('00:00', w / 2, 78); ctx.font = '800 18px ui-monospace, monospace'; ctx.fillText('TREND CYCLE TIME', w / 2, 125);
+    });
+    const clock = plane(z, { w: 3.2, h: 1.3, x: 10.2, y: 3.1, z: -9.56, material: new THREE.MeshBasicMaterial({ map: clockCanvas, toneMapped: false }), noSplat: false, name: 'nowOrNeverClock' });
+    clock.userData.noSplat = false;
+
+    z.interactables.push(
+      { id: 'now-or-never-board', type: 'flavor', label: 'Read the departure board', title: 'NOW OR NEVER DEPARTURES', pos: new THREE.Vector3(0, 2.0, -7.2), radius: 3.5, lines: ['The board updates one artist at a time. The institution calls this live relevance.', 'One row is yours. It is currently boarding, delayed, or already explaining why it left.'] },
+      { id: 'now-or-never-luggage', type: 'flavor', label: 'Inspect the lost concept luggage', title: 'LOST PROPERTY', pos: new THREE.Vector3(-10.4, 1.0, 3.2), radius: 2.2, lines: ['A suitcase marked EMERGING has no owner and an extremely current press photo.', 'The tag says “return to sender.” The sender has changed names.'] },
+      { id: 'now-or-never-platform', type: 'flavor', label: 'Stand on Platform 0', title: 'PLATFORM 0', pos: new THREE.Vector3(0, 1.0, 0), radius: 2.5, lines: ['No train arrives. The absence has been curated as a site-specific pause.', 'A departure announcement thanks you for your patience and refuses to define patience.'] },
+    );
+
+    door(z, { x: -14.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.anchors['now-runner'] = new THREE.Vector3(-9.2, 0, 1.8);
+    z.anchors['now-press'] = new THREE.Vector3(-10.7, 0, 3.6);
+    z.anchors['now-curator'] = new THREE.Vector3(1.8, 0, -6.0);
+    z.anchors['now-luggage'] = new THREE.Vector3(-10.2, 0, 3.2);
+    z.anchors['now-breakout'] = new THREE.Vector3(5.3, 0, -4.2);
+    z.anchors['now-gate'] = new THREE.Vector3(9.2, 0, 5.5);
+    z.waypoints = [
+      new THREE.Vector3(-11.5, 0, 1.2), new THREE.Vector3(-6.7, 0, 2.5),
+      new THREE.Vector3(-3.0, 0, 2.2), new THREE.Vector3(2.8, 0, 2.5),
+      new THREE.Vector3(7.2, 0, 1.8), new THREE.Vector3(11.4, 0, 3.1),
+      new THREE.Vector3(7.4, 0, -3.0), new THREE.Vector3(-5.6, 0, -3.0),
+    ];
+    z.animated.nowOrNever = { board, boardMesh, boardGlow, clock, clockCanvas, gateSigns, suitcases, nextBoardFlap: 2.0, nextAnnouncement: 7.5, announcementIndex: 0, lastClockSecond: -1, seen: false };
   }
 
   /* ---------------------------------------------------------- */
@@ -7409,6 +7664,43 @@ export class World {
     return null;
   }
 
+  isNowOrNeverBoardHit(object) {
+    if (this.current !== 'nowOrNever') return false;
+    let target = object;
+    while (target) {
+      if (target.userData?.nowOrNeverBoard || target.name === 'nowOrNeverBoard') return true;
+      target = target.parent;
+    }
+    return false;
+  }
+
+  syncNowOrNeverBoard({ hasPainting = false, title = '', fame = 0, heat = 0, seen = false } = {}) {
+    const room = this.zones.get('nowOrNever')?.animated.nowOrNever;
+    if (!room) return;
+    room.board.context = { hasPainting: Boolean(hasPainting), title: typeof title === 'string' ? title : '', fame: Number(fame) || 0, heat: Number(heat) || 0 };
+    room.seen = Boolean(seen);
+    room.board.lastRender = -1;
+  }
+
+  nowOrNeverBoardRow() {
+    const room = this.zones.get('nowOrNever')?.animated.nowOrNever;
+    if (!room) return null;
+    const board = room.board;
+    const cycle = Math.floor(this.#t / 5.6);
+    const rowIndex = cycle % board.rows.length;
+    const row = board.rows[rowIndex];
+    const statusIndex = rowIndex === 0
+      ? (board.context.hasPainting ? [0, 1, 3, 5, 10][cycle % 5] : [0, 2, 6, 5, 9][cycle % 5])
+      : row.schedule[(cycle + rowIndex) % row.schedule.length];
+    return { ...row, destination: rowIndex === 0 && board.context.title ? `“${board.context.title.slice(0, 25)}”` : row.destination, status: board.statuses[statusIndex], index: rowIndex };
+  }
+
+  nowOrNeverBoardAppraisal() {
+    const row = this.nowOrNeverBoardRow();
+    if (!row) return 'The departure board is currently between versions of the present.';
+    return `${row.code} · ${row.artist} is ${row.status} for ${row.destination}. The institution estimates this status will remain current for approximately one refresh.`;
+  }
+
   /** Rebuild preliminary gates, pavilion scores and the final tableau from run flags. */
   applyWaitingState({ stage = 0, activeQueue = null, finalStarted = false, finalElapsed = 0, pavilions = {}, complete = false, winner = null } = {}) {
     const waiting = this.zones.get('biennaleWaiting')?.animated.waiting;
@@ -7610,6 +7902,20 @@ export class World {
       }
     }
 
+    if (z.animated.blueChipDuck) {
+      const duck = z.animated.blueChipDuck;
+      duck.duck.position.y = 0.27 + Math.sin(t * 2.1) * 0.025;
+      duck.duck.rotation.y = Math.sin(t * 0.7) * 0.16;
+    }
+    if (z.animated.adultVisitors) {
+      for (const visitor of z.animated.adultVisitors) {
+        const phase = visitor.userData.phase;
+        visitor.position.y = Math.sin(t * 1.15 + phase) * 0.008;
+        visitor.rotation.y = Math.sin(t * 0.32 + phase) * 0.07;
+        visitor.children[1].rotation.y = Math.sin(t * 0.52 + phase) * 0.12;
+      }
+    }
+
     if (z.animated.listeningDrivers) {
       const breathe = beat ? kick : Math.max(0, Math.sin(t * 2.15)) * 0.018;
       for (const d of z.animated.listeningDrivers) {
@@ -7746,6 +8052,44 @@ export class World {
       waiting.puddles.forEach((puddle, i) => {
         puddle.material.opacity += Math.sin(t * 0.7 + i) * dt * 0.012;
         puddle.material.opacity = clamp(puddle.material.opacity, 0.3, 0.68);
+      });
+    }
+
+    if (z.animated.nowOrNever) {
+      const nowRoom = z.animated.nowOrNever;
+      const board = nowRoom.board;
+      const cycle = Math.floor(t / 5.6);
+      board.activeRow = cycle % board.rows.length;
+      board.flash = (t % 5.6) < 0.42 ? 1 : 0;
+      const renderTick = Math.floor(t * 8);
+      if (renderTick !== board.lastRender) {
+        board.lastRender = renderTick;
+        board.render(t);
+        const seconds = Math.floor(t) % 3600;
+        if (seconds !== nowRoom.lastClockSecond) {
+          nowRoom.lastClockSecond = seconds;
+          const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+          const secs = String(seconds % 60).padStart(2, '0');
+          nowRoom.clock.material.map?.dispose?.();
+          nowRoom.clock.material.map = textTexture(`${mins}:${secs}\nTREND CYCLE TIME`, { fg: '#f2d77f', bg: '#111820', size: 37, w: 420, h: 170, font: '900' });
+          nowRoom.clock.material.needsUpdate = true;
+        }
+      }
+      if (t >= nowRoom.nextBoardFlap) {
+        nowRoom.nextBoardFlap = t + 0.72;
+        event = { type: 'nowOrNeverFlap', variant: cycle + board.activeRow };
+      }
+      if (t >= nowRoom.nextAnnouncement && !event) {
+        nowRoom.nextAnnouncement = t + 9.5;
+        event = { type: 'nowOrNeverAnnouncement', variant: nowRoom.announcementIndex++ };
+      }
+      nowRoom.boardGlow.intensity = 1.05 + (board.flash ? 1.1 : 0) + kick * 0.35;
+      nowRoom.suitcases.forEach((caseMesh, i) => {
+        caseMesh.rotation.z = Math.sin(t * 0.8 + i) * 0.012;
+        caseMesh.position.y = 0.04 + Math.abs(Math.sin(t * 1.4 + i * 0.7)) * 0.008;
+      });
+      nowRoom.gateSigns.forEach((sign, i) => {
+        sign.material.opacity = i === board.activeRow % nowRoom.gateSigns.length && board.flash ? 0.72 : 1;
       });
     }
 

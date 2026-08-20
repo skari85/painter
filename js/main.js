@@ -613,6 +613,7 @@ class Game {
     this.#syncDocumenta();
     this.#syncInvisibleCollection(zoneKey);
     this.#syncWaiting();
+    this.#syncNowOrNever();
     this.#syncCarry();
 
     if (!this.quests.restore(saved.quest)) this.quests.startNight(this.state.night);
@@ -678,6 +679,7 @@ class Game {
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
     this.#syncDocumenta();
     this.#syncWaiting();
+    this.#syncNowOrNever();
 
     const z = this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
@@ -1287,6 +1289,21 @@ class Game {
         return;
       }
     }
+    if (this.world.current === 'nowOrNever') {
+      this.#raycaster.camera = this.camera;
+      this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
+      this.#raycaster.far = 6.5;
+      const boardHit = this.#raycaster.intersectObjects(this.world.zone().group.children, true)
+        .find((hit) => hit.object.visible && this.world.isNowOrNeverBoardHit(hit.object));
+      if (boardHit) {
+        const firstRead = this.state.discoverClue('nowOrNeverSeen', clueReveal('nowOrNeverSeen'));
+        this.ui.toast('NOW OR NEVER · DEPARTURES', this.world.nowOrNeverBoardAppraisal(), firstRead ? 'good' : undefined);
+        this.audio.nowOrNeverFlap(this.world.nowOrNeverBoardRow()?.index ?? 0);
+        this.#syncNowOrNever();
+        this.#advanceDaily('appraise');
+        return;
+      }
+    }
     const npc = this.npcs.nearest(this.player.position, fwd, 4.2);
     if (npc) {
       this.ui.toast('THE APPRAISAL', appraiseNPC(npc.def.id, npc.def.name));
@@ -1874,6 +1891,17 @@ class Game {
     }
   }
 
+  #syncNowOrNever() {
+    const latest = this.state.paintings[this.state.paintings.length - 1];
+    this.world.syncNowOrNeverBoard({
+      hasPainting: Boolean(latest),
+      title: latest?.title ?? '',
+      fame: this.state.meters.fame,
+      heat: this.state.meters.heat,
+      seen: this.state.hasClue('nowOrNeverSeen'),
+    });
+  }
+
   #handleWaitingPreliminary(queue) {
     if (this.state.getFlag('biennaleWaitingComplete')) {
       this.ui.toast('QUEUE ARCHIVED', 'The jury has already converted your waiting into a national result.');
@@ -2399,6 +2427,7 @@ class Game {
       this.#syncDocumenta();
       this.#syncInvisibleCollection(zoneKey);
       this.#syncWaiting();
+      this.#syncNowOrNever();
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
         this.#cowVisitedThisRun = true;
         const visits = recordCowVisit();
@@ -2425,6 +2454,7 @@ class Game {
         mtvCribs: 'The camera is rolling. Four unmistakably adult spoiled heirs explain why their gold sippy cups are appreciating assets.',
         documenta: 'The exhibition has not begun. Documentation is nearly complete. Every camera is facing another camera.',
         biennaleWaiting: 'Every pavilion is a queue. The winning nation is whichever line remains embarrassing for longest.',
+        nowOrNever: 'Your relevance has a departure time. The board is already changing its mind about you.',
         invisibleCollection: 'Five taped footprints. Three severe officials. Nothing on display, and the estimate is already moving.',
       }[zoneKey]);
       if (fromZone && fromZone !== zoneKey) {
@@ -2466,6 +2496,7 @@ class Game {
     if (zoneKey === 'publicRestroom') return 'TECHNO ZAMBA';
     if (zoneKey === 'documenta') return 'ADMINISTRATIVE MINIMAL TECHNO';
     if (zoneKey === 'biennaleWaiting') return 'HOLD MUSIC FOR A NATIONAL CONDITION';
+    if (zoneKey === 'nowOrNever') return 'NOW OR NEVER · AIRPORT HOLD MUSIC';
     if (zoneKey === 'invisibleCollection') return 'VALUATION OFFICE MUZAK';
     return `${ZONES[zoneKey]?.name ?? 'THE ROOM'} · ROOM SCORE`;
   }
@@ -2650,6 +2681,18 @@ class Game {
       }
       if (worldEvent?.type === 'documentaShutter') {
         this.audio.documentaShutter(worldEvent.corrupted);
+      }
+      if (worldEvent?.type === 'nowOrNeverFlap') {
+        this.audio.nowOrNeverFlap(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'nowOrNeverAnnouncement') {
+        this.audio.nowOrNeverAnnouncement(worldEvent.variant);
+        this.ui.subtitle('TERMINAL ANNOUNCEMENT', [
+          'FINAL CALL for the artist who was briefly unavoidable.',
+          'JUST LANDED: an opportunity that departed before the applause.',
+          'PASSENGERS FOR RELEVANCE: please proceed to the gate that no longer exists.',
+          'LOST CAUSE service is now boarding from Platform 0.',
+        ][worldEvent.variant % 4], 0.84, this.audio);
       }
       if (worldEvent?.type === 'invisibleContact') {
         this.#onInvisibleContact(worldEvent.index, worldEvent.title);

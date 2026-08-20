@@ -1191,6 +1191,21 @@ export class AudioEngine {
     setTimeout(() => this.#noise({ peak: 0.09, decay: 0.48, filterFreq: 4200, filterEnd: 680, q: 0.7, type: 'bandpass' }), 330);
   }
 
+  nowOrNeverFlap(variant = 0) {
+    const base = [310, 370, 440, 523][Math.abs(variant) % 4];
+    this.#noise({ peak: 0.045, decay: 0.035, filterFreq: 3400, filterEnd: 920, q: 1.5, type: 'bandpass' });
+    this.#tone({ freq: base, freqEnd: base * 0.92, type: 'square', peak: 0.028, decay: 0.055 });
+  }
+
+  nowOrNeverAnnouncement(variant = 0) {
+    const notes = [659.25, 783.99, 987.77, 523.25];
+    const base = notes[Math.abs(variant) % notes.length];
+    [base, base * 1.25].forEach((freq, i) => setTimeout(() => {
+      this.#tone({ freq, type: 'sine', peak: 0.045, attack: 0.008, decay: 0.18 });
+    }, i * 105));
+    this.#noise({ peak: 0.022, decay: 0.18, filterFreq: 1800, filterEnd: 520, q: 1.1, type: 'bandpass' });
+  }
+
   /** A short two-formant boxer moan. It is fully synthesized: pitched throat,
       vowel resonances, breath, pitch drop and an uneven vibrato after impact. */
   #boxingMoan(voice = 0, hard = false) {

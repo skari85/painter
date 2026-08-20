@@ -15,6 +15,7 @@ const CLUE_REVEALS = {
   privateCollectionSeen: 'Someone has made a room for the version of you they can own.',
   documentationSeen: 'The archive has catalogued you and the work as an Edition of One.',
   waitingSeen: 'The institution confirms you remained present longer than the artwork.',
+  nowOrNeverSeen: 'The departure board has assigned your relevance a gate, a delay, and an expiration time.',
 };
 
 const STORY_LINES = {
@@ -99,6 +100,8 @@ const TRANSITIONS = {
   'documenta>galleria': 'The shutters fade. The white cube feels almost undocumented.',
   'galleria>biennaleWaiting': 'The opening becomes a line. The line has its own opening hours.',
   'biennaleWaiting>galleria': 'The queue keeps your shape for a moment, then admits someone else.',
+  'galleria>nowOrNever': 'The gallery doors become departure gates. Your relevance has a boarding time.',
+  'nowOrNever>galleria': 'The terminal empties behind you. Somewhere, your row changes to departed.',
   'vault>invisibleCollection': 'The cages end. The empty paperwork has its own annex.',
   'invisibleCollection>vault': 'The alarms fade behind you. The Vault suddenly looks burdened with objects.',
   'vault>garret': 'Home is smaller when you know who has measured it.',
