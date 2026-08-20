@@ -90,6 +90,7 @@ export const ZONES = {
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
   hairSalon: { name: 'U WISH U HAD HAIR BUT U DONT', mood: 'galleria' },
   rageRoom: { name: 'THE GLASS BOXES', mood: 'rageRoom' },
+  fartBoxes: { name: 'THREE FART BOXES', mood: 'off' },
   deathMetal: { name: 'BARBIE DEATH METAL', mood: 'deathMetal' },
   blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
   publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },

@@ -108,6 +108,8 @@ const TRANSITIONS = {
   'galleria>maxPro': 'The label gets longer. The painting stays the same size.',
   'galleria>rageRoom': 'The gallery keeps the label. The glass boxes offer somewhere to put the feeling.',
   'rageRoom>galleria': 'The glass doors close behind you. The red dot is still waiting in the gallery.',
+  'galleria>fartBoxes': 'The wall text ends. Three sealed boxes begin making their own argument.',
+  'fartBoxes>galleria': 'The glass door closes. The air does not follow, officially.',
   'galleria>deathMetal': 'The gallery calls it a theme. The basement calls it a riff. Barbie gets the better entrance.',
   'deathMetal>galleria': 'The amps keep arguing behind you. The white cube is waiting to call the argument context.',
   'galleria>listeningRoom': 'The white cube lowers its voice. Two speakers take over the argument.',

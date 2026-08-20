@@ -42,6 +42,7 @@ export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
    synth ghosts wandering the upper register. 96 BPM, swing optional,
    taste negotiable. */
 const SINGER_VOCAL_URL = 'puplic/songs/singer-yhea.mp3';
+const FART_BOX_SAMPLE_URL = 'puplic/songs/meltzers-gate-9.m4a';
 
 const JAZZ = {
   bpm: 88,
@@ -82,7 +83,11 @@ export class AudioEngine {
   #roomScoreDrive = 0;
   #singerBufferPromise = null;   // decoded, cached vocal sample for the listening room
   #singerReverbBuffer = null;    // synthetic impulse response, generated once
-  #jukebox = null;               // one-shot local performance track
+  #fartBoxBufferPromise = null;  // one recording, three effect chains
+  #fartBoxSources = [null, null, null];
+  #jukebox = null;               // active local performance track
+  #jukeboxPlaylist = [];
+  #jukeboxPlaylistIndex = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -115,6 +120,7 @@ export class AudioEngine {
     if (this.#master) this.#master.gain.value = this.#volume;
     this.#musicTarget = this.#volume * MUSIC_LEVEL;
     if (this.#music) this.#music.volume = Math.min(this.#music.volume, this.#musicTarget);
+    if (this.#jukebox) this.#jukebox.volume = clamp(this.#volume * 0.9, 0, 1);
   }
 
   /* ---------------- music (the record collection) ---------------- */
@@ -216,28 +222,36 @@ export class AudioEngine {
     this.stopJukebox();
   }
 
-  /** Toggle a local performance recording without replacing the room score. */
-  toggleJukebox(src) {
-    if (this.#jukebox && this.#jukebox.src.endsWith(encodeURI(src))) {
-      if (this.#jukebox.paused) {
-        this.#jukebox.play().catch(() => {});
-        return true;
-      }
-      this.#jukebox.pause();
-      this.#jukebox.currentTime = 0;
+  /** Toggle a complete local performance playlist and loop the full set. */
+  toggleJukeboxPlaylist(sources) {
+    if (this.jukeboxPlaying) {
+      this.stopJukebox();
       return false;
     }
-
     this.stopJukebox();
+    this.#jukeboxPlaylist = (sources ?? []).filter((src) => typeof src === 'string' && src.length);
+    this.#jukeboxPlaylistIndex = 0;
+    if (!this.#jukeboxPlaylist.length) return false;
+    return this.#startJukeboxTrack();
+  }
+
+  #startJukeboxTrack() {
+    const src = this.#jukeboxPlaylist[this.#jukeboxPlaylistIndex];
+    if (!src) return false;
     try {
       const track = new Audio(encodeURI(src));
       track.loop = false;
       track.volume = clamp(this.#volume * 0.9, 0, 1);
       track.addEventListener('ended', () => {
-        if (this.#jukebox === track) this.#jukebox = null;
+        if (this.#jukebox !== track) return;
+        this.#jukebox = null;
+        this.#jukeboxPlaylistIndex = (this.#jukeboxPlaylistIndex + 1) % this.#jukeboxPlaylist.length;
+        this.#startJukeboxTrack();
       });
       track.addEventListener('error', () => {
-        if (this.#jukebox === track) this.#jukebox = null;
+        if (this.#jukebox !== track) return;
+        this.#jukebox = null;
+        this.#jukeboxPlaylist = [];
       });
       this.#jukebox = track;
       track.play().catch(() => {});
@@ -249,10 +263,13 @@ export class AudioEngine {
   }
 
   stopJukebox() {
-    if (!this.#jukebox) return;
-    this.#jukebox.pause();
-    this.#jukebox.currentTime = 0;
+    if (this.#jukebox) {
+      this.#jukebox.pause();
+      this.#jukebox.currentTime = 0;
+    }
     this.#jukebox = null;
+    this.#jukeboxPlaylist = [];
+    this.#jukeboxPlaylistIndex = 0;
   }
 
   get jukeboxPlaying() { return Boolean(this.#jukebox && !this.#jukebox.paused); }
@@ -976,6 +993,69 @@ export class AudioEngine {
     src.start(t);
   }
 
+  /** Lazily decode the shared Three Fart Boxes recording. */
+  #loadFartBoxBuffer() {
+    if (!this.#ctx) return Promise.resolve(null);
+    if (!this.#fartBoxBufferPromise) {
+      this.#fartBoxBufferPromise = fetch(encodeURI(FART_BOX_SAMPLE_URL))
+        .then((res) => res.arrayBuffer())
+        .then((data) => this.#ctx.decodeAudioData(data))
+        .catch(() => null);
+    }
+    return this.#fartBoxBufferPromise;
+  }
+
+  /** Play the same recording through one effect per box:
+      0 = reverb, 1 = delay, 2 = distortion. */
+  async fartBoxSample(effectIndex = 0) {
+    if (!this.#ctx) return;
+    const effect = Math.abs(effectIndex) % 3;
+    const buffer = await this.#loadFartBoxBuffer();
+    if (!buffer || !this.#ctx) {
+      this.punkFart(effect);
+      return;
+    }
+
+    try { this.#fartBoxSources[effect]?.stop(); } catch {}
+    const src = this.#ctx.createBufferSource();
+    src.buffer = buffer;
+    this.#fartBoxSources[effect] = src;
+    src.addEventListener('ended', () => {
+      if (this.#fartBoxSources[effect] === src) this.#fartBoxSources[effect] = null;
+    });
+
+    if (effect === 0) {
+      const dry = this.#ctx.createGain(); dry.gain.value = 0.24;
+      const convolver = this.#ctx.createConvolver(); convolver.buffer = this.#singerReverbImpulse();
+      const dark = this.#ctx.createBiquadFilter(); dark.type = 'lowpass'; dark.frequency.value = 3100;
+      const wet = this.#ctx.createGain(); wet.gain.value = 0.72;
+      src.connect(dry).connect(this.#master);
+      src.connect(convolver).connect(dark).connect(wet).connect(this.#master);
+    } else if (effect === 1) {
+      const dry = this.#ctx.createGain(); dry.gain.value = 0.4;
+      const delay = this.#ctx.createDelay(1.0); delay.delayTime.value = 0.27;
+      const feedback = this.#ctx.createGain(); feedback.gain.value = 0.38;
+      const wet = this.#ctx.createGain(); wet.gain.value = 0.52;
+      const dark = this.#ctx.createBiquadFilter(); dark.type = 'lowpass'; dark.frequency.value = 2800;
+      src.connect(dry).connect(this.#master);
+      src.connect(delay).connect(dark).connect(wet).connect(this.#master);
+      delay.connect(feedback).connect(delay);
+    } else {
+      const shaper = this.#ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * 2 - 1;
+        curve[i] = Math.tanh(x * 7.5);
+      }
+      shaper.curve = curve; shaper.oversample = '4x';
+      const filter = this.#ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 2200;
+      const output = this.#ctx.createGain(); output.gain.value = 0.48;
+      src.connect(shaper).connect(filter).connect(output).connect(this.#master);
+    }
+
+    src.start(this.#ctx.currentTime + 0.012);
+  }
+
   /* ---------------- game verbs ---------------- */
 
   restroomFart(variant = 0) {
@@ -1173,6 +1253,12 @@ export class AudioEngine {
   annoyingMoan(variant = 0) {
     if (!this.#ctx) return;
     this.#boxingMoan(variant % 2, false);
+  }
+
+  /** Short rotating vocal punctuation for the Glass Boxes pole performers. */
+  clubMoan(variant = 0) {
+    if (!this.#ctx) return;
+    this.#boxingMoan((variant + 1) % 2, false);
   }
 
   /** A cheap, ugly impact for the room where emotional regulation goes to die. */

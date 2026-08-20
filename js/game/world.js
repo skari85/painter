@@ -710,6 +710,7 @@ export class World {
     this.#buildVacantEditions();
     this.#buildHairSalon();
     this.#buildRageRoom();
+    this.#buildFartBoxes();
     this.#buildDeathMetal();
     this.#buildPublicRestroom();
     this.#buildBlackForest();
@@ -1170,6 +1171,7 @@ export class World {
     door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
     door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
     door(z, { x: 6.8, z: -6.62, ry: 0, label: 'THE GLASS BOXES →', to: 'rageRoom' });
+    door(z, { x: -3.45, z: -6.62, ry: 0, label: 'THREE FART BOXES →', to: 'fartBoxes' });
     door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
     door(z, { x: 3.45, z: -6.62, ry: 0, label: 'THE LISTENING ROOM →', to: 'listeningRoom' });
     door(z, { x: 3.45, z: 6.62, ry: Math.PI, label: 'THE BIENNALE OF WAITING →', to: 'biennaleWaiting' });
@@ -5167,6 +5169,14 @@ export class World {
       normalMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_nor_gl_1k.jpg', 4, 1.2),
       roughnessMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_rough_1k.jpg', 4, 1.2),
     };
+    // A close crop of the same CC0 Poly Haven leather used in MAX PRO reads
+    // as fine body hair at character scale. It stays on the coded dancers,
+    // never on their single procedural face overlays.
+    const bodyHairPbr = {
+      map: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_diff_1k.jpg', 5, 5, true),
+      normalMap: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_nor_gl_1k.jpg', 5, 5),
+      roughnessMap: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_rough_1k.jpg', 5, 5),
+    };
     plane(z, { w: 23.7, h: 13.7, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
       material: new THREE.MeshStandardMaterial({ color: 0xfff9ea, ...marblePbr, roughness: 0.48, normalScale: new THREE.Vector2(0.2, 0.2) }), noSplat: true, name: 'glass boxes PBR floor' });
     plane(z, { w: 23.7, h: 5.0, x: 0, y: 2.65, z: -7.19,
@@ -5297,6 +5307,83 @@ export class World {
       }
     }
 
+    // Three adult pole dancers occupy the neighbouring glass boxes. Their
+    // bodies are intentionally lightweight, but the bikinis, heels and single
+    // procedural faces give each performer a clear silhouette and identity.
+    const poleDancers = [];
+    const dancerDefs = [
+      { id: 'velvet-crash', name: 'VELVET CRASH', x: -8, z: 0.55, skin: 0xb87555, bikini: 0xff477e, heel: 0x19131d, phase: 0.1 },
+      { id: 'chrome-mercy', name: 'CHROME MERCY', x: -4, z: 0.55, skin: 0x8b5b43, bikini: 0x43d8e8, heel: 0xd9e4e8, phase: 2.15 },
+      { id: 'miss-shatter', name: 'MISS SHATTER', x: 4, z: 0.55, skin: 0xd5a17f, bikini: 0x8d5cff, heel: 0xffcf4d, phase: 4.2 },
+    ];
+    for (const def of dancerDefs) {
+      const root = new THREE.Group(); root.position.set(def.x, 0, def.z);
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.03, 3.55, 10),
+        mat(0xd8e4e7, { metalness: 0.94, roughness: 0.12 })
+      );
+      pole.position.y = 1.78;
+      const stage = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.78, 0.88, 0.1, 24),
+        mat(0x24212b, { metalness: 0.42, roughness: 0.28 })
+      );
+      stage.position.y = 0.05;
+
+      const body = new THREE.Group(); body.position.set(0.27, 0.1, 0);
+      const skinMat = mat(def.skin, { roughness: 0.74 });
+      const bikiniMat = mat(def.bikini, { roughness: 0.34, metalness: 0.16 });
+      const heelMat = mat(def.heel, { roughness: 0.25, metalness: 0.38 });
+      const bodyHairMat = new THREE.MeshStandardMaterial({
+        color: 0x39241d, ...bodyHairPbr, roughness: 0.98,
+        normalScale: new THREE.Vector2(0.42, 0.42),
+        transparent: true, opacity: 0.46, depthWrite: false,
+      });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.46, 5, 8), skinMat); torso.position.y = 1.0;
+      const bikiniTopL = new THREE.Mesh(new THREE.SphereGeometry(0.115, 9, 7), bikiniMat); bikiniTopL.scale.set(1, 0.75, 0.6); bikiniTopL.position.set(-0.105, 1.17, 0.155);
+      const bikiniTopR = bikiniTopL.clone(); bikiniTopR.position.x = 0.105;
+      const bikiniBottom = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.25), bikiniMat); bikiniBottom.position.y = 0.67;
+
+      const chestHair = new THREE.Mesh(new THREE.CircleGeometry(0.13, 14), bodyHairMat);
+      chestHair.position.set(0, 0.985, 0.202);
+      chestHair.scale.set(0.86 + (def.phase % 1) * 0.18, 1.16, 1);
+      chestHair.rotation.z = (def.phase - 2) * 0.08;
+      chestHair.renderOrder = 2;
+      body.add(chestHair);
+
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.5, 4, 7), skinMat);
+        const legHair = new THREE.Mesh(leg.geometry, bodyHairMat);
+        legHair.scale.set(1.035, 1.012, 1.035); legHair.renderOrder = 2; leg.add(legHair);
+        leg.position.set(side * 0.11, 0.35, 0); legs.push(leg); body.add(leg);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.08, 0.28), heelMat);
+        shoe.position.set(side * 0.11, 0.08, 0.07);
+        const highHeel = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.04), heelMat);
+        highHeel.position.set(side * 0.11, 0.1, -0.055);
+        body.add(shoe, highHeel);
+      }
+
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Group(); arm.position.set(side * 0.24, 1.2, 0);
+        const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.38, 4, 7), skinMat); limb.position.y = -0.23;
+        const armHair = new THREE.Mesh(limb.geometry, bodyHairMat);
+        armHair.scale.set(1.04, 1.012, 1.04); armHair.renderOrder = 2; limb.add(armHair);
+        arm.add(limb); arms.push(arm); body.add(arm);
+      }
+
+      const headPivot = new THREE.Group(); headPivot.position.y = 1.6;
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.185, 12, 9), skinMat);
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(0x211822, { roughness: 0.9 }));
+      hair.position.y = 0.025;
+      headPivot.add(skull, hair, ridiculousFaceOverlay({ id: def.id }, 0.31, 0.31, 0, 0.19));
+      body.add(torso, bikiniTopL, bikiniTopR, bikiniBottom, headPivot);
+      root.add(pole, stage, body);
+      root.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(root);
+      poleDancers.push({ ...def, root, body, torso, head: headPivot, arms, legs });
+    }
+
     // Floating signal lights and translucent acoustic ribbons borrow the
     // garden's layered silhouettes without turning the room into foliage.
     const signalColors = [0x40cfe5, 0xffcb4d, 0xff6b73, 0x8267df];
@@ -5321,7 +5408,7 @@ export class World {
     }
 
     z.interactables.push({
-      id: 'mc-freeglass', type: 'mcJukebox', label: 'Touch MC Freeglass’s jukebox · E next track',
+      id: 'mc-freeglass', type: 'mcJukebox', label: 'Touch MC Freeglass · E play/stop full set',
       title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(0, 1.1, 2.45), radius: 2.35,
       lines: [
         'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
@@ -5330,7 +5417,8 @@ export class World {
     });
 
     z.animated.rageRoom = {
-      breakables, shards, dude, torso, head, armL, armR, signalOrbs, rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0,
+      breakables, shards, dude, torso, head, armL, armR, signalOrbs, poleDancers,
+      rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0, moanTimer: 2.2, moanIndex: 0,
       lines: [
         'Chaos on the kick drum, but I keep my breath in time.',
         'Jesus in the reverb saying mercy still can rhyme.',
@@ -5364,6 +5452,169 @@ export class World {
     const red = new THREE.PointLight(0x78d8e7, 1.65, 10, 1.7); red.position.set(0, 3.0, 0.4); red.userData.baseIntensity = 1.65; z.group.add(red); z.animated.rageLight = red; z.animated.rageRoom.rageLight = red;
     door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
     z.waypoints = [new THREE.Vector3(-9, 0, -5), new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 0, -5), new THREE.Vector3(9, 0, -5)];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THREE FART BOXES — three boxes, three guys, one medium    */
+  /* ---------------------------------------------------------- */
+  #buildFartBoxes() {
+    const z = this.#newZone('fartBoxes');
+    shell(z, { w: 15, d: 10, h: 4.2, floorColor: 0xc6c5c0, wallColor: 0xe7e5de, ceilColor: 0xf2f0e9 });
+    z.spawn.set(0, 0, 4.15);
+    z.spawnYaw = Math.PI;
+    z.fog = { color: 0xdeddd7, density: 0.009 };
+
+    const glass = new THREE.MeshStandardMaterial({
+      color: 0xd7f3f5, transparent: true, opacity: 0.2,
+      roughness: 0.08, metalness: 0.08, depthWrite: false,
+    });
+    const frame = mat(0x7c8386, { metalness: 0.82, roughness: 0.24 });
+    const guys = [];
+    const defs = [
+      { id: 'fart-box-guy-1', x: -4.5, skin: 0xc98d6c, shirt: 0x394c63, briefs: 0x202229, suit: 0xa65d32, hose: 0x5d3325, phase: 0.2 },
+      { id: 'fart-box-guy-2', x: 0, skin: 0x8c5b43, shirt: 0x73516e, briefs: 0x17191f, suit: 0x81964b, hose: 0x45572e, phase: 2.3 },
+      { id: 'fart-box-guy-3', x: 4.5, skin: 0xd7aa86, shirt: 0x5d6940, briefs: 0x29242a, suit: 0xd19b35, hose: 0x75551d, phase: 4.4 },
+    ];
+
+    for (const def of defs) {
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.07, h: 3.25, d: 4.3, x: def.x + side * 1.55, z: -0.45, material: glass, noSplat: true, name: 'fart box glass' });
+      }
+      for (const zz of [-2.58, 1.68]) {
+        box(z, { w: 3.1, h: 3.25, d: 0.07, x: def.x, z: zz, material: glass, noSplat: true, name: 'fart box glass' });
+      }
+      for (const [fx, fz] of [[-1.55, -2.58], [1.55, -2.58], [-1.55, 1.68], [1.55, 1.68]]) {
+        box(z, { w: 0.075, h: 3.32, d: 0.075, x: def.x + fx, z: fz, material: frame, solid: false, noSplat: true });
+      }
+
+      const guy = new THREE.Group(); guy.position.set(def.x, 0, -0.45);
+      const skinMat = mat(def.skin, { roughness: 0.78 });
+      const shirtMat = mat(def.shirt, { roughness: 0.84 });
+      const briefsMat = mat(def.briefs, { roughness: 0.86 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.5, 5, 8), shirtMat); torso.position.y = 1.03;
+      const hips = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.2, 0.28), briefsMat); hips.position.y = 0.66;
+      const suitMat = new THREE.MeshPhysicalMaterial({
+        color: def.suit, roughness: 0.28, metalness: 0.03,
+        clearcoat: 0.72, clearcoatRoughness: 0.18,
+      });
+      const costume = new THREE.Group(); costume.position.y = 1.02;
+      const inflatedBody = new THREE.Mesh(new THREE.SphereGeometry(0.58, 18, 12), suitMat);
+      inflatedBody.scale.set(1.02, 1.18, 0.82);
+      const inflatedShoulders = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10), suitMat);
+      inflatedShoulders.position.y = 0.34; inflatedShoulders.scale.set(1.35, 0.58, 0.88);
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.055, 8, 20), mat(0x2c2827, { roughness: 0.38 }));
+      collar.position.y = 0.56; collar.rotation.x = Math.PI / 2;
+      const gasPatch = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.42, 0.24),
+        new THREE.MeshBasicMaterial({ map: textTexture('GAS\nSUIT', { fg: '#fff7d5', bg: '#252225', size: 36, w: 500, h: 280, font: '900' }) })
+      );
+      gasPatch.position.set(0, 0.05, 0.485);
+      costume.add(inflatedBody, inflatedShoulders, collar, gasPatch);
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.48, 4, 7), skinMat);
+        leg.position.set(side * 0.12, 0.34, 0); legs.push(leg); guy.add(leg);
+      }
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.42, 4, 7), skinMat);
+        arm.position.set(side * 0.32, 1.0, 0); arm.rotation.z = side * -0.08; arms.push(arm); guy.add(arm);
+      }
+      const head = new THREE.Group(); head.position.y = 1.66;
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 9), skinMat);
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.195, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), mat(0x201b1b, { roughness: 0.95 }));
+      hair.position.y = 0.025;
+      head.add(skull, hair, ridiculousFaceOverlay({ id: def.id }, 0.32, 0.32, 0, 0.195));
+      guy.add(torso, hips, costume, head);
+      guy.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(guy);
+
+      // One sealed-looking hose exits each suit, passes through the front pane
+      // and slumps into the public aisle. The glass is conceptual; the tubing
+      // is satisfyingly literal.
+      const hoseCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(def.x + 0.43, 1.0, 0.0),
+        new THREE.Vector3(def.x + 0.72, 0.88, 0.72),
+        new THREE.Vector3(def.x + 0.62, 0.62, 1.72),
+        new THREE.Vector3(def.x + 0.88, 0.28, 2.35),
+        new THREE.Vector3(def.x + 1.02, 0.12, 2.72),
+      ]);
+      const hose = new THREE.Mesh(
+        new THREE.TubeGeometry(hoseCurve, 28, 0.072, 9, false),
+        mat(def.hose, { roughness: 0.46, metalness: 0.08 })
+      );
+      hose.userData.noSplat = true; hose.castShadow = true; z.group.add(hose);
+      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.16, 12), frame);
+      nozzle.position.set(def.x + 1.02, 0.12, 2.72); nozzle.rotation.x = Math.PI / 2;
+      nozzle.userData.noSplat = true; z.group.add(nozzle);
+      guys.push({ ...def, group: guy, torso, costume, head, arms, legs });
+    }
+
+    // The room now treats flatulence with the over-serious graphic language
+    // of a museum survey: signal-chain labels above the boxes and two readable
+    // information posters in the entrance aisle.
+    const posterFrame = new THREE.MeshBasicMaterial({ color: 0x202126 });
+    const hangPoster = ({ x, y, zz, ry = 0, w, h, text, fg, bg, size = 30 }) => {
+      const inset = ry > 0 ? 0.012 : ry < 0 ? -0.012 : 0;
+      plane(z, { w: w + 0.13, h: h + 0.13, x, y, z: zz, ry, material: posterFrame, noSplat: true, name: 'fart poster frame' });
+      plane(z, {
+        w, h, x: x + inset, y, z: zz + (ry === 0 ? 0.012 : 0), ry,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg, bg, size, w: 900, h: 1100, font: '900' }) }),
+        noSplat: true, name: 'fart information poster',
+      });
+    };
+
+    plane(z, {
+      w: 11.8, h: 0.52, x: 0, y: 3.82, z: -4.98,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('THE INSTITUTE OF ATMOSPHERIC RELEASE', { fg: '#fff6d8', bg: '#202126', size: 43, w: 1800, h: 170, font: '900' }) }),
+      noSplat: true, name: 'fart room title poster',
+    });
+    const channelLabels = [
+      { x: -4.5, text: 'BOX 01 · REVERB\nTHE LONG AFTERMATH', fg: '#153335', bg: '#8de5dd' },
+      { x: 0, text: 'BOX 02 · DELAY\nTHE REPEATING ARGUMENT', fg: '#3a1d39', bg: '#f0a7e5' },
+      { x: 4.5, text: 'BOX 03 · DISTORTION\nTHE DAMAGED TESTIMONY', fg: '#3e2705', bg: '#ffd45d' },
+    ];
+    for (const label of channelLabels) {
+      plane(z, {
+        w: 3.35, h: 0.42, x: label.x, y: 3.35, z: -4.97,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(label.text, { fg: label.fg, bg: label.bg, size: 28, w: 1000, h: 190, font: '900' }) }),
+        noSplat: true, name: 'fart box signal label',
+      });
+    }
+
+    hangPoster({
+      x: -7.42, y: 2.05, zz: 3.0, ry: Math.PI / 2, w: 2.35, h: 3.05,
+      text: 'FART FACT 01\n\nMOST INTESTINAL GAS\nHAS NO SMELL.\n\nSULFUR COMPOUNDS\nDO THE DRAMA.\n\nPFFFFT IS A SOUND,\nNOT A MORAL FAILURE.',
+      fg: '#f7f1df', bg: '#31524c', size: 37,
+    });
+    hangPoster({
+      x: 7.42, y: 2.05, zz: 3.0, ry: -Math.PI / 2, w: 2.35, h: 3.05,
+      text: 'FART FACT 02\n\nSWALLOWED AIR +\nGUT MICROBES\nMAKE THE MATERIAL.\n\nPRESSURE MAKES\nTHE PERFORMANCE.\n\nTHE GALLERY ADDS\nREVERB.',
+      fg: '#2a1730', bg: '#f3b7dd', size: 37,
+    });
+
+    z.interactables.push(
+      {
+        id: 'fart-wall-text-odor', type: 'flavor', label: 'Read the fart facts',
+        title: 'DEPARTMENT OF OLFACTORY STUDIES', pos: new THREE.Vector3(-6.75, 1.25, 3.0), radius: 2.25,
+        lines: [
+          'Most intestinal gas is odorless. Trace sulfur compounds are responsible for the memorable part.',
+          'The institution has chosen not to disclose whether the ventilation system is conceptual.',
+        ],
+      },
+      {
+        id: 'fart-wall-text-sound', type: 'flavor', label: 'Read the fart acoustics',
+        title: 'ACOUSTICS OF RELEASE', pos: new THREE.Vector3(6.75, 1.25, 3.0), radius: 2.25,
+        lines: [
+          'Gas pressure and vibrating tissue shape the sound. Architecture decides how long the embarrassment survives.',
+          'Box 01 blooms. Box 02 repeats. Box 03 destroys the waveform and calls it research.',
+        ],
+      },
+    );
+
+    z.group.add(new THREE.HemisphereLight(0xf7f5ed, 0x55575a, 1.35));
+    door(z, { x: 0, z: 5.08, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.animated.fartBoxes = { guys, timer: 0.8, index: 0 };
   }
 
   /* ---------------------------------------------------------- */
@@ -7519,6 +7770,24 @@ export class World {
       rage.armL.rotation.x = Math.sin(t * 4.6) * 0.32;
       rage.armR.rotation.x = Math.sin(t * 5.2 + 1.2) * -0.28;
 
+      for (let i = 0; i < (rage.poleDancers?.length ?? 0); i++) {
+        const dancer = rage.poleDancers[i];
+        const phase = t * (0.78 + i * 0.07) + dancer.phase;
+        dancer.body.position.x = Math.cos(phase) * 0.3;
+        dancer.body.position.z = Math.sin(phase) * 0.3;
+        dancer.body.position.y = 0.1 + Math.abs(Math.sin(phase * 2)) * 0.045;
+        dancer.body.rotation.y = -phase + Math.PI / 2;
+        dancer.torso.rotation.z = Math.sin(phase * 2) * 0.12;
+        dancer.torso.rotation.x = -0.08 + Math.sin(phase) * 0.06;
+        dancer.head.rotation.y = Math.sin(phase * 1.7) * 0.24;
+        dancer.head.rotation.z = Math.sin(phase * 2.2) * 0.08;
+        dancer.arms[0].rotation.z = -0.72 - Math.sin(phase) * 0.18;
+        dancer.arms[1].rotation.z = 0.5 + Math.cos(phase) * 0.24;
+        dancer.arms[0].rotation.x = -0.5;
+        dancer.legs[0].rotation.z = Math.sin(phase) * 0.1;
+        dancer.legs[1].rotation.z = -Math.sin(phase) * 0.1;
+      }
+
       for (const orb of rage.signalOrbs ?? []) {
         orb.mesh.position.y = orb.baseY + Math.sin(t * 1.15 + orb.phase) * 0.09;
         orb.mesh.material.emissiveIntensity = 0.82 + kick * 0.75 + Math.sin(t * 0.65 + orb.phase) * 0.12;
@@ -7553,9 +7822,43 @@ export class World {
           event = { type: 'rageBreak', variant: rage.shoutIndex % 4, line: rage.lines[(rage.shoutIndex - 1) % rage.lines.length] };
         }
       }
+      rage.moanTimer -= dt;
+      if (rage.moanTimer <= 0 && !event && rage.poleDancers?.length) {
+        const dancer = rage.poleDancers[rage.moanIndex % rage.poleDancers.length];
+        rage.moanIndex++;
+        rage.moanTimer = 3.4 + (rage.moanIndex % 3) * 0.75;
+        event = {
+          type: 'rageMoan', speaker: dancer.name, variant: rage.moanIndex,
+          line: ['MM—AHH.', 'OH—KEEP THE GLASS SHAKING.', 'AHH—THE POLE HAS BETTER RHYTHM.'][rage.moanIndex % 3],
+        };
+      }
       const breakAge = t - (rage.lastBreak ?? 0);
       const daylightBase = rage.rageLight.userData.baseIntensity ?? 1.65;
       rage.rageLight.intensity = daylightBase + (breakAge >= 0 && breakAge < 0.45 ? (1 - breakAge / 0.45) * 3.2 : 0);
+    }
+
+    if (z.animated.fartBoxes) {
+      const room = z.animated.fartBoxes;
+      for (let i = 0; i < room.guys.length; i++) {
+        const guy = room.guys[i];
+        const phase = t * (1.15 + i * 0.08) + guy.phase;
+        guy.group.position.y = Math.abs(Math.sin(phase)) * 0.018;
+        guy.torso.rotation.x = -0.04 + Math.max(0, Math.sin(phase * 0.5)) * 0.1;
+        guy.torso.rotation.z = Math.sin(phase) * 0.035;
+        const inflate = 1 + Math.sin(phase * 0.72) * 0.025;
+        guy.costume.scale.set(inflate, 1 + Math.sin(phase * 0.72 + 0.35) * 0.035, inflate);
+        guy.costume.rotation.z = Math.sin(phase) * 0.022;
+        guy.head.rotation.y = Math.sin(phase * 0.7) * 0.14;
+        guy.arms[0].rotation.x = Math.sin(phase) * 0.08;
+        guy.arms[1].rotation.x = -Math.sin(phase) * 0.08;
+      }
+      room.timer -= dt;
+      if (room.timer <= 0) {
+        const index = room.index % room.guys.length;
+        room.index++;
+        room.timer = 1.65 + (room.index % 3) * 0.55;
+        event = { type: 'fartBox', boxIndex: index };
+      }
     }
 
     if (z.animated.deathMetal) {

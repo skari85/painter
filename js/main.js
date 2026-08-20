@@ -92,7 +92,6 @@ class Game {
   #runActive = false;
   #saveTimer = 0;
   #savedRun = null;
-  #freeglassTrackIndex = 0;
   #lastTone = null;
   #toneStreak = 0;
   #waitingTickAccum = 0;
@@ -1503,18 +1502,13 @@ class Game {
 
       case 'mcJukebox': {
         this.audio.ensure();
-        // A second touch while a track is playing advances the booth's little
-        // three-song set; a touch while stopped resumes the selected track.
-        if (this.audio.jukeboxPlaying) {
-          this.audio.stopJukebox();
-          this.#freeglassTrackIndex = (this.#freeglassTrackIndex + 1) % FREEGLASS_TRACKS.length;
-        }
-        const track = FREEGLASS_TRACKS[this.#freeglassTrackIndex];
-        const playing = this.audio.toggleJukebox(track.src);
+        const playing = this.audio.toggleJukeboxPlaylist(FREEGLASS_TRACKS.map((track) => track.src));
         this.audio.uiConfirm();
         this.ui.toast(
-          playing ? `MC FREEGLASS · ${track.title}` : 'MC FREEGLASS · CUT',
-          playing ? 'The booth has found its pocket. Touch again to advance the set.' : 'The jukebox stops and pretends this was part of the arrangement.',
+          playing ? 'MC FREEGLASS · FULL THREE-TRACK SET' : 'MC FREEGLASS · CUT',
+          playing
+            ? `${FREEGLASS_TRACKS.map((track) => track.title).join(' · ')}. The full set now loops automatically.`
+            : 'The jukebox stops and pretends this was part of the arrangement.',
           playing ? 'good' : undefined,
         );
         break;
@@ -2407,6 +2401,7 @@ class Game {
         hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
         rageRoom: 'Five daylight glass boxes turn panic into architecture. MC Freeglass is inside one, rapping liberation over crooked jazz and a dusty beat.',
+        fartBoxes: 'Three boxes. Three guys. The room has rejected every medium except fart noise.',
         deathMetal: 'Pink lights, black amps, and five punks arguing that Barbie is the loudest death-metal artist alive.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
         listeningRoom: 'A four-piece band follows the selected record in real time while two reference speakers and twelve art legends hold the room.',
@@ -2442,12 +2437,14 @@ class Game {
   }
 
   #soundtrackFor(zoneKey) {
+    if (zoneKey === 'fartBoxes') return { id: 'room:fartBoxes:silent', kind: 'room', key: zoneKey };
     if (this.#recordKey) return { id: `record:${this.#recordKey}`, kind: 'record', key: this.#recordKey };
     if (zoneKey === 'dildoBall') return { id: 'room:dildoBall:jazz', kind: 'jazz', key: zoneKey };
     return { id: `room:${zoneKey}`, kind: 'room', key: zoneKey };
   }
 
   #roomScoreTitle(zoneKey) {
+    if (zoneKey === 'fartBoxes') return 'FART NOISE ONLY';
     if (zoneKey === 'dildoBall') return 'THE ROYAL JAZZ COMBO';
     if (zoneKey === 'publicRestroom') return 'TECHNO ZAMBA';
     if (zoneKey === 'documenta') return 'ADMINISTRATIVE MINIMAL TECHNO';
@@ -2459,7 +2456,9 @@ class Game {
   #updateSoundtrackUI(zoneKey = this.world.current) {
     if (!zoneKey) return;
     this.world.setRecordPlayerState(this.#recordKey);
-    this.ui.setNowPlaying(this.#recordKey
+    this.ui.setNowPlaying(zoneKey === 'fartBoxes'
+      ? { kind: 'room', title: this.#roomScoreTitle(zoneKey) }
+      : this.#recordKey
       ? { kind: 'record', title: MUSIC_TITLES[this.#recordKey] ?? this.#recordKey }
       : { kind: 'room', title: this.#roomScoreTitle(zoneKey) });
     if (this.mode === 'records') this.ui.updateRecords(this.#recordKey, ZONES[zoneKey].name);
@@ -2619,6 +2618,13 @@ class Game {
         this.audio.rageBreak(worldEvent.variant);
         this.ui.subtitle('MC FREEGLASS · BOXED BUT UNBROKEN', worldEvent.line, 0.76, this.audio);
       }
+      if (worldEvent?.type === 'rageMoan') {
+        this.audio.clubMoan(worldEvent.variant);
+        this.ui.subtitle(`${worldEvent.speaker} · GLASS BOX DANCER`, worldEvent.line, 0.92, this.audio);
+      }
+      if (worldEvent?.type === 'fartBox') {
+        this.audio.fartBoxSample(worldEvent.boxIndex);
+      }
       if (worldEvent?.type === 'deathMetalHit') {
         this.audio.deathMetalHit(worldEvent.variant);
       }
@@ -2657,7 +2663,7 @@ class Game {
       this.arti.update(dt);
 
       // footsteps
-      if (moving && this.world.current !== 'publicRestroom') {
+      if (moving && !['publicRestroom', 'fartBoxes'].includes(this.world.current)) {
         this.#stepAccum += dt * (this.player.sprinting ? 5.6 : 4.1);
         if (this.#stepAccum > 2.1) { this.#stepAccum = 0; this.audio.footstep(); }
       }

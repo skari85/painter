@@ -1031,6 +1031,7 @@ const MAP_ZONES = [
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
   { key: 'hairSalon', name: 'U WISH U HAD HAIR BUT U DONT', desc: 'Six chairs, six immaculate bald heads, and enough mirrors to confirm the situation from every angle.' },
       { key: 'rageRoom', name: 'THE GLASS BOXES', desc: 'Five daylight booths, one weird jazz beat, and MC Freeglass rapping chaos into freedom.' },
+  { key: 'fartBoxes', name: 'THREE FART BOXES', desc: 'Three boxes. Three guys. Fart noise. Nothing else.' },
   { key: 'deathMetal', name: 'BARBIE DEATH METAL', desc: 'Punks, death-metal goths, pink amps, and an argument about whether Barbie is a product or a survivor.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
   { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },
