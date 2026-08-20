@@ -82,6 +82,7 @@ export class AudioEngine {
   #roomScoreDrive = 0;
   #singerBufferPromise = null;   // decoded, cached vocal sample for the listening room
   #singerReverbBuffer = null;    // synthetic impulse response, generated once
+  #jukebox = null;               // one-shot local performance track
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -191,6 +192,7 @@ export class AudioEngine {
   fadeOutSoundtrack(durationMs = 180) {
     const ms = Math.max(0, durationMs);
     this.#stopMusic(ms);
+    this.stopJukebox();
     this.#roomScoreKey = null;
     this.#stopRoomScoreRig(ms === 0, ms);
     this.stopJazz(ms === 0, ms);
@@ -211,7 +213,49 @@ export class AudioEngine {
     this.#music = null;
     this.#musicKey = null;
     this.#musicTarget = 0;
+    this.stopJukebox();
   }
+
+  /** Toggle a local performance recording without replacing the room score. */
+  toggleJukebox(src) {
+    if (this.#jukebox && this.#jukebox.src.endsWith(encodeURI(src))) {
+      if (this.#jukebox.paused) {
+        this.#jukebox.play().catch(() => {});
+        return true;
+      }
+      this.#jukebox.pause();
+      this.#jukebox.currentTime = 0;
+      return false;
+    }
+
+    this.stopJukebox();
+    try {
+      const track = new Audio(encodeURI(src));
+      track.loop = false;
+      track.volume = clamp(this.#volume * 0.9, 0, 1);
+      track.addEventListener('ended', () => {
+        if (this.#jukebox === track) this.#jukebox = null;
+      });
+      track.addEventListener('error', () => {
+        if (this.#jukebox === track) this.#jukebox = null;
+      });
+      this.#jukebox = track;
+      track.play().catch(() => {});
+      return true;
+    } catch {
+      this.#jukebox = null;
+      return false;
+    }
+  }
+
+  stopJukebox() {
+    if (!this.#jukebox) return;
+    this.#jukebox.pause();
+    this.#jukebox.currentTime = 0;
+    this.#jukebox = null;
+  }
+
+  get jukeboxPlaying() { return Boolean(this.#jukebox && !this.#jukebox.paused); }
 
 
   get ready() { return !!this.#ctx; }
@@ -1123,6 +1167,12 @@ export class AudioEngine {
       this.#boxingMoan(victim, hard);
       if (hard) this.#tone({ freq: 74, freqEnd: 118, type: 'sawtooth', peak: 0.06, attack: 0.03, decay: 0.24 });
     }, 32);
+  }
+
+  /** The cape-wearing nuisance gets a short, cartoonishly weary groan. */
+  annoyingMoan(variant = 0) {
+    if (!this.#ctx) return;
+    this.#boxingMoan(variant % 2, false);
   }
 
   /** A cheap, ugly impact for the room where emotional regulation goes to die. */

@@ -2222,6 +2222,35 @@ const WAITING_STAFF = [
   ]],
 ];
 
+// An original superhero-shaped nuisance: primary-colour costume, heroic pose,
+// absolutely no trademarked insignia. He is intentionally cheap to render so
+// the gag does not make the already busy rooms heavier.
+const SUPER_FARTER = {
+  id: 'captainFlatulence', name: 'CAPTAIN FLATULENCE', shortRole: 'cape nuisance',
+  role: 'Cape Nuisance, Unrequested', ego: 58, weak: 'witty', resist: 'kind',
+  hint: 'He believes the room is his audience. The room has filed an objection.',
+  pace: 2.15, pitch: 0.72, accessory: 'cape', fartingHero: true,
+  bodyScale: [1.08, 1.16, 1.08],
+  palette: { skin: 0xd29b78, hair: 0x17191f, top: 0x2454a6, bottom: 0x16254f },
+  openers: ['MAKE WAY FOR HEROISM. AND MY PERSONAL ATMOSPHERE.', 'I PROTECT THE PEOPLE FROM QUIET ROOMS.'],
+  countered: ['Your criticism cannot penetrate the cape.', 'I heard that. I will moan about it later.'],
+  reactions: {
+    kind: ['Kindness? In this economy? I am confused and briefly touched.'],
+    witty: ['That was a direct hit to the ego. I will run away heroically.'],
+    brutal: ['Villain talk! Excellent. The cape needs a nemesis.'],
+  },
+  weakHit: ['Stop making sense. It ruins the entrance.'],
+  disarmed: ['I shall leave with dignity. The smell will remain.'],
+  dismiss: ['The people need me elsewhere. Possibly outdoors.'],
+  meltdown: 'I WAS BORN TO SAVE THE ROOM. THE ROOM WAS NOT READY.',
+  barks: ['I am faster than accountability.', 'The cape is symbolic. The smell is literal.', 'A hero moans when the institution says no.'],
+  playerJabs: {
+    kind: ['Your cape is doing all the emotional labour and it is exhausted.'],
+    witty: ['You are not a superhero. You are a weather event with branding.'],
+    brutal: ['The only thing you rescue is attention from having a peaceful afternoon.'],
+  },
+};
+
 export const BIENNALE_WAITING_CAST = WAITING_STAFF.map(([id, name, role, anchor, skin, top, barks], i) => ({
   id, name, shortRole: role.toLowerCase(), role: `${role}, The Biennale of Waiting`, anchor,
   waitingAmbient: true, static: true, ambient: true, ego: 40, weak: 'witty', resist: 'brutal',
@@ -2231,7 +2260,7 @@ export const BIENNALE_WAITING_CAST = WAITING_STAFF.map(([id, name, role, anchor,
   openers: barks, reactions: { kind: barks, witty: barks, brutal: barks }, countered: barks,
   weakHit: barks, disarmed: barks, dismiss: barks, meltdown: barks[0],
   playerJabs: { kind: barks, witty: barks, brutal: barks },
-}));
+})).concat(SUPER_FARTER);
 
 export const DOCUMENTA_CAST = [
   ...DOCUMENTERS.map(([id, name, role, anchor, skin, top, barks], i) => ({
@@ -2309,6 +2338,7 @@ export const DOCUMENTA_CAST = [
       ],
     },
   },
+  SUPER_FARTER,
 ];
 
 /** Build a crowd of ambient weirdos for a zone. */

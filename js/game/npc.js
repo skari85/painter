@@ -342,6 +342,16 @@ const ACCESSORY = {
     brim.position.set(0, hy - 0.06, 0);
     g.add(crown, brim);
   },
+  cape(g) {
+    const cape = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.72, 1.05),
+      new THREE.MeshStandardMaterial({ color: 0xc3323f, roughness: 0.82, side: THREE.DoubleSide })
+    );
+    cape.position.set(0, 1.03, -0.14);
+    cape.rotation.x = 0.08;
+    cape.userData.noSplat = true;
+    g.add(cape);
+  },
   drugHelmet(g) {
     const shell = new THREE.MeshStandardMaterial({
       color: 0x05060a, roughness: 0.18, metalness: 0.72,
@@ -411,9 +421,8 @@ export function buildBody(def) {
     photo.position.set(0, H / 2, 0.012);
     if (!def.cutoutNoBack) card.add(back);
     card.add(photo);
-    // A curator has drawn directly on the photograph. Keep it as a separate
-    // transparent sticker so authored portrait pixels remain visible beneath.
-    card.add(ridiculousFaceOverlay(def, W * 0.78, H * 0.34, H * 0.69, 0.027));
+    // Authored/mockup artwork is already the finished face; leave the source
+    // image untouched instead of adding the procedural scribble sticker.
     if (def.seated) {
       // sitting on the floor: the paper person sinks politely into the concrete
       card.position.y = -0.52;
@@ -475,9 +484,9 @@ export function buildBody(def) {
         head.add(hair);
       }
     }
-    // The living bodies get the same illicit correction pass as the portraits.
-    // It sits just proud of the face so the doodle reads in any lighting.
-    head.add(ridiculousFaceOverlay(def, 0.255, 0.255, 0.24, 0.151));
+    // Keep the doodle on procedural faces, but leave authored portrait textures
+    // untouched.
+    if (!def.face) head.add(ridiculousFaceOverlay(def, 0.255, 0.255, 0.24, 0.151));
     g.add(legL, legR, torso, armL, armR);
   }
 
@@ -825,6 +834,7 @@ export class NPCManager extends Emitter {
   #vacantTalkT = 2.4;
   #fartT = 5.2;
   #fartTarget = null;
+  #moanT = 4.5;
   #vacantTalk = null;
 
   constructor(world, audio) {
@@ -844,6 +854,7 @@ export class NPCManager extends Emitter {
     this.#vacantTalkT = 2.4;
     this.#fartT = 4.8;
     this.#fartTarget = null;
+    this.#moanT = 4.5;
   }
 
   spawn(cast, zoneKey) {
@@ -949,14 +960,27 @@ export class NPCManager extends Emitter {
   }
 
   #updateFartPrank(dt, playerPos) {
-    if (this.world.current !== 'deathMetal') {
+    const nuisanceZone = this.world.current === 'deathMetal'
+      || this.world.current === 'documenta'
+      || this.world.current === 'biennaleWaiting';
+    if (!nuisanceZone) {
       this.#fartTarget = null;
       this.#fartT = Math.max(this.#fartT, 3.5);
+      this.#moanT = Math.max(this.#moanT, 3.5);
       return;
     }
-    const punk = this.inCurrentZone.find((n) => n.def.fartingPunk && !n.dead);
+    const punk = this.inCurrentZone.find((n) => (n.def.fartingPunk || n.def.fartingHero) && !n.dead);
     if (!punk) return;
     if (punk.state === 'talk' || punk.state === 'meltdown' || punk.state === 'leaving') return;
+
+    if (punk.def.fartingHero) {
+      this.#moanT -= dt;
+      if (this.#moanT <= 0) {
+        this.#moanT = rand(7, 11);
+        this.audio?.annoyingMoan?.(Math.floor(Math.random() * 4));
+        this.emit('bark', { name: punk.def.name, text: pick(punk.def.barks), pitch: punk.def.pitch });
+      }
+    }
 
     if (this.#fartTarget) {
       const targetPos = this.#fartTarget.player ? playerPos : this.#fartTarget.npc?.group.position;

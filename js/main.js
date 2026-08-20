@@ -193,10 +193,10 @@ class Game {
   #resize() {
     const w = window.innerWidth, h = window.innerHeight;
     const scale = this.settings.quality;
-    // BARBIE DEATH METAL deliberately carries the heaviest lighting/material
-    // budget. Cap its internal resolution so the concert stays responsive on
-    // high-DPI screens without lowering quality in every other room.
-    const pixelCap = this.world?.current === 'deathMetal' ? 1.15 : 2;
+    // The three busiest rooms get a modest internal-resolution cap so they
+    // stay responsive on high-DPI screens without lowering quality elsewhere.
+    const busyRoom = ['deathMetal', 'documenta', 'biennaleWaiting'].includes(this.world?.current);
+    const pixelCap = busyRoom ? 1.25 : 2;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap) * scale);
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -1494,6 +1494,18 @@ class Game {
         this.audio.uiConfirm();
         this.#openRecords();
         break;
+
+      case 'mcJukebox': {
+        this.audio.ensure();
+        const playing = this.audio.toggleJukebox('puplic/songs/gallery-joke.mp3');
+        this.audio.uiConfirm();
+        this.ui.toast(
+          playing ? 'MC FREEGLASS · LIVE' : 'MC FREEGLASS · CUT',
+          playing ? 'Gallery Joke is on. The booth has found its pocket.' : 'The jukebox stops and pretends this was part of the arrangement.',
+          playing ? 'good' : undefined,
+        );
+        break;
+      }
 
       case 'collectionAction':
         this.#handleCollectionAction(it);
