@@ -48,6 +48,11 @@ import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
 import { UIManager } from './ui/ui.js';
 
+const FREEGLASS_TRACKS = [
+  { src: 'puplic/songs/gallery-joke.mp3', title: 'GALLERY JOKE' },
+  { src: 'puplic/songs/a-sorry-excuse-for-breakfast.mp3', title: 'A SORRY EXCUSE FOR BREAKFAST' },
+  { src: 'puplic/songs/scrap-metal-crown.mp3', title: 'SCRAP METAL CROWN' },
+];
 
 class Game {
   constructor() {
@@ -87,6 +92,7 @@ class Game {
   #runActive = false;
   #saveTimer = 0;
   #savedRun = null;
+  #freeglassTrackIndex = 0;
   #lastTone = null;
   #toneStreak = 0;
   #waitingTickAccum = 0;
@@ -1497,11 +1503,18 @@ class Game {
 
       case 'mcJukebox': {
         this.audio.ensure();
-        const playing = this.audio.toggleJukebox('puplic/songs/gallery-joke.mp3');
+        // A second touch while a track is playing advances the booth's little
+        // three-song set; a touch while stopped resumes the selected track.
+        if (this.audio.jukeboxPlaying) {
+          this.audio.stopJukebox();
+          this.#freeglassTrackIndex = (this.#freeglassTrackIndex + 1) % FREEGLASS_TRACKS.length;
+        }
+        const track = FREEGLASS_TRACKS[this.#freeglassTrackIndex];
+        const playing = this.audio.toggleJukebox(track.src);
         this.audio.uiConfirm();
         this.ui.toast(
-          playing ? 'MC FREEGLASS · LIVE' : 'MC FREEGLASS · CUT',
-          playing ? 'Gallery Joke is on. The booth has found its pocket.' : 'The jukebox stops and pretends this was part of the arrangement.',
+          playing ? `MC FREEGLASS · ${track.title}` : 'MC FREEGLASS · CUT',
+          playing ? 'The booth has found its pocket. Touch again to advance the set.' : 'The jukebox stops and pretends this was part of the arrangement.',
           playing ? 'good' : undefined,
         );
         break;

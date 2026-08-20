@@ -5321,7 +5321,7 @@ export class World {
     }
 
     z.interactables.push({
-      id: 'mc-freeglass', type: 'mcJukebox', label: 'Touch MC Freeglass’s jukebox · E',
+      id: 'mc-freeglass', type: 'mcJukebox', label: 'Touch MC Freeglass’s jukebox · E next track',
       title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(0, 1.1, 2.45), radius: 2.35,
       lines: [
         'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
