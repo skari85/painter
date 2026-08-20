@@ -20,6 +20,9 @@ import * as THREE from 'three';
 import { clamp, mulberry32, rand, pick } from '../core/utils.js';
 import { MAXPRO } from '../core/config.js';
 import { lotNumberFor } from './narrative.js';
+// Cache-bust this tiny shared renderer import so long-lived local preview tabs
+// pick up newly drawn guest faces without serving yesterday's module graph.
+import { ridiculousFaceOverlay } from './npc.js?ridiculous-faces=1';
 
 
 const WALL_H = 3.6;
@@ -695,6 +698,7 @@ export class World {
     this.#buildGarret();
     this.#buildGalleria();
     this.#buildDocumenta();
+    this.#buildBiennaleWaiting();
     this.#buildVault();
     this.#buildInvisibleCollection();
     this.#buildLeatherLatex();
@@ -742,6 +746,7 @@ export class World {
       garret:       { x: 4.65,  z: 3.55,  ry: -Math.PI / 2 },
       galleria:     { x: 7.75,  z: 5.35,  ry: Math.PI },
       documenta:    { x: -9.6, z: 6.9,   ry: Math.PI },
+      biennaleWaiting: { x: -14.7, z: 8.9, ry: Math.PI },
       vault:        { x: -5.45, z: 4.15,  ry: Math.PI / 2 },
       invisibleCollection: { x: -7.65, z: 5.15, ry: Math.PI },
       leatherLatex: { x: -9.35, z: 4.65,  ry: Math.PI },
@@ -1167,6 +1172,7 @@ export class World {
     door(z, { x: 6.8, z: -6.62, ry: 0, label: 'THE GLASS BOXES →', to: 'rageRoom' });
     door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
     door(z, { x: 3.45, z: -6.62, ry: 0, label: 'THE LISTENING ROOM →', to: 'listeningRoom' });
+    door(z, { x: 3.45, z: 6.62, ry: Math.PI, label: 'THE BIENNALE OF WAITING →', to: 'biennaleWaiting' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -1471,6 +1477,206 @@ export class World {
       accredited: false, cameraCorrupted: false, archiveCorrupted: false,
       complete: false, outcome: null, shutterT: 0.7, paperT: 0,
       scarred: this.#documentaScarred, staticTex,
+    };
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE BIENNALE OF WAITING                                  */
+  /* ---------------------------------------------------------- */
+  #buildBiennaleWaiting() {
+    const z = this.#newZone('biennaleWaiting');
+    shell(z, { w: 34, d: 24, floorColor: 0xb8b9b6, wallColor: 0xeeeDE7, ceilColor: 0xd8d8d2, h: 4.15 });
+    z.spawn.set(-15.2, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x161719, density: 0.018 };
+
+    z.group.add(new THREE.HemisphereLight(0xf4f1e8, 0x35373d, 1.15));
+    for (const [x, zz] of [[-13, -6], [-13, 6], [-5, 0], [3, -6], [3, 6], [10, -6], [10, 6], [15, 0]]) {
+      const light = new THREE.PointLight(0xf4f0df, 24, 11, 1.65);
+      light.position.set(x, 3.45, zz);
+      z.group.add(light);
+    }
+
+    const white = mat(0xefeee8, { roughness: 0.84 });
+    const black = mat(0x17181d, { roughness: 0.52, metalness: 0.22 });
+    const chrome = mat(0x73777d, { roughness: 0.3, metalness: 0.78 });
+    const red = mat(0xb52d35, { roughness: 0.72 });
+    const blue = mat(0x345b7d, { roughness: 0.72 });
+    const yellow = mat(0xe0bc3e, { roughness: 0.68 });
+    const dampMat = new THREE.MeshStandardMaterial({ color: 0x55717d, transparent: true, opacity: 0.42, roughness: 0.22 });
+
+    const makeLabel = (text, x, zz, { w = 3.4, h = 0.55, ry = 0, fg = '#1b1c20', bg = '#f4f2eb', name = '' } = {}) =>
+      plane(z, { w, h, x, y: 2.55, z: zz, ry, material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg, bg, size: 32, w: 900, h: 170 }), transparent: true }), name });
+
+    const beltPosts = [];
+    const makeLane = (id, bounds, color = 0x1d1e23) => {
+      const y = 0.72;
+      const points = [
+        [bounds.minX, bounds.minZ], [bounds.maxX, bounds.minZ],
+        [bounds.minX, bounds.maxZ], [bounds.maxX, bounds.maxZ],
+      ];
+      for (const [x, zz] of points) {
+        const post = cylinder(z, { rT: 0.055, rB: 0.07, h: y, x, z: zz, material: chrome, seg: 10, solid: false, noSplat: true });
+        post.userData.waitingLane = id;
+        beltPosts.push(post);
+      }
+      for (const zz of [bounds.minZ, bounds.maxZ]) {
+        const rope = box(z, { w: bounds.maxX - bounds.minX, h: 0.045, d: 0.045, x: (bounds.minX + bounds.maxX) / 2, y, z: zz, material: mat(color), solid: false, noSplat: true });
+        rope.userData.waitingLane = id;
+      }
+    };
+
+    const makeFigure = (x, zz, suit = 0x2b2d35, skin = 0xc58e6f, scale = 1, faceId = 'waiting-guest') => {
+      const g = new THREE.Group();
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.54, 4, 8), mat(suit, { roughness: 0.88 }));
+      torso.position.y = 1.05;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mat(skin, { roughness: 0.95 }));
+      head.position.y = 1.62;
+      // The queue visitors are bespoke procedural figures, not NPC defs, so
+      // give them the same deterministic ridiculous-face sticker explicitly.
+      head.add(ridiculousFaceOverlay({ id: faceId }, 0.34, 0.34, 0, 0.205));
+      const legs = [];
+      for (const lx of [-0.1, 0.1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.48, 3, 6), mat(0x1a1b20));
+        leg.position.set(lx, 0.43, 0); g.add(leg); legs.push(leg);
+      }
+      g.add(torso, head); g.position.set(x, 0, zz); g.scale.setScalar(scale);
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      return { group: g, torso, head, legs };
+    };
+
+    // Four preliminary queues occupy the western concourse.
+    const lanes = {
+      accreditation: { minX: -15.5, maxX: -11.4, minZ: -3.2, maxZ: 3.2 },
+      closed: { minX: -10.5, maxX: -6.7, minZ: -9.6, maxZ: -4.0 },
+      recursive: { minX: -10.5, maxX: -6.7, minZ: 4.0, maxZ: 9.6 },
+      vip: { minX: -5.7, maxX: -1.1, minZ: -3.2, maxZ: 3.2 },
+      nordic: { minX: 0.3, maxX: 5.6, minZ: 3.7, maxZ: 9.7 },
+      german: { minX: 6.2, maxX: 11.5, minZ: 3.7, maxZ: 9.7 },
+      american: { minX: 11.8, maxX: 16.1, minZ: -3.1, maxZ: 3.1 },
+      french: { minX: 6.2, maxX: 11.5, minZ: -9.7, maxZ: -3.7 },
+      british: { minX: 0.3, maxX: 5.6, minZ: -9.7, maxZ: -3.7 },
+    };
+    for (const [id, bounds] of Object.entries(lanes)) makeLane(id, bounds, id === 'american' ? 0x9b2235 : id === 'french' ? 0x315a8a : 0x24262c);
+
+    box(z, { w: 0.9, h: 1.05, d: 0.75, x: -13.45, z: 0, material: black, name: 'waitingTicketMachine' });
+    const ticketGlow = plane(z, { w: 0.36, h: 0.18, x: -13.45, y: 1.2, z: -0.39, rx: 0, material: new THREE.MeshBasicMaterial({ map: textTexture('A-404', { fg: '#d5f6d9', bg: '#102016', size: 38 }), transparent: true }), name: 'waitingTicketMachine' });
+    makeLabel('1 · ACCREDITATION\nTAKE A NUMBER. BECOME SEVERAL PEOPLE.', -13.45, -3.35, { w: 4.2, h: 0.7 });
+    z.interactables.push({ id: 'waiting-accreditation', type: 'waitingQueue', queue: 'accreditation', label: 'Join accreditation queue', pos: new THREE.Vector3(-13.45, 1.1, 0), radius: 2.25 });
+
+    const closedPlaque = makeLabel('2 · THE ARTWORK\nCLOSED YESTERDAY', -8.6, -9.82, { w: 3.5, h: 0.75, name: 'waitingClosedArtwork' });
+    closedPlaque.userData.waitingClosedArtwork = true;
+    box(z, { w: 2.4, h: 2.8, d: 0.18, x: -8.6, z: -9.92, material: white, name: 'waitingClosedArtwork' });
+    z.interactables.push({ id: 'waiting-closed', type: 'waitingQueue', queue: 'closed', label: 'Join queue for yesterday’s artwork', pos: new THREE.Vector3(-8.6, 1.1, -5.2), radius: 2.25 });
+
+    const recursiveSigns = [];
+    for (let i = 0; i < 3; i++) {
+      const sign = makeLabel(`${i + 1} → QUEUE FOR QUEUE ${i + 2}`, -9.65 + (i % 2) * 2.1, 5.05 + i * 1.85, { w: 2.4, h: 0.42, name: 'waitingRecursiveSign' });
+      recursiveSigns.push(sign);
+    }
+    z.interactables.push({ id: 'waiting-recursive', type: 'waitingQueue', queue: 'recursive', label: 'Join queue to enter another queue', pos: new THREE.Vector3(-8.6, 1.1, 5.2), radius: 2.25 });
+
+    makeLabel('4 · VIP ACCESS\nTHIS QUEUE MOVES BACKWARD', -3.4, -3.35, { w: 4.2, h: 0.7, fg: '#e9d18a', bg: '#18191d', name: 'waitingVipBarrier' });
+    const vipArrows = [];
+    for (let i = 0; i < 4; i++) {
+      const arrow = plane(z, { w: 0.8, h: 0.42, x: -1.8 - i * 0.95, y: 0.025, z: 0, rx: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('←', { fg: '#e8c15a', bg: 'rgba(0,0,0,0)', size: 70 }), transparent: true }), name: 'waitingVipBarrier' });
+      vipArrows.push(arrow);
+    }
+    z.interactables.push({ id: 'waiting-vip', type: 'waitingQueue', queue: 'vip', label: 'Join the backward VIP queue', pos: new THREE.Vector3(-2.0, 1.1, 0), radius: 2.25 });
+
+    // A low partition makes the pavilion court feel temporarily permanent.
+    box(z, { w: 0.18, h: 3.25, d: 22.4, x: -0.25, z: 0, material: white, name: 'temporary pavilion wall' });
+    makeLabel('NATIONAL PAVILION ENDURANCE COURT', 0.02, 0, { w: 5.4, h: 0.62, ry: -Math.PI / 2 });
+
+    const pavilionSigns = {};
+    const addPavilionSign = (key, text, x, zz, opts = {}) => {
+      const sign = makeLabel(text, x, zz, { ...opts, name: `waiting${key[0].toUpperCase()}${key.slice(1)}Sign` });
+      sign.userData.waitingPavilionSign = key;
+      sign.userData.noSplat = false;
+      pavilionSigns[key] = sign;
+      return sign;
+    };
+
+    addPavilionSign('nordic', 'NORDIC PAVILION\nWE ARE SO SORRY', 2.95, 9.82, { w: 4.5, h: 0.72, fg: '#23455e' });
+    box(z, { w: 2.2, h: 0.42, d: 0.62, x: 2.9, z: 7.15, material: mat(0x8b6a46), name: 'waitingNordicSign' });
+    z.interactables.push({ id: 'waiting-nordic', type: 'waitingPavilion', pavilion: 'nordic', label: 'Join the Nordic queue', pos: new THREE.Vector3(2.9, 1.0, 5.1), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-nordic-support', type: 'waitingSupport', pavilion: 'nordic', label: 'Accept the apology', pos: new THREE.Vector3(2.9, 1.0, 7.2), radius: 1.9 });
+
+    addPavilionSign('german', 'GERMAN PAVILION\nDOOR 1 OF ∞', 8.85, 9.82, { w: 4.5, h: 0.72 });
+    const germanDoors = [];
+    for (let i = 0; i < 4; i++) {
+      const size = 3.3 - i * 0.62;
+      const frame = box(z, { w: 0.16, h: size, d: size, x: 7.35 + i * 1.05, y: 0, z: 7.0, ry: Math.PI / 2, material: black, solid: false, name: 'waitingGermanDoor' });
+      frame.userData.waitingGermanDoor = i;
+      germanDoors.push(frame);
+    }
+    z.interactables.push({ id: 'waiting-german', type: 'waitingPavilion', pavilion: 'german', label: 'Join the German queue', pos: new THREE.Vector3(8.8, 1.0, 5.0), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-german-support', type: 'waitingSupport', pavilion: 'german', label: 'Open the next smaller door', pos: new THREE.Vector3(8.4, 1.2, 7.0), radius: 2.2 });
+
+    addPavilionSign('american', 'AMERICAN PAVILION™\nGIFT SHOP SECURITY', 16.23, 0, { w: 4.8, h: 0.72, ry: -Math.PI / 2, fg: '#f7e6a5', bg: '#7d1930' });
+    for (let i = 0; i < 3; i++) box(z, { w: 0.72, h: 1.4 + i * 0.18, d: 0.55, x: 14.1 + (i % 2) * 1.0, z: -1.15 + i * 1.15, material: i % 2 ? blue : red, name: 'waitingAmericanSponsor' });
+    const sponsor = box(z, { w: 1.35, h: 0.9, d: 0.72, x: 13.4, z: 0, material: yellow, name: 'waitingAmericanSponsor' });
+    sponsor.userData.waitingSupport = 'american';
+    z.interactables.push({ id: 'waiting-american', type: 'waitingPavilion', pavilion: 'american', label: 'Join the sponsored queue', pos: new THREE.Vector3(12.8, 1.0, 0), radius: 2.0 });
+
+    addPavilionSign('french', 'PAVILLON FRANÇAIS\nEN GRÈVE', 8.85, -9.82, { w: 4.5, h: 0.72, fg: '#234d76' });
+    const placards = [];
+    for (let i = 0; i < 4; i++) {
+      const placard = plane(z, { w: 0.86, h: 0.52, x: 7.2 + i * 1.05, y: 1.75, z: -6.7 + (i % 2) * 0.7, material: new THREE.MeshBasicMaterial({ map: textTexture(i % 2 ? 'NON' : 'EN GRÈVE', { fg: '#202126', bg: '#eee7d8', size: 34 }), transparent: true }), name: 'waitingFrenchPlacard' });
+      placards.push(placard);
+    }
+    z.interactables.push({ id: 'waiting-french', type: 'waitingPavilion', pavilion: 'french', label: 'Join the picket queue', pos: new THREE.Vector3(8.8, 1.0, -5.1), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-french-support', type: 'waitingSupport', pavilion: 'french', label: 'Join the strike chant', pos: new THREE.Vector3(8.8, 1.0, -7.0), radius: 2.0 });
+
+    addPavilionSign('british', 'BRITISH PAVILION\nDAMP, AS INSTALLED', 2.95, -9.82, { w: 4.5, h: 0.72, fg: '#dbe8ea', bg: '#354b54' });
+    const puddles = [];
+    for (let i = 0; i < 6; i++) {
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.45 + i * 0.08, 20), dampMat.clone());
+      puddle.position.set(1.0 + (i % 3) * 1.65, 0.014, -5.3 - Math.floor(i / 3) * 2.4);
+      puddle.rotation.x = -Math.PI / 2; puddle.scale.setScalar(0.45); puddle.name = 'waitingBritishLeak'; puddle.userData.waitingSupport = 'british';
+      z.group.add(puddle); puddles.push(puddle);
+    }
+    z.interactables.push({ id: 'waiting-british', type: 'waitingPavilion', pavilion: 'british', label: 'Join the damp queue', pos: new THREE.Vector3(2.9, 1.0, -5.1), radius: 2.15 });
+
+    const scoreboard = plane(z, { w: 6.2, h: 2.7, x: -0.02, y: 2.15, z: -6.8, ry: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('QUEUE SURVIVAL\nWAITING FOR QUALIFICATION', { fg: '#d9f2dc', bg: '#102017', size: 43, w: 1200, h: 520 }), transparent: true }), name: 'waitingScoreboard' });
+    const juryDesk = box(z, { w: 2.8, h: 1.02, d: 0.9, x: 14.35, z: 8.25, material: black, name: 'waitingJuryDesk' });
+    makeLabel('INTERNATIONAL JURY\nRATIFICATION AFTER ATTRITION', 14.35, 9.82, { w: 4.2, h: 0.7, fg: '#e8c15a', bg: '#17181d', name: 'waitingJuryDesk' });
+    z.interactables.push({ id: 'waiting-jury', type: 'waitingJury', label: 'Ask the jury to ratify the survivor', pos: new THREE.Vector3(14.35, 1.1, 8.25), radius: 2.35 });
+
+    const visitors = [];
+    const visitorDefs = [
+      ['accreditation', [-14.6, -2.1], [-12.1, 2.1]], ['closed', [-9.7, -5.1], [-7.4, -8.6]],
+      ['recursive', [-9.7, 5.2], [-7.4, 8.7]], ['vip', [-1.8, -2.0], [-5.0, 2.0]],
+      ['nordic', [1.2, 4.8], [4.8, 8.7]], ['german', [7.0, 4.8], [10.7, 8.7]],
+      ['american', [12.4, -2.2], [15.2, 2.2]], ['french', [7.0, -4.8], [10.7, -8.7]],
+      ['british', [1.2, -4.8], [4.8, -8.7]],
+    ];
+    let vi = 0;
+    for (const [lane, from, to] of visitorDefs) {
+      for (let j = 0; j < 3; j++) {
+        const figure = makeFigure(from[0], from[1], [0x34323b, 0x53616a, 0x6d4d52][(vi + j) % 3], [0xd2a080, 0x8a563e, 0xb87555][(vi + j) % 3], 0.92 + (j % 2) * 0.08, `waiting-${lane}-${j}`);
+        visitors.push({ ...figure, lane, from: new THREE.Vector2(...from), to: new THREE.Vector2(...to), phase: (j / 3 + vi * 0.07) % 1, speed: lane === 'vip' ? -0.032 : 0.022 + j * 0.004 });
+      }
+      vi++;
+    }
+
+    door(z, { x: -16.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.anchors['waiting-marshal'] = new THREE.Vector3(-15.25, 0, -3.45);
+    z.anchors['waiting-closed'] = new THREE.Vector3(-8.0, 0, -8.6);
+    z.anchors['waiting-apologist'] = new THREE.Vector3(4.9, 0, 9.15);
+    z.anchors['waiting-sponsor-a'] = new THREE.Vector3(15.6, 0, -2.45);
+    z.anchors['waiting-sponsor-b'] = new THREE.Vector3(15.6, 0, 2.45);
+    z.anchors['waiting-striker'] = new THREE.Vector3(10.9, 0, -8.95);
+    z.anchors['waiting-damp'] = new THREE.Vector3(4.4, 0, -7.8);
+    z.anchors['waiting-jury'] = new THREE.Vector3(12.0, 0, 6.1);
+    z.anchorYaws = { 'waiting-jury': Math.PI, 'waiting-marshal': 0 };
+    z.waypoints = Object.values(z.anchors).map((p) => p.clone());
+    z.animated.waiting = {
+      lanes, visitors, beltPosts, ticketGlow, recursiveSigns, vipArrows, pavilionSigns,
+      germanDoors, placards, puddles, scoreboard, juryDesk,
+      stage: 0, activeQueue: null, finalStarted: false, finalElapsed: 0,
+      pavilions: {}, complete: false, winner: null, visualKey: '',
     };
   }
 
@@ -6893,6 +7099,100 @@ export class World {
     }
   }
 
+  waitingLaneAt(position) {
+    if (this.current !== 'biennaleWaiting' || !position) return null;
+    const waiting = this.zones.get('biennaleWaiting')?.animated.waiting;
+    if (!waiting) return null;
+    for (const [id, bounds] of Object.entries(waiting.lanes)) {
+      if (position.x >= bounds.minX && position.x <= bounds.maxX
+        && position.z >= bounds.minZ && position.z <= bounds.maxZ) return id;
+    }
+    return null;
+  }
+
+  isWaitingPavilionSignHit(object) {
+    if (this.current !== 'biennaleWaiting') return null;
+    let target = object;
+    while (target) {
+      if (target.userData?.waitingPavilionSign) return target.userData.waitingPavilionSign;
+      target = target.parent;
+    }
+    return null;
+  }
+
+  waitingSupportFromObject(object) {
+    if (this.current !== 'biennaleWaiting') return null;
+    let target = object;
+    while (target) {
+      if (target.userData?.waitingSupport) return target.userData.waitingSupport;
+      target = target.parent;
+    }
+    return null;
+  }
+
+  /** Rebuild preliminary gates, pavilion scores and the final tableau from run flags. */
+  applyWaitingState({ stage = 0, activeQueue = null, finalStarted = false, finalElapsed = 0, pavilions = {}, complete = false, winner = null } = {}) {
+    const waiting = this.zones.get('biennaleWaiting')?.animated.waiting;
+    if (!waiting) return;
+    waiting.stage = Math.max(0, Math.min(4, Number(stage) || 0));
+    waiting.activeQueue = typeof activeQueue === 'string' ? activeQueue : null;
+    waiting.finalStarted = Boolean(finalStarted);
+    waiting.finalElapsed = Math.max(0, Number(finalElapsed) || 0);
+    waiting.pavilions = pavilions && typeof pavilions === 'object' ? pavilions : {};
+    waiting.complete = Boolean(complete);
+    waiting.winner = typeof winner === 'string' ? winner : null;
+
+    const names = { nordic: 'NORDIC', german: 'GERMAN', american: 'AMERICAN', french: 'FRENCH', british: 'BRITISH' };
+    const order = ['nordic', 'german', 'american', 'french', 'british'];
+    const lines = order.map((key) => {
+      const p = waiting.pavilions[key] ?? {};
+      const score = Math.max(0, Math.round(Number(p.score) || 50));
+      const status = p.eliminated ? 'COLLAPSED' : waiting.complete && key === waiting.winner ? 'WINNER' : `${score} SEC`;
+      return `${names[key].padEnd(9, ' ')} ${status}`;
+    });
+    const heading = waiting.complete
+      ? `QUEUE SURVIVAL · ${names[waiting.winner] ?? 'PENDING'} PAVILION WINS`
+      : waiting.finalStarted
+        ? `QUEUE SURVIVAL · ${Math.min(120, Math.floor(waiting.finalElapsed))}/120 SEC`
+        : `QUEUE SURVIVAL · PRELIMINARY ${Math.min(4, waiting.stage)}/4`;
+    const boardKey = `${heading}:${lines.join('|')}`;
+    if (waiting.scoreboard.userData.boardKey !== boardKey) {
+      waiting.scoreboard.material.map?.dispose?.();
+      waiting.scoreboard.material.map = textTexture(`${heading}\n\n${lines.join('\n')}`, {
+        fg: '#d9f2dc', bg: '#102017', size: 39, w: 1200, h: 650, font: '800',
+      });
+      waiting.scoreboard.material.needsUpdate = true;
+      waiting.scoreboard.userData.boardKey = boardKey;
+    }
+
+    for (const key of order) {
+      const state = waiting.pavilions[key] ?? {};
+      const sign = waiting.pavilionSigns[key];
+      const eliminated = Boolean(state.eliminated);
+      sign.material.opacity = eliminated ? 0.28 : 1;
+      sign.material.color.set(eliminated ? 0x777777 : 0xffffff);
+      sign.rotation.z = eliminated ? (order.indexOf(key) % 2 ? -0.08 : 0.08) : 0;
+      sign.scale.setScalar(waiting.complete && key === waiting.winner ? 1.12 : state.supported ? 1.045 : 1);
+      for (const visitor of waiting.visitors.filter((v) => v.lane === key)) visitor.group.visible = !eliminated || (waiting.complete && key === waiting.winner);
+    }
+    waiting.germanDoors.forEach((doorMesh, i) => {
+      const german = waiting.pavilions.german ?? {};
+      doorMesh.rotation.z = german.eliminated ? (i % 2 ? -0.9 : 0.9) : german.supported ? -0.24 - i * 0.08 : 0;
+      doorMesh.visible = !german.eliminated || waiting.winner === 'german';
+    });
+    waiting.placards.forEach((placard, i) => {
+      placard.rotation.z = (waiting.pavilions.french?.eliminated ? 0.42 : 0.08) * (i % 2 ? -1 : 1);
+    });
+    waiting.puddles.forEach((puddle, i) => {
+      const growth = waiting.pavilions.british?.eliminated ? 1.9 : 0.55 + Math.min(1, waiting.finalElapsed / 120) * (0.65 + i * 0.05);
+      puddle.scale.setScalar(growth);
+      puddle.material.opacity = waiting.pavilions.british?.eliminated ? 0.62 : 0.38;
+    });
+    waiting.juryDesk.material.color.set(waiting.complete ? 0x725d22 : order.filter((key) => !waiting.pavilions[key]?.eliminated).length === 1 ? 0x455c35 : 0x17181d);
+    const visualKey = `${waiting.stage}:${waiting.activeQueue}:${waiting.finalStarted}:${waiting.complete}:${waiting.winner}`;
+    waiting.visualKey = visualKey;
+  }
+
   /* ---- the gallery display slot ---- */
 
   hangOnDisplay(texture, title, lotNumber = lotNumberFor(1)) {
@@ -7142,6 +7442,32 @@ export class World {
         cribs.lineTimer = 4.2 + (i % 3) * 0.55;
         event = { type: 'cribsLine', speaker: `BABY MONEY · ADULT HEIR ${(i % cribs.heirs.length) + 1}`, line: cribs.heirLines[i] };
       }
+    }
+
+    if (z.animated.waiting) {
+      const waiting = z.animated.waiting;
+      for (const visitor of waiting.visitors) {
+        if (!visitor.group.visible) continue;
+        visitor.phase = (visitor.phase + dt * visitor.speed + 1) % 1;
+        const eased = visitor.phase * visitor.phase * (3 - 2 * visitor.phase);
+        visitor.group.position.x = THREE.MathUtils.lerp(visitor.from.x, visitor.to.x, eased);
+        visitor.group.position.z = THREE.MathUtils.lerp(visitor.from.y, visitor.to.y, eased);
+        visitor.group.rotation.y = Math.atan2(visitor.to.x - visitor.from.x, visitor.to.y - visitor.from.y) + (visitor.speed < 0 ? Math.PI : 0);
+        const step = Math.sin(t * 5.2 + visitor.phase * Math.PI * 2);
+        visitor.group.position.y = Math.abs(step) * 0.014;
+        visitor.legs[0].rotation.x = step * 0.08;
+        visitor.legs[1].rotation.x = -step * 0.08;
+        visitor.head.rotation.y = Math.sin(t * 0.42 + visitor.phase * 7) * 0.09;
+      }
+      waiting.ticketGlow.material.opacity = 0.68 + Math.pow(Math.max(0, Math.sin(t * 3.2)), 8) * 0.32;
+      waiting.vipArrows.forEach((arrow, i) => { arrow.position.x += Math.sin(t * 1.35 + i * 0.7) * dt * 0.035; });
+      waiting.placards.forEach((placard, i) => {
+        placard.position.y = 1.75 + Math.sin(t * 1.8 + i * 1.1) * 0.08;
+      });
+      waiting.puddles.forEach((puddle, i) => {
+        puddle.material.opacity += Math.sin(t * 0.7 + i) * dt * 0.012;
+        puddle.material.opacity = clamp(puddle.material.opacity, 0.3, 0.68);
+      });
     }
 
     if (z.animated.documenta) {

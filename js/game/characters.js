@@ -2187,6 +2187,52 @@ const DOCUMENTERS = [
   ]],
 ];
 
+const WAITING_STAFF = [
+  ['waitingMarshal', 'Number Annika', 'Queue Marshal', 'waiting-marshal', 0xd0a081, 0x24262c, [
+    'If your number is called while you are yourself, please become someone else.',
+    'The estimated wait is accurate within one biennale.',
+  ]],
+  ['waitingClosedAttendant', 'Yesterday Moss', 'Closure Attendant', 'waiting-closed', 0x8f5d43, 0x545860, [
+    'The artwork closed yesterday. The queue remains critically open.',
+    'You may still experience the fact that you missed it.',
+  ]],
+  ['waitingApologist', 'Sorry Sørensen', 'Nordic Apologist', 'waiting-apologist', 0xd9ab8d, 0x567385, [
+    'I am so sorry about the bench. It has been thinking about capacity.',
+    'Sorry. Was that apology ahead of you in the queue?',
+  ]],
+  ['waitingSponsorA', 'Liberty Brandguard One', 'Sponsorship Officer', 'waiting-sponsor-a', 0x74462f, 0x742238, [
+    'Your safety is presented by a beverage you have not consented to crave.',
+    'Please keep both hands visible near the tote bags.',
+  ]],
+  ['waitingSponsorB', 'Liberty Brandguard Two', 'Sponsorship Officer', 'waiting-sponsor-b', 0xc58f70, 0x263f67, [
+    'The gift shop is a sovereign commercial zone.',
+    'Browsing without brand alignment may look like intent.',
+  ]],
+  ['waitingStriker', 'Camille Toujours', 'Striking Delegate', 'waiting-striker', 0x9b674c, 0x315b87, [
+    'The pavilion is closed. The strike is open. Join whichever has a future.',
+    'We refuse to perform waiting without collective bargaining.',
+  ]],
+  ['waitingDamp', 'Nigel Mildew', 'Damp Attendant', 'waiting-damp', 0xd0a58a, 0x485d64, [
+    'It is not leaking. It is remembering the weather indoors.',
+    'The queue is damp at the edges and constitutionally unable to mention it.',
+  ]],
+  ['waitingJuryClerk', 'Patience Quorum', 'International Jury Clerk', 'waiting-jury', 0x80513a, 0x1d2026, [
+    'National culture is difficult to compare. Queue duration is a number.',
+    'The jury has reached a decision by waiting for four alternatives to collapse.',
+  ]],
+];
+
+export const BIENNALE_WAITING_CAST = WAITING_STAFF.map(([id, name, role, anchor, skin, top, barks], i) => ({
+  id, name, shortRole: role.toLowerCase(), role: `${role}, The Biennale of Waiting`, anchor,
+  waitingAmbient: true, static: true, ambient: true, ego: 40, weak: 'witty', resist: 'brutal',
+  hint: 'They are employed by the duration rather than the exhibition.',
+  pace: 0.72, pitch: 0.78 + i * 0.045, accessory: i === 3 || i === 4 ? 'sunglasses' : null,
+  palette: { skin, hair: 0x2a292b, top, bottom: 0x1b1c20 }, barks,
+  openers: barks, reactions: { kind: barks, witty: barks, brutal: barks }, countered: barks,
+  weakHit: barks, disarmed: barks, dismiss: barks, meltdown: barks[0],
+  playerJabs: { kind: barks, witty: barks, brutal: barks },
+}));
+
 export const DOCUMENTA_CAST = [
   ...DOCUMENTERS.map(([id, name, role, anchor, skin, top, barks], i) => ({
     id, name, shortRole: role.toLowerCase(), role: `${role}, DOCUMENTA`, anchor,
@@ -2389,6 +2435,7 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
       };
     case 2:
 
@@ -2413,6 +2460,7 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
       };
     default:
 
@@ -2434,6 +2482,7 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
       };
 
   }

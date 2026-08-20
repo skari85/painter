@@ -79,6 +79,7 @@ export const ZONES = {
   galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
   vault:       { name: 'THE VAULT',         mood: 'vault' },
   documenta:   { name: 'DOCUMENTA: THE DOCUMENTING', mood: 'documenta' },
+  biennaleWaiting: { name: 'THE BIENNALE OF WAITING', mood: 'biennaleWaiting' },
   invisibleCollection: { name: 'THE INVISIBLE COLLECTION', mood: 'galleria' },
   leatherLatex: { name: 'THE LEATHER & LATEX ROOMS', mood: 'leatherLatex' },
   gildedFork:  { name: 'THE GILDED FORK',   mood: 'gildedFork' },
@@ -325,6 +326,26 @@ export const ROOM_SCORES = {
       hissLevel: 0.005, hissHighpass: 1200, hissLowpass: 7200,
       wowRate: 0.08, wowDepth: 8, detune: 2,
       leadAttack: 0.004, leadDecay: 0.65, cutoffScale: 1.35,
+    },
+  },
+  biennaleWaiting: {
+    // Hold-music minimalism: ticket calls, belt clicks, hydraulic doors,
+    // damp footsteps and a fluorescent chord that has forgotten its purpose.
+    bpm: 76, level: 0.23, root: 49, scale: [0, 2, 5, 7, 9, 12],
+    wave: 'sine', bassWave: 'triangle', cutoff: 1850, pad: [0, 5, 7, 9],
+    bass: [0, null, null, 5, null, 7, null, 2],
+    lead: [null, null, 4, null, null, 2, null, null, 5, null, null, 1, null, 3, null, null],
+    kick: [0, 8], snare: [4, 12], hats: [3, 7, 11, 15], swing: 0.04, texture: 0.12,
+    kickLevel: 0.22, snareLevel: 0.035, hatLevel: 0.012,
+    bassLevel: 0.065, bassDecay: 2.2, leadLevel: 0.014,
+    waiting: {
+      tickets: [0, 9], belts: [2, 6, 10, 14], hydraulics: [4, 12],
+      drips: [3, 7, 11, 15], strikeClaps: [5, 13],
+    },
+    lofi: {
+      hissLevel: 0.006, hissHighpass: 1100, hissLowpass: 4900,
+      wowRate: 0.11, wowDepth: 16, detune: 4,
+      leadAttack: 0.045, leadDecay: 1.45, cutoffScale: 0.82,
     },
   },
   invisibleCollection: {

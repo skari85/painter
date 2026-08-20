@@ -766,6 +766,33 @@ export class AudioEngine {
     if (pos === 15) this.#scoreNoise(swung, { bus: s.bus, peak: 0.009, decay: s.stepDur * 2.4, freq: 3800, type: 'lowpass' });
   }
 
+  #scoreWaitingStep(step, t, s) {
+    const waiting = s.profile.waiting;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
+    if (waiting.tickets.includes(pos)) {
+      const base = pos === 0 ? 659.25 : 739.99;
+      this.#scoreTone(swung, base, { bus: s.bus, type: 'sine', peak: 0.022, attack: 0.004, decay: s.stepDur * 0.9, cutoff: 2600 });
+      this.#scoreTone(swung + 0.085, base * 1.5, { bus: s.bus, type: 'sine', peak: 0.012, attack: 0.004, decay: s.stepDur * 0.65, cutoff: 3100 });
+    }
+    if (waiting.belts.includes(pos)) {
+      this.#scoreTone(swung, 205 + (pos % 4) * 18, { bus: s.bus, type: 'triangle', peak: 0.025, attack: 0.002, decay: 0.055, cutoff: 780, slide: 0.7 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.012, decay: 0.035, freq: 2400, type: 'bandpass' });
+    }
+    if (waiting.hydraulics.includes(pos)) {
+      this.#scoreTone(swung, 92, { bus: s.bus, type: 'sawtooth', peak: 0.034, attack: 0.012, decay: s.stepDur * 1.3, cutoff: 340, slide: 0.56 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.014, decay: s.stepDur * 0.8, freq: 620, type: 'lowpass' });
+    }
+    if (waiting.drips.includes(pos)) {
+      const freq = 1280 + (pos % 5) * 145;
+      this.#scoreTone(swung + 0.025, freq, { bus: s.bus, type: 'sine', peak: 0.011, attack: 0.002, decay: 0.075, cutoff: 3600, slide: 0.46 });
+    }
+    if (waiting.strikeClaps.includes(pos)) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.022, decay: 0.08, freq: 1250, type: 'bandpass' });
+      this.#scoreNoise(swung + 0.035, { bus: s.bus, peak: 0.012, decay: 0.055, freq: 2100, type: 'highpass' });
+    }
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
     const lofi = s.lofi;
@@ -780,6 +807,7 @@ export class AudioEngine {
       this.#scoreOfficeStep(step, t, s);
       return;
     }
+    if (p.waiting) this.#scoreWaitingStep(step, t, s);
 
     if (p.kick.includes(pos)) {
       this.#scoreTone(swung, 145, { bus: s.bus, peak: (p.kickLevel ?? 0.56) * ROOM_SCORE_FEEL.percussionScale, decay: 0.22, cutoff: 500, slide: 0.24 });
@@ -982,6 +1010,40 @@ export class AudioEngine {
       setTimeout(() => this.#tone({ freq, freqEnd: outcome === 'destroy' ? freq * 0.45 : freq * 1.03, type: outcome === 'release' ? 'sine' : 'square', peak: 0.09, decay: 0.3 }), i * 85);
     });
     if (outcome === 'destroy') this.#noise({ peak: 0.22, decay: 0.7, filterFreq: 4800, filterEnd: 180, q: 0.7, type: 'highpass' });
+  }
+
+  waitingTicket(variant = 0) {
+    const base = [740, 830, 622, 554][Math.abs(variant) % 4];
+    this.#tone({ freq: base, freqEnd: base * 1.012, type: 'sine', peak: 0.065, decay: 0.16 });
+    setTimeout(() => this.#tone({ freq: base * 1.5, type: 'sine', peak: 0.045, decay: 0.13 }), 115);
+    this.#noise({ peak: 0.03, decay: 0.08, filterFreq: 2700, filterEnd: 920, q: 1.4, type: 'bandpass' });
+  }
+
+  waitingAdvance(variant = 0) {
+    const freq = 170 + (Math.abs(variant) % 4) * 28;
+    this.#tone({ freq, freqEnd: freq * 0.72, type: 'triangle', peak: 0.07, decay: 0.18 });
+    this.#noise({ peak: 0.055, decay: 0.12, filterFreq: 1850, filterEnd: 430, q: 1.1, type: 'bandpass' });
+  }
+
+  waitingAbandon() {
+    this.#noise({ peak: 0.13, decay: 0.055, filterFreq: 6200, filterEnd: 1800, q: 1.8, type: 'bandpass' });
+    setTimeout(() => this.#noise({ peak: 0.085, decay: 0.04, filterFreq: 5100, filterEnd: 1500, q: 1.5, type: 'bandpass' }), 92);
+    this.#tone({ freq: 310, freqEnd: 146, type: 'square', peak: 0.052, decay: 0.25 });
+  }
+
+  waitingCollapse(variant = 0) {
+    const base = 128 - (Math.abs(variant) % 4) * 11;
+    [1, 0.82, 0.58].forEach((ratio, i) => setTimeout(() => {
+      this.#tone({ freq: base * ratio, freqEnd: base * ratio * 0.55, type: 'sawtooth', peak: 0.075, decay: 0.3 });
+      this.#noise({ peak: 0.055, decay: 0.2, filterFreq: 1500 - i * 260, filterEnd: 180, q: 0.8, type: 'bandpass' });
+    }, i * 90));
+  }
+
+  waitingWinner() {
+    [392, 523.25, 659.25, 783.99].forEach((freq, i) => setTimeout(() => {
+      this.#tone({ freq, type: 'sine', peak: 0.085, attack: 0.012, decay: 0.42 });
+    }, i * 105));
+    setTimeout(() => this.#noise({ peak: 0.09, decay: 0.48, filterFreq: 4200, filterEnd: 680, q: 0.7, type: 'bandpass' }), 330);
   }
 
   /** A short two-formant boxer moan. It is fully synthesized: pitched throat,

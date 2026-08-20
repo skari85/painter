@@ -239,6 +239,26 @@ score and its shutter, printer, scanner, and server-collapse sounds are generate
 at runtime; all room geometry and recursive feeds are procedural, with no new
 external media assets.
 
+### The Biennale of Waiting
+
+Galleria Bianca also opens into a 34×24-metre temporary biennale annex where
+every exhibition has become a queue. Four preliminary lines process the Artist
+through contradictory accreditation, an artwork that closed yesterday, a queue
+for another queue, and backward VIP access. Leaving an active line costs three
+Fame because people noticed.
+
+The national pavilion court runs a two-minute endurance round between Nordic,
+German, American, French, and British queues. Remaining inside a lane adds
+endurance; authored `E` and `Q` actions support each pavilion, while a single
+`LMB` intervention on its sign adds Heat and a smaller duration bonus. One line
+collapses every twenty-four seconds. The International Jury ratifies the last
+queue standing, records the winner and perfect-attendance bonus once, and
+rebuilds the whole partial or completed tableau from the normal run save.
+
+The annex uses generated geometry and canvas signage, animated low-cost queue
+visitors, authored ambient staff, procedural 76 BPM hold-music minimalism, and
+the same synchronized communal record player as the rest of the city.
+
 ## Architecture
 
 

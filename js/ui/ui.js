@@ -1020,6 +1020,7 @@ const MAP_ZONES = [
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
   { key: 'documenta', name: 'DOCUMENTA: THE DOCUMENTING', desc: 'Accreditation, cameras, metadata and an exhibition nobody has time to experience.' },
+  { key: 'biennaleWaiting', name: 'THE BIENNALE OF WAITING', desc: 'Nine queues, five nations, one prize for remaining publicly stationary.' },
   { key: 'invisibleCollection', name: 'THE INVISIBLE COLLECTION', desc: 'Five empty footprints, three grave officials, and a valuation rising faster than the evidence.' },
   { key: 'leatherLatex', name: 'THE LEATHER & LATEX ROOMS', desc: 'The collector\'s house. Warm hide up front, black gloss in the back — one bassline, two moods.' },
   { key: 'gildedFork', name: 'THE GILDED FORK', desc: 'One long table. Every big shot. All of them drunk and messed up.' },

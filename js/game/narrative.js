@@ -14,6 +14,7 @@ const CLUE_REVEALS = {
   theorySeen: 'The language changes. The transaction does not.',
   privateCollectionSeen: 'Someone has made a room for the version of you they can own.',
   documentationSeen: 'The archive has catalogued you and the work as an Edition of One.',
+  waitingSeen: 'The institution confirms you remained present longer than the artwork.',
 };
 
 const STORY_LINES = {
@@ -96,6 +97,8 @@ const TRANSITIONS = {
   'galleria>vault': 'The white cube ends. The paperwork continues.',
   'galleria>documenta': 'The artwork stops. The documentation continues without supervision.',
   'documenta>galleria': 'The shutters fade. The white cube feels almost undocumented.',
+  'galleria>biennaleWaiting': 'The opening becomes a line. The line has its own opening hours.',
+  'biennaleWaiting>galleria': 'The queue keeps your shape for a moment, then admits someone else.',
   'vault>invisibleCollection': 'The cages end. The empty paperwork has its own annex.',
   'invisibleCollection>vault': 'The alarms fade behind you. The Vault suddenly looks burdened with objects.',
   'vault>garret': 'Home is smaller when you know who has measured it.',
