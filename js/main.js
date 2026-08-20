@@ -2436,6 +2436,7 @@ class Game {
       this.ui.toast(ZONES[zoneKey].name, {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
+        lastStandingGallery: 'The final blue-chip room floats above an ocean of auctioneers. The duck is worth €4.7 billion.',
         vault: 'Cold air, gold light. The cages are listening.',
         leatherLatex: 'The collector’s house: warm hide up front, black gloss in the back. One bassline, two moods.',
         gildedFork: 'One long table. Every big shot. All of them drunk and messed up.',

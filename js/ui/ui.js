@@ -1018,6 +1018,7 @@ export class UIManager {
 const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
+  { key: 'lastStandingGallery', name: 'THE LAST STANDING BLUE CHIP GALLERY', desc: 'A floating blue-chip vault, a billionaire duck, helicopter spotlights, and adult latex-clad patrons beneath the glass.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
   { key: 'documenta', name: 'DOCUMENTA: THE DOCUMENTING', desc: 'Accreditation, cameras, metadata and an exhibition nobody has time to experience.' },
   { key: 'biennaleWaiting', name: 'THE BIENNALE OF WAITING', desc: 'Nine queues, five nations, one prize for remaining publicly stationary.' },
