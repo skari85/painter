@@ -52,6 +52,9 @@ const FREEGLASS_TRACKS = [
   { src: 'puplic/songs/gallery-joke.mp3', title: 'GALLERY JOKE' },
   { src: 'puplic/songs/a-sorry-excuse-for-breakfast.mp3', title: 'A SORRY EXCUSE FOR BREAKFAST' },
   { src: 'puplic/songs/scrap-metal-crown.mp3', title: 'SCRAP METAL CROWN' },
+  { src: 'puplic/songs/flat-on-my-back.mp3', title: 'FLAT ON MY BACK' },
+  { src: 'puplic/songs/polygonal-panic.mp3', title: 'POLYGONAL PANIC' },
+  { src: 'puplic/songs/picasso-on-the-hood.mp3', title: 'PICASSO ON THE HOOD' },
 ];
 
 class Game {
@@ -1503,13 +1506,27 @@ class Game {
       case 'mcJukebox': {
         this.audio.ensure();
         const playing = this.audio.toggleJukeboxPlaylist(FREEGLASS_TRACKS.map((track) => track.src));
+        const active = FREEGLASS_TRACKS[this.audio.jukeboxPlaylistIndex] ?? FREEGLASS_TRACKS[0];
         this.audio.uiConfirm();
         this.ui.toast(
-          playing ? 'MC FREEGLASS · FULL THREE-TRACK SET' : 'MC FREEGLASS · CUT',
+          playing ? `MC FREEGLASS · NOW PLAYING 1/${FREEGLASS_TRACKS.length}` : 'MC FREEGLASS · CUT',
           playing
-            ? `${FREEGLASS_TRACKS.map((track) => track.title).join(' · ')}. The full set now loops automatically.`
+            ? `${active.title}. Use the bright NEXT TRACK button to skip through the full set.`
             : 'The jukebox stops and pretends this was part of the arrangement.',
           playing ? 'good' : undefined,
+        );
+        break;
+      }
+
+      case 'mcJukeboxNext': {
+        this.audio.ensure();
+        const index = this.audio.nextJukeboxTrack(FREEGLASS_TRACKS.map((track) => track.src));
+        const active = FREEGLASS_TRACKS[index] ?? FREEGLASS_TRACKS[0];
+        this.audio.uiConfirm();
+        this.ui.toast(
+          `MC FREEGLASS · NOW PLAYING ${index + 1}/${FREEGLASS_TRACKS.length}`,
+          `${active.title}. The pink button remains legally classified as curatorial guidance.`,
+          'good',
         );
         break;
       }

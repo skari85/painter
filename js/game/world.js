@@ -716,6 +716,7 @@ export class World {
     this.#buildBlackForest();
     this.#buildListeningRoom();
     this.#buildMtvCribs();
+    this.#buildLastStandingGallery();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -5256,40 +5257,47 @@ export class World {
       makeBreakable(`${boothLabels[i]} chair`, x - 0.72, 0.58, zz + 0.35, new THREE.BoxGeometry(0.9, 0.16, 0.82), mat([0x7c2737, 0x344e67, 0x6f5b2c, 0x536c5e, 0x6b3b62][i], { roughness: 0.76 }));
       makeBreakable(`${boothLabels[i]} table`, x + 0.72, 0.7, zz - 0.45, new THREE.BoxGeometry(0.72, 0.14, 0.55), mat(0xb5a28c, { roughness: 0.82 }));
       makeBreakable(`${boothLabels[i]} object`, x, 0.42, zz + 1.35, new THREE.SphereGeometry(0.34, 12, 8), mat(0xc3263e, { roughness: 0.42 }));
-      z.interactables.push({
-        id: `rage-booth-${i}`, type: 'flavor', label: `Scream into ${boothLabels[i]} box`,
-        title: `GLASS BOX ${String(i + 1).padStart(2, '0')}`, pos: new THREE.Vector3(x, 1.1, zz + 2.05), radius: 2.2,
-        lines: boothLines[i],
-      });
+      // The centre booth's two music controls need the interaction focus;
+      // neighbouring booths keep their scream prompts.
+      if (i !== 2) {
+        z.interactables.push({
+          id: `rage-booth-${i}`, type: 'flavor', label: `Scream into ${boothLabels[i]} box`,
+          title: `GLASS BOX ${String(i + 1).padStart(2, '0')}`, pos: new THREE.Vector3(x, 1.1, zz + 2.05), radius: 2.2,
+          lines: boothLines[i],
+        });
+      }
     }
 
-    // The centre booth is a one-person stage: MC Freeglass, a microphone and
-    // a tiny sampler desk. His bars arrive as paced subtitles over the coded
-    // room score, while his body keeps time with the beat.
+    // The centre booth is a one-person stage: the supplied animated MC
+    // character replaces the old procedural body. A compact transparent WebM
+    // keeps all twenty GIF poses moving without uploading a 13 MB GIF every
+    // frame; the PNG is a visible fallback while the video becomes ready.
     const dude = new THREE.Group(); dude.position.set(0, 0, 0.5);
-    const skin = mat(0x8e5538, { roughness: 0.78 });
-    const shirt = mat(0x49336e, { roughness: 0.54, metalness: 0.08 });
     const trousers = mat(0x16222a, { roughness: 0.7 });
-    const gold = mat(0xd8a52d, { roughness: 0.22, metalness: 0.82 });
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 6, 10), shirt); torso.position.y = 1.03;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), skin); head.position.y = 1.69;
-    const makeArm = (side) => {
-      const pivot = new THREE.Group(); pivot.position.set(side * 0.34, 1.28, 0);
-      const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.36, 5, 8), skin); limb.position.y = -0.25;
-      const fist = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), skin); fist.position.y = -0.5;
-      pivot.add(limb, fist); dude.add(pivot); return pivot;
-    };
-    const armL = makeArm(-1); const armR = makeArm(1);
-    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.44, 5, 8), trousers); legL.position.set(-0.14, 0.38, 0);
-    const legR = legL.clone(); legR.position.x = 0.14;
-    dude.add(torso, head, legL, legR);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.235, 0.11, 14), trousers); cap.position.y = 1.87; dude.add(cap);
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.035, 0.19), trousers); brim.position.set(0, 1.82, 0.18); dude.add(brim);
-    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 7, 20, Math.PI), gold); chain.position.set(0, 1.34, 0.285); chain.rotation.x = Math.PI / 2; dude.add(chain);
-    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.07, 0.035), mat(0x12181d, { metalness: 0.62, roughness: 0.18 })); shades.position.set(0, 1.72, 0.205); dude.add(shades);
-    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.018), mat(0xffd4b8, { roughness: 0.58 })); mouth.position.set(0, 1.61, 0.218); dude.add(mouth);
-    dude.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(dude);
-    dude.add(plane(z, { w: 2.55, h: 0.34, x: 0, y: 2.3, z: -0.02, material: new THREE.MeshBasicMaterial({ map: textTexture('MC FREEGLASS · BOXED BUT UNBROKEN', { fg: '#fff8d6', bg: '#392556', size: 28, w: 1100, h: 140, font: '900' }) }), noSplat: true }));
+    const rapperFallback = textureLoader.load('puplic/characters/mc-freeglass-extreme.png');
+    rapperFallback.colorSpace = THREE.SRGBColorSpace;
+    const rapperMaterial = new THREE.MeshBasicMaterial({
+      map: rapperFallback, transparent: true, alphaTest: 0.035,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    const rapperPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.68, 2.52), rapperMaterial);
+    rapperPlane.position.set(0, 1.3, 0.06); rapperPlane.renderOrder = 3;
+    rapperPlane.userData.noSplat = true; dude.add(rapperPlane);
+    const rapperVideo = document.createElement('video');
+    rapperVideo.src = 'puplic/characters/mc-freeglass-extreme.webm';
+    rapperVideo.loop = true; rapperVideo.muted = true; rapperVideo.playsInline = true; rapperVideo.preload = 'auto';
+    const rapperVideoTexture = new THREE.VideoTexture(rapperVideo);
+    rapperVideoTexture.colorSpace = THREE.SRGBColorSpace;
+    rapperVideoTexture.minFilter = THREE.LinearFilter;
+    rapperVideoTexture.magFilter = THREE.LinearFilter;
+    rapperVideo.addEventListener('canplay', () => {
+      rapperMaterial.map = rapperVideoTexture;
+      rapperMaterial.needsUpdate = true;
+      rapperVideo.play().catch(() => {});
+    }, { once: true });
+    rapperVideo.load();
+    z.group.add(dude);
+    dude.add(plane(z, { w: 2.85, h: 0.36, x: 0, y: 2.78, z: -0.04, material: new THREE.MeshBasicMaterial({ map: textTexture('MC FREEGLASS · SIX TRACKS · NO SMALL MOVEMENTS', { fg: '#fff8d6', bg: '#d32079', size: 27, w: 1300, h: 150, font: '900' }) }), noSplat: true }));
 
     const micStand = new THREE.Group(); micStand.position.set(0.42, 0, 0.82);
     const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 1.46, 8), frameMat); standPole.position.y = 0.73;
@@ -5306,6 +5314,19 @@ export class World {
         cone.position.set(sx, y, -0.725); cone.rotation.x = Math.PI / 2; cone.userData.noSplat = true; z.group.add(cone);
       }
     }
+
+    // A large, front-of-glass controller makes track changes legible without
+    // hiding the performer. Left starts/stops; the hot-pink right button skips.
+    box(z, { w: 2.25, h: 0.42, d: 0.44, x: 0, y: 0.48, z: 2.68, material: trousers, solid: false, noSplat: true, name: 'MC visible track controller' });
+    const playButton = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 10), mat(0x55e6cf, { emissive: 0x147d70, emissiveIntensity: 1.2, roughness: 0.22 }));
+    playButton.position.set(-0.6, 0.95, 2.7); playButton.userData.noSplat = true; z.group.add(playButton);
+    const nextButton = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10), mat(0xff2d91, { emissive: 0x8f0b49, emissiveIntensity: 1.45, roughness: 0.18 }));
+    nextButton.position.set(0.6, 0.97, 2.7); nextButton.userData.noSplat = true; z.group.add(nextButton);
+    plane(z, {
+      w: 2.6, h: 0.52, x: 0, y: 1.34, z: 2.94,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('LEFT: PLAY / STOP     RIGHT: NEXT TRACK\nSTEP LEFT OR RIGHT · PRESS E', { fg: '#fff8dd', bg: '#24212b', size: 28, w: 1400, h: 260, font: '900' }) }),
+      noSplat: true, name: 'MC track controls sign',
+    });
 
     // Three adult pole dancers occupy the neighbouring glass boxes. Their
     // bodies are intentionally lightweight, but the bikinis, heels and single
@@ -5407,17 +5428,24 @@ export class World {
       ribbon.userData.noSplat = true; z.group.add(ribbon);
     }
 
-    z.interactables.push({
-      id: 'mc-freeglass', type: 'mcJukebox', label: 'Touch MC Freeglass · E play/stop full set',
-      title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(0, 1.1, 2.45), radius: 2.35,
-      lines: [
-        'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
-        'MC FREEGLASS: “Freedom is not silence. Freedom is choosing what the echo gets to keep.”',
-      ],
-    });
+    z.interactables.push(
+      {
+        id: 'mc-freeglass', type: 'mcJukebox', label: 'Green button · E play/stop MC Freeglass',
+        title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(-0.65, 1.0, 2.85), radius: 1.22,
+        lines: [
+          'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
+          'MC FREEGLASS: “Freedom is not silence. Freedom is choosing what the echo gets to keep.”',
+        ],
+      },
+      {
+        id: 'mc-freeglass-next', type: 'mcJukeboxNext', label: 'Pink button · E next MC Freeglass track',
+        title: 'SKIP THE CURATOR', pos: new THREE.Vector3(0.65, 1.0, 2.85), radius: 1.22,
+        lines: ['Six tracks. One bright button. No committee meeting.'],
+      },
+    );
 
     z.animated.rageRoom = {
-      breakables, shards, dude, torso, head, armL, armR, signalOrbs, poleDancers,
+      breakables, shards, dude, rapperPlane, rapperVideo, signalOrbs, poleDancers,
       rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0, moanTimer: 2.2, moanIndex: 0,
       lines: [
         'Chaos on the kick drum, but I keep my breath in time.',
@@ -7761,14 +7789,9 @@ export class World {
       const frenzy = 0.7 + Math.sin(t * 5.8) * 0.3;
       rage.dude.position.y = Math.abs(Math.sin(t * 8.4)) * 0.035;
       rage.dude.rotation.y = Math.sin(t * 5.1) * 0.16;
-      rage.torso.rotation.z = Math.sin(t * 11.5) * 0.08;
-      rage.torso.rotation.x = -0.08 - frenzy * 0.08;
-      rage.head.rotation.y = Math.sin(t * 13.2) * 0.32;
-      rage.head.rotation.z = Math.sin(t * 7.7) * 0.12;
-      rage.armL.rotation.z = -0.55 - Math.abs(Math.sin(t * 7.1)) * 1.05;
-      rage.armR.rotation.z = 0.55 + Math.abs(Math.sin(t * 8.2 + 0.8)) * 1.12;
-      rage.armL.rotation.x = Math.sin(t * 4.6) * 0.32;
-      rage.armR.rotation.x = Math.sin(t * 5.2 + 1.2) * -0.28;
+      rage.rapperPlane.rotation.z = Math.sin(t * 7.7) * 0.025;
+      rage.rapperPlane.rotation.x = -0.015 - frenzy * 0.018;
+      rage.rapperPlane.scale.set(1 + frenzy * 0.018, 1 + Math.sin(t * 8.4) * 0.012, 1);
 
       for (let i = 0; i < (rage.poleDancers?.length ?? 0); i++) {
         const dancer = rage.poleDancers[i];

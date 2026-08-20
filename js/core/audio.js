@@ -235,6 +235,26 @@ export class AudioEngine {
     return this.#startJukeboxTrack();
   }
 
+  /** Advance the local performance immediately. If the jukebox is stopped,
+      the next control doubles as a highly visible start button. */
+  nextJukeboxTrack(sources) {
+    const incoming = (sources ?? []).filter((src) => typeof src === 'string' && src.length);
+    if (!this.#jukeboxPlaylist.length) {
+      this.#jukeboxPlaylist = incoming;
+      this.#jukeboxPlaylistIndex = 0;
+    } else {
+      if (incoming.length) this.#jukeboxPlaylist = incoming;
+      this.#jukeboxPlaylistIndex = (this.#jukeboxPlaylistIndex + 1) % this.#jukeboxPlaylist.length;
+    }
+    if (!this.#jukeboxPlaylist.length) return -1;
+    if (this.#jukebox) {
+      this.#jukebox.pause();
+      this.#jukebox.currentTime = 0;
+      this.#jukebox = null;
+    }
+    return this.#startJukeboxTrack() ? this.#jukeboxPlaylistIndex : -1;
+  }
+
   #startJukeboxTrack() {
     const src = this.#jukeboxPlaylist[this.#jukeboxPlaylistIndex];
     if (!src) return false;
@@ -273,6 +293,7 @@ export class AudioEngine {
   }
 
   get jukeboxPlaying() { return Boolean(this.#jukebox && !this.#jukebox.paused); }
+  get jukeboxPlaylistIndex() { return this.#jukeboxPlaylistIndex; }
 
 
   get ready() { return !!this.#ctx; }
