@@ -20,6 +20,9 @@ import * as THREE from 'three';
 import { clamp, mulberry32, rand, pick } from '../core/utils.js';
 import { MAXPRO } from '../core/config.js';
 import { lotNumberFor } from './narrative.js';
+// Cache-bust this tiny shared renderer import so long-lived local preview tabs
+// pick up newly drawn guest faces without serving yesterday's module graph.
+import { ridiculousFaceOverlay } from './npc.js?ridiculous-faces=1';
 
 
 const WALL_H = 3.6;
@@ -684,15 +687,19 @@ export class World {
   #scene;
   #splatTex;
   #t = 0;
+  #documentaScarred;
 
-  constructor(scene) {
+  constructor(scene, { documentaScarred = false } = {}) {
     this.#scene = scene;
     this.#splatTex = splatTexture();
+    this.#documentaScarred = documentaScarred;
     this.zones = new Map();
     this.current = null;
     this.#buildGarret();
     this.#buildGalleria();
     this.#buildDocumenta();
+    this.#buildBiennaleWaiting();
+    this.#buildNowOrNever();
     this.#buildVault();
     this.#buildInvisibleCollection();
     this.#buildLeatherLatex();
@@ -704,11 +711,13 @@ export class World {
     this.#buildVacantEditions();
     this.#buildHairSalon();
     this.#buildRageRoom();
+    this.#buildFartBoxes();
     this.#buildDeathMetal();
     this.#buildPublicRestroom();
     this.#buildBlackForest();
     this.#buildListeningRoom();
     this.#buildMtvCribs();
+    this.#buildLastStandingGallery();
     this.#buildRecordPlayers();
     for (const [key, z] of this.zones) z.group.visible = false;
 
@@ -734,12 +743,117 @@ export class World {
     return zone;
   }
 
+  /* ---------------------------------------------------------- */
+  /*  THE LAST STANDING BLUE CHIP GALLERY                       */
+  /* ---------------------------------------------------------- */
+  #buildLastStandingGallery() {
+    const z = this.#newZone('lastStandingGallery');
+    shell(z, { w: 24, d: 16, floorColor: 0x171b25, wallColor: 0x34363c, ceilColor: 0x11151f, h: 4.4 });
+    z.spawn.set(9.6, 0, 0);
+    z.spawnYaw = Math.PI / 2;
+    z.fog = { color: 0x07101b, density: 0.012 };
+
+    const blue = latexMat(0x0b2a68);
+    const gold = mat(0xc98c2b, { metalness: 0.86, roughness: 0.2 });
+    const chrome = mat(0xb8c8d5, { metalness: 0.9, roughness: 0.15 });
+    const marble = mat(0xb6aa93, { roughness: 0.75 });
+    const blackGlass = new THREE.MeshPhysicalMaterial({ color: 0x071321, transparent: true, opacity: 0.5, roughness: 0.08, metalness: 0.22, transmission: 0.12 });
+    const ocean = mat(0x06111d, { roughness: 0.2, metalness: 0.35 });
+    box(z, { w: 23.8, h: 0.04, d: 15.8, y: -0.62, material: ocean, solid: false, noSplat: true, name: 'black ocean below the vault' });
+
+    // A transparent central runway makes the tiny auction crowd below part of the joke.
+    box(z, { w: 6.2, h: 0.07, d: 13.8, y: 0.02, material: blackGlass, solid: false, noSplat: true, name: 'transparent floor over auctioneers' });
+    for (const x of [-3.1, 3.1]) box(z, { w: 0.035, h: 0.035, d: 13.8, x, y: 0.07, material: chrome, solid: false, noSplat: true });
+    for (let zz = -6.5; zz <= 6.5; zz += 2.15) box(z, { w: 6.2, h: 0.03, d: 0.035, z: zz, y: 0.07, material: chrome, solid: false, noSplat: true });
+    for (let i = 0; i < 12; i++) {
+      const diver = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), mat(0x202c3d, { roughness: 0.65 }));
+      diver.position.set((i % 4 - 1.5) * 1.05, -0.42 - (i % 3) * 0.11, -6.1 + i * 1.05);
+      diver.scale.set(0.7, 1.5, 0.7); diver.userData.noSplat = true; z.group.add(diver);
+    }
+
+    // Marble wall panels and absurd cobalt works.
+    for (const x of [-8.9, -5.9, 5.9, 8.9]) {
+      box(z, { w: 2.35, h: 3.65, d: 0.12, x, y: 0.2, z: -7.88, material: marble, solid: false, noSplat: true });
+      hangingArt(z, { x, y: 2.05, z: -7.8, ry: 0, w: 1.55, h: 2.35, seed: 8200 + Math.round(x * 10) });
+    }
+    for (const x of [-8.9, 8.9]) {
+      hangingArt(z, { x, y: 2.1, z: 7.8, ry: Math.PI, w: 1.55, h: 2.35, seed: 8300 + Math.round(x * 10) });
+    }
+    const ticker = plane(z, { w: 5.8, h: 3.1, x: 0, y: 2.35, z: -7.67, material: new THREE.MeshBasicMaterial({ map: textTexture('BLUE CHIP / 4.7B / HOLD', { fg: '#35a9ff', bg: '#06132a', size: 28 }), transparent: false }), name: 'live blue chip ticker wall' });
+    ticker.userData.noSplat = true;
+
+    // The tiny blue duck is the room's actual “masterpiece”.
+    cylinder(z, { rT: 0.72, rB: 0.86, h: 0.22, x: 0, z: 0, material: marble, seg: 32 });
+    box(z, { w: 1.2, h: 0.035, d: 1.2, x: 0, y: 0.23, z: 0, material: gold, solid: false, noSplat: true });
+    const duck = new THREE.Group(); duck.position.set(0, 0.27, 0);
+    const duckBody = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 16), blue); duckBody.scale.set(1.15, 0.78, 0.95);
+    const duckHead = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 14), blue); duckHead.position.set(0.22, 0.31, 0);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 12), gold); beak.rotation.z = -Math.PI / 2; beak.position.set(0.45, 0.29, 0);
+    duck.add(duckBody, duckHead, beak); duck.traverse((o) => { o.userData.noSplat = true; }); z.group.add(duck);
+    z.animated.blueChipDuck = { duck, phase: 0 };
+
+    // Platinum benches, velvet ropes, and a champagne fountain make the room maximally unserious.
+    for (const x of [-7, 7]) {
+      box(z, { w: 3.1, h: 0.28, d: 0.68, x, y: 0.48, z: 2.2, material: leatherMat(0x2a1516), name: 'platinum leather bench' });
+      box(z, { w: 3.3, h: 0.04, d: 0.76, x, y: 0.76, z: 2.2, material: chrome, solid: false, noSplat: true });
+    }
+    const fountain = new THREE.Group(); fountain.position.set(-9.4, 0, -1.8);
+    fountain.add(new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.86, 0.18, 32), chrome));
+    for (let i = 0; i < 3; i++) { const tier = new THREE.Mesh(new THREE.CylinderGeometry(0.52 - i * 0.13, 0.62 - i * 0.13, 0.1, 24), gold); tier.position.y = 0.22 + i * 0.25; fountain.add(tier); }
+    fountain.traverse((o) => { o.userData.noSplat = true; }); z.group.add(fountain);
+
+    // Helicopter-shaped spot rigs. They are deliberately too close to the art.
+    for (const x of [-4.5, 4.5]) {
+      const rig = new THREE.Group(); rig.position.set(x, 4.05, -1.1);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 10), chrome); body.scale.set(1.45, 0.6, 0.75);
+      const beam = new THREE.Mesh(new THREE.ConeGeometry(0.7, 2.4, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xd6f0ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+      beam.rotation.x = Math.PI; beam.position.y = -1.2;
+      const light = new THREE.SpotLight(0xdaf3ff, 18, 13, Math.PI / 7, 0.45, 1.2); light.position.y = -0.25; light.target.position.set(x * 0.35, 0, 0);
+      rig.add(body, beam, light, light.target); rig.traverse((o) => { o.userData.noSplat = true; }); z.group.add(rig);
+    }
+
+    // Adult gallery visitors: stylized, non-explicit figures in black latex bras/underwear.
+    const skin = (color) => mat(color, { roughness: 0.52 });
+    const makeVisitor = ({ x, zz, scale = 1, skinColor = 0xc78968, pose = 0 }) => {
+      const g = new THREE.Group(); g.position.set(x, 0, zz); g.scale.setScalar(scale); g.userData.phase = x * 0.7 + zz; g.userData.noSplat = true;
+      const flesh = skin(skinColor); const latex = latexMat(0x090a0f);
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.36, 18, 14), flesh); torso.scale.set(0.92, 1.5, 0.56); torso.position.y = 1.15;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 14), flesh); head.position.y = 2.05;
+      const briefs = new THREE.Mesh(new THREE.SphereGeometry(0.3, 18, 12), latex); briefs.scale.set(0.92, 0.48, 0.68); briefs.position.y = 0.78;
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.08, 0.58), latex); band.position.y = 0.91;
+      const leg = (px) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.125, 0.8, 12), flesh); m.position.set(px, 0.36, 0); return m; };
+      const arm = (px, rz) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.82, 12), flesh); m.position.set(px, 1.18, 0); m.rotation.z = rz; return m; };
+      g.add(torso, head, briefs, band, leg(-0.16), leg(0.16), arm(-0.48, pose ? -0.45 : 0.22), arm(0.48, pose ? 0.45 : -0.22));
+      if (pose === 1 || pose === 2) {
+        const braBand = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.09, 0.45), latex); braBand.position.set(0, 1.36, 0.02); g.add(braBand);
+        for (const px of [-0.16, 0.16]) { const cup = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 10), latex); cup.scale.set(1, 0.62, 0.72); cup.position.set(px, 1.38, 0.18); g.add(cup); }
+        for (const px of [-0.28, 0.28]) { const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.42, 8), latex); strap.position.set(px, 1.63, 0.03); strap.rotation.z = px > 0 ? -0.25 : 0.25; g.add(strap); }
+      }
+      g.traverse((o) => { o.userData.noSplat = true; }); z.group.add(g); return g;
+    };
+    const visitors = [
+      makeVisitor({ x: -5.7, zz: -3.2, scale: 1.05, skinColor: 0xb66f4f, pose: 1 }),
+      makeVisitor({ x: 5.6, zz: -3.0, scale: 1.0, skinColor: 0xd6a07d, pose: 2 }),
+      makeVisitor({ x: -8.5, zz: 4.7, scale: 0.96, skinColor: 0x8f573d, pose: 0 }),
+      makeVisitor({ x: 7.9, zz: 4.8, scale: 1.02, skinColor: 0xc68465, pose: 1 }),
+    ];
+    z.animated.adultVisitors = visitors;
+    z.group.add(new THREE.HemisphereLight(0x8ebdff, 0x17131a, 1.15));
+    for (const [x, color] of [[-8, 0x3b8dff], [0, 0xffc35d], [8, 0x3b8dff]]) { const l = new THREE.PointLight(color, 8, 11, 1.8); l.position.set(x, 3.2, 0); z.group.add(l); }
+    const title = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 0.5), new THREE.MeshBasicMaterial({ map: textTexture('THE LAST STANDING BLUE CHIP GALLERY', { fg: '#f1d27c', bg: '#0a0d16', size: 30 }), transparent: true }));
+    title.position.set(0, 3.65, 7.76); title.rotation.y = Math.PI; title.userData.noSplat = true; z.group.add(title);
+    door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.waypoints = [new THREE.Vector3(-8, 0, -3), new THREE.Vector3(0, 0, 0), new THREE.Vector3(8, 0, 3)];
+  }
+
   /** A synchronized communal turntable in every room. */
   #buildRecordPlayers() {
     const placements = {
       garret:       { x: 4.65,  z: 3.55,  ry: -Math.PI / 2 },
       galleria:     { x: 7.75,  z: 5.35,  ry: Math.PI },
       documenta:    { x: -9.6, z: 6.9,   ry: Math.PI },
+      biennaleWaiting: { x: -14.7, z: 8.9, ry: Math.PI },
+      nowOrNever:   { x: -13.4, z: 7.8,   ry: Math.PI },
       vault:        { x: -5.45, z: 4.15,  ry: Math.PI / 2 },
       invisibleCollection: { x: -7.65, z: 5.15, ry: Math.PI },
       leatherLatex: { x: -9.35, z: 4.65,  ry: Math.PI },
@@ -750,6 +864,7 @@ export class World {
       upAndCumming: { x: 7.9,   z: 6.35,  ry: Math.PI },
       vacantEditions: { x: 7.55, z: 5.45, ry: Math.PI },
       rageRoom: { x: 9.1, z: 5.1, ry: Math.PI },
+      lastStandingGallery: { x: 9.8, z: 5.0, ry: Math.PI },
       listeningRoom: { x: 0, z: -1.85, ry: 0 },
     };
 
@@ -1163,8 +1278,12 @@ export class World {
     door(z, { x: -6.7, z: -6.62, ry: 0, label: 'COCKBURN →', to: 'blackForest' });
     door(z, { x: -6.35, z: 6.62, ry: Math.PI, label: 'PUBLIC RESTROOM →', to: 'publicRestroom' });
     door(z, { x: 6.8, z: -6.62, ry: 0, label: 'THE GLASS BOXES →', to: 'rageRoom' });
+    door(z, { x: -3.45, z: -6.62, ry: 0, label: 'THREE FART BOXES →', to: 'fartBoxes' });
     door(z, { x: -8.8, z: 4.4, ry: Math.PI / 2, label: 'BARBIE DEATH METAL →', to: 'deathMetal' });
     door(z, { x: 3.45, z: -6.62, ry: 0, label: 'THE LISTENING ROOM →', to: 'listeningRoom' });
+    door(z, { x: 3.45, z: 6.62, ry: Math.PI, label: 'THE BIENNALE OF WAITING →', to: 'biennaleWaiting' });
+    door(z, { x: -3.45, z: 6.62, ry: Math.PI, label: 'LAST STANDING BLUE CHIP GALLERY →', to: 'lastStandingGallery' });
+    door(z, { x: 1.8, z: -6.62, ry: 0, label: 'NOW OR NEVER: THE GROUP SHOW →', to: 'nowOrNever' });
 
 
     z.anchors.docent = new THREE.Vector3(1.5, 0, -4.5);
@@ -1330,6 +1449,17 @@ export class World {
       monitorMats.push(screenMat);
     }
 
+    // A permanent tell from a past run: one monitor never came back online.
+    const staticTex = this.#documentaScarred
+      ? canvasTexture(96, 54, (ctx, w, h) => {
+          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const v = (Math.random() * 255) | 0;
+            ctx.fillStyle = `rgb(${v},${v},${v})`;
+            ctx.fillRect(x, y, 1, 1);
+          }
+        })
+      : null;
+
     // STATION THREE — archive intake, reached after the lens is corrupted.
     box(z, { w: 3.3, h: 0.92, d: 1.15, x: 4.95, z: 5.3, material: office, name: 'documentaArchiveScanner' });
     const scanner = box(z, { w: 1.45, h: 0.23, d: 0.82, x: 4.95, y: 0.92, z: 5.3, material: accent, solid: false, name: 'documentaArchiveScanner' });
@@ -1346,6 +1476,47 @@ export class World {
       pos: new THREE.Vector3(4.95, 1.1, 4.85), radius: 2.2,
       lines: ['The scanner is waiting to value itself. Press Q while looking directly at it.', 'No intake occurs before accreditation and lens corruption. Bureaucracy respects sequence.'],
     });
+
+    // A permanent tell from a past run: nobody ever explains these.
+    if (this.#documentaScarred) {
+      const crackTex = canvasTexture(256, 256, (ctx, w, h) => {
+        ctx.strokeStyle = 'rgba(20,18,16,0.55)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        let cx = w * 0.5, cy = 0;
+        ctx.moveTo(cx, cy);
+        for (let i = 0; i < 9; i++) {
+          cx += (Math.random() - 0.5) * 46;
+          cy += h / 9;
+          ctx.lineTo(cx, cy);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        for (let b = 0; b < 3; b++) {
+          const bx = w * (0.3 + Math.random() * 0.4), by = h * (0.2 + Math.random() * 0.6);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + (Math.random() - 0.5) * 60, by + (Math.random() - 0.5) * 60);
+          ctx.stroke();
+        }
+      });
+      const scorchTex = canvasTexture(256, 256, (ctx, w, h) => {
+        const grad = ctx.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
+        grad.addColorStop(0, 'rgba(15,12,10,0.5)');
+        grad.addColorStop(0.6, 'rgba(15,12,10,0.22)');
+        grad.addColorStop(1, 'rgba(15,12,10,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      });
+      plane(z, {
+        w: 1.8, h: 2.0, x: 8.3, y: 0.011, z: 0, rx: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ map: crackTex, transparent: true }), name: 'documenta scar',
+      });
+      plane(z, {
+        w: 2.8, h: 2.8, x: 10.6, y: 0.012, z: 0, rx: -Math.PI / 2,
+        material: new THREE.MeshBasicMaterial({ map: scorchTex, transparent: true }), name: 'documenta scar',
+      });
+    }
 
     // Gate and boss office. The collider is removed when all three stations
     // are corrupted; the bars then rise into the ceiling.
@@ -1416,7 +1587,355 @@ export class World {
       gate, gateLabel, gateCollider, gateOpen: false, crews, cameras: documentaCameras, authorityMat,
       accredited: false, cameraCorrupted: false, archiveCorrupted: false,
       complete: false, outcome: null, shutterT: 0.7, paperT: 0,
+      scarred: this.#documentaScarred, staticTex,
     };
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THE BIENNALE OF WAITING                                  */
+  /* ---------------------------------------------------------- */
+  #buildBiennaleWaiting() {
+    const z = this.#newZone('biennaleWaiting');
+    shell(z, { w: 34, d: 24, floorColor: 0xb8b9b6, wallColor: 0xeeeDE7, ceilColor: 0xd8d8d2, h: 4.15 });
+    z.spawn.set(-15.2, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x161719, density: 0.018 };
+
+    z.group.add(new THREE.HemisphereLight(0xf4f1e8, 0x35373d, 1.15));
+    for (const [x, zz] of [[-13, -6], [-13, 6], [-5, 0], [3, -6], [3, 6], [10, -6], [10, 6], [15, 0]]) {
+      const light = new THREE.PointLight(0xf4f0df, 24, 11, 1.65);
+      light.position.set(x, 3.45, zz);
+      z.group.add(light);
+    }
+
+    const white = mat(0xefeee8, { roughness: 0.84 });
+    const black = mat(0x17181d, { roughness: 0.52, metalness: 0.22 });
+    const chrome = mat(0x73777d, { roughness: 0.3, metalness: 0.78 });
+    const red = mat(0xb52d35, { roughness: 0.72 });
+    const blue = mat(0x345b7d, { roughness: 0.72 });
+    const yellow = mat(0xe0bc3e, { roughness: 0.68 });
+    const dampMat = new THREE.MeshStandardMaterial({ color: 0x55717d, transparent: true, opacity: 0.42, roughness: 0.22 });
+
+    const makeLabel = (text, x, zz, { w = 3.4, h = 0.55, ry = 0, fg = '#1b1c20', bg = '#f4f2eb', name = '' } = {}) =>
+      plane(z, { w, h, x, y: 2.55, z: zz, ry, material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg, bg, size: 32, w: 900, h: 170 }), transparent: true }), name });
+
+    const beltPosts = [];
+    const makeLane = (id, bounds, color = 0x1d1e23) => {
+      const y = 0.72;
+      const points = [
+        [bounds.minX, bounds.minZ], [bounds.maxX, bounds.minZ],
+        [bounds.minX, bounds.maxZ], [bounds.maxX, bounds.maxZ],
+      ];
+      for (const [x, zz] of points) {
+        const post = cylinder(z, { rT: 0.055, rB: 0.07, h: y, x, z: zz, material: chrome, seg: 10, solid: false, noSplat: true });
+        post.userData.waitingLane = id;
+        beltPosts.push(post);
+      }
+      for (const zz of [bounds.minZ, bounds.maxZ]) {
+        const rope = box(z, { w: bounds.maxX - bounds.minX, h: 0.045, d: 0.045, x: (bounds.minX + bounds.maxX) / 2, y, z: zz, material: mat(color), solid: false, noSplat: true });
+        rope.userData.waitingLane = id;
+      }
+    };
+
+    const makeFigure = (x, zz, suit = 0x2b2d35, skin = 0xc58e6f, scale = 1, faceId = 'waiting-guest') => {
+      const g = new THREE.Group();
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.54, 4, 8), mat(suit, { roughness: 0.88 }));
+      torso.position.y = 1.05;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mat(skin, { roughness: 0.95 }));
+      head.position.y = 1.62;
+      // The queue visitors are bespoke procedural figures, not NPC defs, so
+      // give them the same deterministic ridiculous-face sticker explicitly.
+      head.add(ridiculousFaceOverlay({ id: faceId }, 0.34, 0.34, 0, 0.205));
+      const legs = [];
+      for (const lx of [-0.1, 0.1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.48, 3, 6), mat(0x1a1b20));
+        leg.position.set(lx, 0.43, 0); g.add(leg); legs.push(leg);
+      }
+      g.add(torso, head); g.position.set(x, 0, zz); g.scale.setScalar(scale);
+      g.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(g);
+      return { group: g, torso, head, legs };
+    };
+
+    // Four preliminary queues occupy the western concourse.
+    const lanes = {
+      accreditation: { minX: -15.5, maxX: -11.4, minZ: -3.2, maxZ: 3.2 },
+      closed: { minX: -10.5, maxX: -6.7, minZ: -9.6, maxZ: -4.0 },
+      recursive: { minX: -10.5, maxX: -6.7, minZ: 4.0, maxZ: 9.6 },
+      vip: { minX: -5.7, maxX: -1.1, minZ: -3.2, maxZ: 3.2 },
+      nordic: { minX: 0.3, maxX: 5.6, minZ: 3.7, maxZ: 9.7 },
+      german: { minX: 6.2, maxX: 11.5, minZ: 3.7, maxZ: 9.7 },
+      american: { minX: 11.8, maxX: 16.1, minZ: -3.1, maxZ: 3.1 },
+      french: { minX: 6.2, maxX: 11.5, minZ: -9.7, maxZ: -3.7 },
+      british: { minX: 0.3, maxX: 5.6, minZ: -9.7, maxZ: -3.7 },
+    };
+    for (const [id, bounds] of Object.entries(lanes)) makeLane(id, bounds, id === 'american' ? 0x9b2235 : id === 'french' ? 0x315a8a : 0x24262c);
+
+    box(z, { w: 0.9, h: 1.05, d: 0.75, x: -13.45, z: 0, material: black, name: 'waitingTicketMachine' });
+    const ticketGlow = plane(z, { w: 0.36, h: 0.18, x: -13.45, y: 1.2, z: -0.39, rx: 0, material: new THREE.MeshBasicMaterial({ map: textTexture('A-404', { fg: '#d5f6d9', bg: '#102016', size: 38 }), transparent: true }), name: 'waitingTicketMachine' });
+    makeLabel('1 · ACCREDITATION\nTAKE A NUMBER. BECOME SEVERAL PEOPLE.', -13.45, -3.35, { w: 4.2, h: 0.7 });
+    z.interactables.push({ id: 'waiting-accreditation', type: 'waitingQueue', queue: 'accreditation', label: 'Join accreditation queue', pos: new THREE.Vector3(-13.45, 1.1, 0), radius: 2.25 });
+
+    const closedPlaque = makeLabel('2 · THE ARTWORK\nCLOSED YESTERDAY', -8.6, -9.82, { w: 3.5, h: 0.75, name: 'waitingClosedArtwork' });
+    closedPlaque.userData.waitingClosedArtwork = true;
+    box(z, { w: 2.4, h: 2.8, d: 0.18, x: -8.6, z: -9.92, material: white, name: 'waitingClosedArtwork' });
+    z.interactables.push({ id: 'waiting-closed', type: 'waitingQueue', queue: 'closed', label: 'Join queue for yesterday’s artwork', pos: new THREE.Vector3(-8.6, 1.1, -5.2), radius: 2.25 });
+
+    const recursiveSigns = [];
+    for (let i = 0; i < 3; i++) {
+      const sign = makeLabel(`${i + 1} → QUEUE FOR QUEUE ${i + 2}`, -9.65 + (i % 2) * 2.1, 5.05 + i * 1.85, { w: 2.4, h: 0.42, name: 'waitingRecursiveSign' });
+      recursiveSigns.push(sign);
+    }
+    z.interactables.push({ id: 'waiting-recursive', type: 'waitingQueue', queue: 'recursive', label: 'Join queue to enter another queue', pos: new THREE.Vector3(-8.6, 1.1, 5.2), radius: 2.25 });
+
+    makeLabel('4 · VIP ACCESS\nTHIS QUEUE MOVES BACKWARD', -3.4, -3.35, { w: 4.2, h: 0.7, fg: '#e9d18a', bg: '#18191d', name: 'waitingVipBarrier' });
+    const vipArrows = [];
+    for (let i = 0; i < 4; i++) {
+      const arrow = plane(z, { w: 0.8, h: 0.42, x: -1.8 - i * 0.95, y: 0.025, z: 0, rx: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('←', { fg: '#e8c15a', bg: 'rgba(0,0,0,0)', size: 70 }), transparent: true }), name: 'waitingVipBarrier' });
+      vipArrows.push(arrow);
+    }
+    z.interactables.push({ id: 'waiting-vip', type: 'waitingQueue', queue: 'vip', label: 'Join the backward VIP queue', pos: new THREE.Vector3(-2.0, 1.1, 0), radius: 2.25 });
+
+    // A low partition makes the pavilion court feel temporarily permanent.
+    box(z, { w: 0.18, h: 3.25, d: 22.4, x: -0.25, z: 0, material: white, name: 'temporary pavilion wall' });
+    makeLabel('NATIONAL PAVILION ENDURANCE COURT', 0.02, 0, { w: 5.4, h: 0.62, ry: -Math.PI / 2 });
+
+    const pavilionSigns = {};
+    const addPavilionSign = (key, text, x, zz, opts = {}) => {
+      const sign = makeLabel(text, x, zz, { ...opts, name: `waiting${key[0].toUpperCase()}${key.slice(1)}Sign` });
+      sign.userData.waitingPavilionSign = key;
+      sign.userData.noSplat = false;
+      pavilionSigns[key] = sign;
+      return sign;
+    };
+
+    addPavilionSign('nordic', 'NORDIC PAVILION\nWE ARE SO SORRY', 2.95, 9.82, { w: 4.5, h: 0.72, fg: '#23455e' });
+    box(z, { w: 2.2, h: 0.42, d: 0.62, x: 2.9, z: 7.15, material: mat(0x8b6a46), name: 'waitingNordicSign' });
+    z.interactables.push({ id: 'waiting-nordic', type: 'waitingPavilion', pavilion: 'nordic', label: 'Join the Nordic queue', pos: new THREE.Vector3(2.9, 1.0, 5.1), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-nordic-support', type: 'waitingSupport', pavilion: 'nordic', label: 'Accept the apology', pos: new THREE.Vector3(2.9, 1.0, 7.2), radius: 1.9 });
+
+    addPavilionSign('german', 'GERMAN PAVILION\nDOOR 1 OF ∞', 8.85, 9.82, { w: 4.5, h: 0.72 });
+    const germanDoors = [];
+    for (let i = 0; i < 4; i++) {
+      const size = 3.3 - i * 0.62;
+      const frame = box(z, { w: 0.16, h: size, d: size, x: 7.35 + i * 1.05, y: 0, z: 7.0, ry: Math.PI / 2, material: black, solid: false, name: 'waitingGermanDoor' });
+      frame.userData.waitingGermanDoor = i;
+      germanDoors.push(frame);
+    }
+    z.interactables.push({ id: 'waiting-german', type: 'waitingPavilion', pavilion: 'german', label: 'Join the German queue', pos: new THREE.Vector3(8.8, 1.0, 5.0), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-german-support', type: 'waitingSupport', pavilion: 'german', label: 'Open the next smaller door', pos: new THREE.Vector3(8.4, 1.2, 7.0), radius: 2.2 });
+
+    addPavilionSign('american', 'AMERICAN PAVILION™\nGIFT SHOP SECURITY', 16.23, 0, { w: 4.8, h: 0.72, ry: -Math.PI / 2, fg: '#f7e6a5', bg: '#7d1930' });
+    for (let i = 0; i < 3; i++) box(z, { w: 0.72, h: 1.4 + i * 0.18, d: 0.55, x: 14.1 + (i % 2) * 1.0, z: -1.15 + i * 1.15, material: i % 2 ? blue : red, name: 'waitingAmericanSponsor' });
+    const sponsor = box(z, { w: 1.35, h: 0.9, d: 0.72, x: 13.4, z: 0, material: yellow, name: 'waitingAmericanSponsor' });
+    sponsor.userData.waitingSupport = 'american';
+    z.interactables.push({ id: 'waiting-american', type: 'waitingPavilion', pavilion: 'american', label: 'Join the sponsored queue', pos: new THREE.Vector3(12.8, 1.0, 0), radius: 2.0 });
+
+    addPavilionSign('french', 'PAVILLON FRANÇAIS\nEN GRÈVE', 8.85, -9.82, { w: 4.5, h: 0.72, fg: '#234d76' });
+    const placards = [];
+    for (let i = 0; i < 4; i++) {
+      const placard = plane(z, { w: 0.86, h: 0.52, x: 7.2 + i * 1.05, y: 1.75, z: -6.7 + (i % 2) * 0.7, material: new THREE.MeshBasicMaterial({ map: textTexture(i % 2 ? 'NON' : 'EN GRÈVE', { fg: '#202126', bg: '#eee7d8', size: 34 }), transparent: true }), name: 'waitingFrenchPlacard' });
+      placards.push(placard);
+    }
+    z.interactables.push({ id: 'waiting-french', type: 'waitingPavilion', pavilion: 'french', label: 'Join the picket queue', pos: new THREE.Vector3(8.8, 1.0, -5.1), radius: 2.15 });
+    z.interactables.push({ id: 'waiting-french-support', type: 'waitingSupport', pavilion: 'french', label: 'Join the strike chant', pos: new THREE.Vector3(8.8, 1.0, -7.0), radius: 2.0 });
+
+    addPavilionSign('british', 'BRITISH PAVILION\nDAMP, AS INSTALLED', 2.95, -9.82, { w: 4.5, h: 0.72, fg: '#dbe8ea', bg: '#354b54' });
+    const puddles = [];
+    for (let i = 0; i < 6; i++) {
+      const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.45 + i * 0.08, 20), dampMat.clone());
+      puddle.position.set(1.0 + (i % 3) * 1.65, 0.014, -5.3 - Math.floor(i / 3) * 2.4);
+      puddle.rotation.x = -Math.PI / 2; puddle.scale.setScalar(0.45); puddle.name = 'waitingBritishLeak'; puddle.userData.waitingSupport = 'british';
+      z.group.add(puddle); puddles.push(puddle);
+    }
+    z.interactables.push({ id: 'waiting-british', type: 'waitingPavilion', pavilion: 'british', label: 'Join the damp queue', pos: new THREE.Vector3(2.9, 1.0, -5.1), radius: 2.15 });
+
+    const scoreboard = plane(z, { w: 6.2, h: 2.7, x: -0.02, y: 2.15, z: -6.8, ry: -Math.PI / 2, material: new THREE.MeshBasicMaterial({ map: textTexture('QUEUE SURVIVAL\nWAITING FOR QUALIFICATION', { fg: '#d9f2dc', bg: '#102017', size: 43, w: 1200, h: 520 }), transparent: true }), name: 'waitingScoreboard' });
+    const juryDesk = box(z, { w: 2.8, h: 1.02, d: 0.9, x: 14.35, z: 8.25, material: black, name: 'waitingJuryDesk' });
+    makeLabel('INTERNATIONAL JURY\nRATIFICATION AFTER ATTRITION', 14.35, 9.82, { w: 4.2, h: 0.7, fg: '#e8c15a', bg: '#17181d', name: 'waitingJuryDesk' });
+    z.interactables.push({ id: 'waiting-jury', type: 'waitingJury', label: 'Ask the jury to ratify the survivor', pos: new THREE.Vector3(14.35, 1.1, 8.25), radius: 2.35 });
+
+    const visitors = [];
+    const visitorDefs = [
+      ['accreditation', [-14.6, -2.1], [-12.1, 2.1]], ['closed', [-9.7, -5.1], [-7.4, -8.6]],
+      ['recursive', [-9.7, 5.2], [-7.4, 8.7]], ['vip', [-1.8, -2.0], [-5.0, 2.0]],
+      ['nordic', [1.2, 4.8], [4.8, 8.7]], ['german', [7.0, 4.8], [10.7, 8.7]],
+      ['american', [12.4, -2.2], [15.2, 2.2]], ['french', [7.0, -4.8], [10.7, -8.7]],
+      ['british', [1.2, -4.8], [4.8, -8.7]],
+    ];
+    let vi = 0;
+    for (const [lane, from, to] of visitorDefs) {
+      for (let j = 0; j < 3; j++) {
+        const figure = makeFigure(from[0], from[1], [0x34323b, 0x53616a, 0x6d4d52][(vi + j) % 3], [0xd2a080, 0x8a563e, 0xb87555][(vi + j) % 3], 0.92 + (j % 2) * 0.08, `waiting-${lane}-${j}`);
+        visitors.push({ ...figure, lane, from: new THREE.Vector2(...from), to: new THREE.Vector2(...to), phase: (j / 3 + vi * 0.07) % 1, speed: lane === 'vip' ? -0.032 : 0.022 + j * 0.004 });
+      }
+      vi++;
+    }
+
+    door(z, { x: -16.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.anchors['waiting-marshal'] = new THREE.Vector3(-15.25, 0, -3.45);
+    z.anchors['waiting-closed'] = new THREE.Vector3(-8.0, 0, -8.6);
+    z.anchors['waiting-apologist'] = new THREE.Vector3(4.9, 0, 9.15);
+    z.anchors['waiting-sponsor-a'] = new THREE.Vector3(15.6, 0, -2.45);
+    z.anchors['waiting-sponsor-b'] = new THREE.Vector3(15.6, 0, 2.45);
+    z.anchors['waiting-striker'] = new THREE.Vector3(10.9, 0, -8.95);
+    z.anchors['waiting-damp'] = new THREE.Vector3(4.4, 0, -7.8);
+    z.anchors['waiting-jury'] = new THREE.Vector3(12.0, 0, 6.1);
+    z.anchorYaws = { 'waiting-jury': Math.PI, 'waiting-marshal': 0 };
+    z.waypoints = Object.values(z.anchors).map((p) => p.clone());
+    z.animated.waiting = {
+      lanes, visitors, beltPosts, ticketGlow, recursiveSigns, vipArrows, pavilionSigns,
+      germanDoors, placards, puddles, scoreboard, juryDesk,
+      stage: 0, activeQueue: null, finalStarted: false, finalElapsed: 0,
+      pavilions: {}, complete: false, winner: null, visualKey: '',
+    };
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  NOW OR NEVER: THE GROUP SHOW                             */
+  /* ---------------------------------------------------------- */
+  #buildNowOrNever() {
+    const z = this.#newZone('nowOrNever');
+    shell(z, { w: 30, d: 20, floorColor: 0x53565d, wallColor: 0xe6e2da, ceilColor: 0x171b21, h: 5.6 });
+    z.spawn.set(-13.2, 0, 0);
+    z.spawnYaw = -Math.PI / 2;
+    z.fog = { color: 0x171a20, density: 0.014 };
+
+    const floor = new THREE.MeshPhysicalMaterial({ color: 0x767a80, roughness: 0.12, metalness: 0.18, clearcoat: 0.72, clearcoatRoughness: 0.08 });
+    plane(z, { w: 29.4, h: 19.4, y: 0.012, rx: -Math.PI / 2, material: floor, noSplat: true, name: 'nowOrNever terminal floor' });
+    z.group.add(new THREE.HemisphereLight(0xcbd4df, 0x171a20, 1.15));
+    for (const [x, zz, color] of [[-10, -6, 0xf5f2de], [-2, -6, 0xdce8ff], [6, -6, 0xf8e7c5], [12, -6, 0xdde9ff], [-6, 5, 0xe7f0ff], [6, 5, 0xf5e6ca]]) {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.05, 0.16), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85 }));
+      strip.position.set(x, 4.38, zz); strip.userData.noSplat = true; z.group.add(strip);
+      const light = new THREE.PointLight(color, 8.5, 8.5, 1.8); light.position.set(x, 4.0, zz); z.group.add(light);
+    }
+
+    const black = mat(0x11151c, { roughness: 0.38, metalness: 0.42 });
+    const chrome = mat(0x8b929a, { roughness: 0.2, metalness: 0.78 });
+    const yellow = mat(0xd4ad42, { roughness: 0.3, metalness: 0.55 });
+    const red = mat(0x9c2434, { roughness: 0.5 });
+    const blue = mat(0x2b526f, { roughness: 0.5 });
+    const cream = mat(0xe8e1d4, { roughness: 0.72 });
+
+    const boardRows = [
+      { code: 'N0W-00', artist: 'THE ARTIST', destination: 'THE NEXT BIG THING', schedule: [0, 2, 3, 4, 5, 9] },
+      { code: 'N0W-01', artist: 'KREYO', destination: 'PERMANENT RELEVANCE', schedule: [0, 1, 2, 3, 6, 7] },
+      { code: 'N0W-02', artist: 'VICTORIA VANE', destination: 'MARKET TERMINAL', schedule: [1, 0, 3, 2, 8, 1] },
+      { code: 'N0W-03', artist: 'DOLORES PANG', destination: 'THE NEXT PANEL', schedule: [2, 3, 0, 6, 4, 8] },
+      { code: 'N0W-04', artist: 'MIRA LASTCALL', destination: 'PLATFORM 0', schedule: [3, 4, 5, 9, 6, 10] },
+      { code: 'N0W-05', artist: 'JUNE BREAKOUT', destination: 'THE MOMENT', schedule: [1, 2, 3, 0, 4, 5] },
+      { code: 'N0W-06', artist: 'THE EMERGING ARTIST', destination: 'SINCE 2019', schedule: [4, 6, 7, 8, 9, 10] },
+      { code: 'N0W-07', artist: 'EVERYONE ELSE', destination: 'LOST PROPERTY', schedule: [7, 8, 9, 10, 6, 4] },
+    ];
+    const statuses = ['BOARDING', 'JUST LANDED', 'DELAYED', 'JUST DEPARTED', 'LOST CAUSE', 'NO LONGER TRENDING', 'MISSED CONNECTION', 'RETURNED TO SENDER', 'CANCELLED FOR CONTEXT', 'BOARDING DENIED', 'THE MOMENT HAS PASSED'];
+    const statusColors = ['#b9f2c6', '#77e6ee', '#e9c867', '#f4f0db', '#ff6875', '#ff6875', '#ef9b57', '#c8a1ff', '#ff6875', '#ff6875', '#ff6875'];
+    const drawBoard = (canvas, board, t) => {
+      const ctx = canvas.getContext('2d'); const w = canvas.width; const h = canvas.height;
+      ctx.fillStyle = '#0b1015'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = board.flash > 0 ? '#202a31' : '#121a20'; ctx.fillRect(22, 22, w - 44, h - 44);
+      ctx.strokeStyle = '#727d84'; ctx.lineWidth = 8; ctx.strokeRect(20, 20, w - 40, h - 40);
+      ctx.textAlign = 'left'; ctx.font = '900 31px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#e3c561';
+      ctx.fillText('NOW OR NEVER · DEPARTURES / ARRIVALS / REGRETS', 52, 68);
+      ctx.textAlign = 'right'; ctx.font = '700 26px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#83929b';
+      const now = new Date(); ctx.fillText(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`, w - 52, 68);
+      const x = [52, 220, 530, 935, 1220];
+      ctx.textAlign = 'left'; ctx.font = '800 19px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#7d8a91';
+      ['CODE', 'ARTIST', 'DESTINATION', 'STATUS', 'TIME'].forEach((label, i) => ctx.fillText(label, x[i], 112));
+      ctx.strokeStyle = '#425057'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(48, 128); ctx.lineTo(w - 48, 128); ctx.stroke();
+      const cycle = Math.floor(t / 5.6);
+      board.rows.forEach((row, i) => {
+        const y = 180 + i * 67;
+        const active = board.activeRow === i;
+        if (active) { ctx.fillStyle = board.flash > 0 ? 'rgba(225,196,96,0.24)' : 'rgba(225,196,96,0.12)'; ctx.fillRect(42, y - 34, w - 84, 49); }
+        const statusIndex = i === 0
+          ? (board.context.hasPainting ? [0, 1, 3, 5, 10][cycle % 5] : [0, 2, 6, 5, 9][cycle % 5])
+          : row.schedule[(cycle + i) % row.schedule.length];
+        const destination = i === 0 && board.context.title ? `“${board.context.title.slice(0, 25)}”` : row.destination;
+        ctx.font = '800 22px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = active ? '#fff1a8' : '#d9e2e4';
+        ctx.fillText(row.code, x[0], y);
+        ctx.font = '800 20px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillText(row.artist, x[1], y);
+        ctx.fillStyle = '#aebbc0'; ctx.fillText(destination, x[2], y);
+        ctx.fillStyle = statusColors[statusIndex]; ctx.fillText(statuses[statusIndex], x[3], y);
+        ctx.fillStyle = '#88969c'; ctx.fillText(`${String((18 + i + cycle) % 24).padStart(2, '0')}:${String((11 * i + cycle * 3) % 60).padStart(2, '0')}`, x[4], y);
+      });
+      ctx.font = '700 18px ui-monospace, SFMono-Regular, Menlo, monospace'; ctx.fillStyle = '#68767d';
+      ctx.fillText('PLEASE HAVE YOUR RELEVANCE READY · BOARDING IS NOT GUARANTEED', 52, h - 43);
+    };
+    const boardCanvas = document.createElement('canvas'); boardCanvas.width = 1600; boardCanvas.height = 760;
+    const board = { rows: boardRows, statuses, statusColors, canvas: boardCanvas, texture: null, activeRow: 0, flash: 0, lastRender: -1, context: { hasPainting: false, title: '' } };
+    drawBoard(boardCanvas, board, 0);
+    board.texture = new THREE.CanvasTexture(boardCanvas); board.texture.colorSpace = THREE.SRGBColorSpace; board.texture.anisotropy = 4;
+    board.render = (t) => { drawBoard(boardCanvas, board, t); board.texture.needsUpdate = true; };
+    const boardFrame = box(z, { w: 15.2, h: 4.45, d: 0.38, x: 0, y: 1.15, z: -9.36, material: black, name: 'nowOrNeverBoardFrame' });
+    boardFrame.userData.noSplat = true;
+    const boardMesh = plane(z, { w: 14.4, h: 4.1, x: 0, y: 3.05, z: -9.58, material: new THREE.MeshBasicMaterial({ map: board.texture, toneMapped: false }), noSplat: false, name: 'nowOrNeverBoard' });
+    boardMesh.userData.nowOrNeverBoard = true; boardMesh.userData.noSplat = false;
+    const boardGlow = new THREE.PointLight(0x8aa7b2, 1.4, 7, 2); boardGlow.position.set(0, 3.05, -8.9); z.group.add(boardGlow);
+
+    const makeLabel = (text, x, zz, opts = {}) => plane(z, { w: opts.w ?? 3.5, h: opts.h ?? 0.52, x, y: opts.y ?? 2.55, z: zz, ry: opts.ry ?? 0, material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg: opts.fg ?? '#17191d', bg: opts.bg ?? '#efe9dd', size: opts.size ?? 30, w: 980, h: 160, font: '900' }), transparent: true }), name: opts.name ?? '' });
+    makeLabel('NOW OR NEVER: THE GROUP SHOW', 0, 9.82, { w: 7.7, h: 0.78, fg: '#f4d36d', bg: '#1a2028', size: 39, name: 'nowOrNeverTitle' });
+    makeLabel('PLATFORM 0 · THE TRAIN HAS BEEN POSTPONED INTO A CATEGORY', 0, 7.85, { w: 7.6, h: 0.48, fg: '#d5dce0', bg: '#2a333d', size: 24, name: 'nowOrNeverPlatform' });
+
+    const gateSigns = [];
+    for (let i = 0; i < 4; i++) {
+      const x = -10.4 + i * 6.9;
+      const gate = box(z, { w: 4.6, h: 0.18, d: 2.15, x, y: 0.92, z: 5.9, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverGate' });
+      gateSigns.push(makeLabel(`GATE ${String.fromCharCode(65 + i)}\n${['THE NEXT BIG THING', 'DELAYED UNTIL FURTHER NOTICE', 'BOARDING DENIED', 'NO LONGER TRENDING'][i]}`, x, 5.86, { w: 4.2, h: 0.85, fg: '#f0d98a', bg: i === 2 ? '#7b2536' : '#1b2731', size: 24, name: 'nowOrNeverGate' }));
+    }
+
+    // The empty platform is the room's central negative space: rails, a
+    // departure line, and no vehicle for any of the people waiting.
+    box(z, { w: 16.6, h: 0.08, d: 0.08, x: 0, y: 0.02, z: -0.8, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverRail' });
+    box(z, { w: 16.6, h: 0.08, d: 0.08, x: 0, y: 0.02, z: 1.1, material: chrome, solid: false, noSplat: true, name: 'nowOrNeverRail' });
+    makeLabel('PLATFORM 0', 0, -0.78, { w: 2.1, h: 0.42, y: 0.04, fg: '#151a20', bg: '#e3c561', size: 27, name: 'nowOrNeverPlatform' });
+    for (let i = 0; i < 11; i++) {
+      const sleeper = box(z, { w: 0.18, h: 0.06, d: 2.35, x: -8.2 + i * 1.64, y: 0.02, z: 0.15, material: mat(0x383b40), solid: false, noSplat: true, name: 'nowOrNeverRail' });
+      sleeper.rotation.y = 0;
+    }
+
+    // Temporary booths and the relics of a trend that was packed too quickly.
+    const boothXs = [-10.6, -5.3, 5.3, 10.6];
+    boothXs.forEach((x, i) => {
+      box(z, { w: 3.8, h: 2.65, d: 0.12, x, z: -5.1, material: cream, solid: false, name: 'nowOrNeverTemporaryBooth' });
+      makeLabel(['EMERGING ARTIST\nSINCE 2019', 'PRESS PREVIEW\nLAST WEEK', 'THE MOMENT\nHAS PASSED', 'ARTIST\nNOT FOUND'][i], x, -5.0, { w: 3.35, h: 1.0, y: 2.05, fg: i === 2 ? '#f4e7d2' : '#1d2025', bg: i === 2 ? '#8e2d3d' : '#f0eadf', size: 23, name: 'nowOrNeverBoothLabel' });
+      const spotlight = new THREE.SpotLight(i === 2 ? 0xff6475 : 0xffe7b1, 9, 6, 0.42, 0.65, 1.4); spotlight.position.set(x, 4.25, -3.7); spotlight.target.position.set(x, 0, -5.1); z.group.add(spotlight, spotlight.target);
+    });
+
+    const suitcases = [];
+    for (let i = 0; i < 10; i++) {
+      const suitcase = box(z, { w: 0.65 + (i % 3) * 0.12, h: 0.48, d: 0.22, x: -12.2 + (i % 5) * 0.72, y: 0.04, z: 3.05 + Math.floor(i / 5) * 0.48, material: i % 3 ? blue : red, solid: false, noSplat: true, name: 'nowOrNeverLuggage' });
+      suitcase.rotation.y = (i % 2 ? -1 : 1) * 0.08; suitcases.push(suitcase);
+    }
+    makeLabel('LOST PROPERTY\nCONCEPTS ONLY', -10.45, 3.3, { w: 2.8, h: 0.72, y: 1.35, fg: '#f5e6a8', bg: '#1b2731', size: 22, name: 'nowOrNeverLuggage' });
+    makeLabel('PLEASE HAVE YOUR RELEVANCE READY', 9.0, 3.3, { w: 4.4, h: 0.55, y: 1.8, fg: '#8b202f', bg: '#eee5d7', size: 22, name: 'nowOrNeverClock' });
+
+    const clockCanvas = canvasTexture(420, 170, (ctx, w, h) => {
+      ctx.fillStyle = '#111820'; ctx.fillRect(0, 0, w, h); ctx.strokeStyle = '#d4ad42'; ctx.lineWidth = 7; ctx.strokeRect(5, 5, w - 10, h - 10);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#f2d77f'; ctx.font = '900 54px ui-monospace, monospace'; ctx.fillText('00:00', w / 2, 78); ctx.font = '800 18px ui-monospace, monospace'; ctx.fillText('TREND CYCLE TIME', w / 2, 125);
+    });
+    const clock = plane(z, { w: 3.2, h: 1.3, x: 10.2, y: 3.1, z: -9.56, material: new THREE.MeshBasicMaterial({ map: clockCanvas, toneMapped: false }), noSplat: false, name: 'nowOrNeverClock' });
+    clock.userData.noSplat = false;
+
+    z.interactables.push(
+      { id: 'now-or-never-board', type: 'flavor', label: 'Read the departure board', title: 'NOW OR NEVER DEPARTURES', pos: new THREE.Vector3(0, 2.0, -7.2), radius: 3.5, lines: ['The board updates one artist at a time. The institution calls this live relevance.', 'One row is yours. It is currently boarding, delayed, or already explaining why it left.'] },
+      { id: 'now-or-never-luggage', type: 'flavor', label: 'Inspect the lost concept luggage', title: 'LOST PROPERTY', pos: new THREE.Vector3(-10.4, 1.0, 3.2), radius: 2.2, lines: ['A suitcase marked EMERGING has no owner and an extremely current press photo.', 'The tag says “return to sender.” The sender has changed names.'] },
+      { id: 'now-or-never-platform', type: 'flavor', label: 'Stand on Platform 0', title: 'PLATFORM 0', pos: new THREE.Vector3(0, 1.0, 0), radius: 2.5, lines: ['No train arrives. The absence has been curated as a site-specific pause.', 'A departure announcement thanks you for your patience and refuses to define patience.'] },
+    );
+
+    door(z, { x: -14.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.anchors['now-runner'] = new THREE.Vector3(-9.2, 0, 1.8);
+    z.anchors['now-press'] = new THREE.Vector3(-10.7, 0, 3.6);
+    z.anchors['now-curator'] = new THREE.Vector3(1.8, 0, -6.0);
+    z.anchors['now-luggage'] = new THREE.Vector3(-10.2, 0, 3.2);
+    z.anchors['now-breakout'] = new THREE.Vector3(5.3, 0, -4.2);
+    z.anchors['now-gate'] = new THREE.Vector3(9.2, 0, 5.5);
+    z.waypoints = [
+      new THREE.Vector3(-11.5, 0, 1.2), new THREE.Vector3(-6.7, 0, 2.5),
+      new THREE.Vector3(-3.0, 0, 2.2), new THREE.Vector3(2.8, 0, 2.5),
+      new THREE.Vector3(7.2, 0, 1.8), new THREE.Vector3(11.4, 0, 3.1),
+      new THREE.Vector3(7.4, 0, -3.0), new THREE.Vector3(-5.6, 0, -3.0),
+    ];
+    z.animated.nowOrNever = { board, boardMesh, boardGlow, clock, clockCanvas, gateSigns, suitcases, nextBoardFlap: 2.0, nextAnnouncement: 7.5, announcementIndex: 0, lastClockSecond: -1, seen: false };
   }
 
   /* ---------------------------------------------------------- */
@@ -4906,6 +5425,14 @@ export class World {
       normalMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_nor_gl_1k.jpg', 4, 1.2),
       roughnessMap: loadPbr('glass-boxes/beige_wall_001', 'beige_wall_001_rough_1k.jpg', 4, 1.2),
     };
+    // A close crop of the same CC0 Poly Haven leather used in MAX PRO reads
+    // as fine body hair at character scale. It stays on the coded dancers,
+    // never on their single procedural face overlays.
+    const bodyHairPbr = {
+      map: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_diff_1k.jpg', 5, 5, true),
+      normalMap: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_nor_gl_1k.jpg', 5, 5),
+      roughnessMap: loadPbr('max-pro/fabric_leather_02', 'fabric_leather_02_rough_1k.jpg', 5, 5),
+    };
     plane(z, { w: 23.7, h: 13.7, x: 0, y: 0.012, z: 0, rx: -Math.PI / 2,
       material: new THREE.MeshStandardMaterial({ color: 0xfff9ea, ...marblePbr, roughness: 0.48, normalScale: new THREE.Vector2(0.2, 0.2) }), noSplat: true, name: 'glass boxes PBR floor' });
     plane(z, { w: 23.7, h: 5.0, x: 0, y: 2.65, z: -7.19,
@@ -4985,40 +5512,47 @@ export class World {
       makeBreakable(`${boothLabels[i]} chair`, x - 0.72, 0.58, zz + 0.35, new THREE.BoxGeometry(0.9, 0.16, 0.82), mat([0x7c2737, 0x344e67, 0x6f5b2c, 0x536c5e, 0x6b3b62][i], { roughness: 0.76 }));
       makeBreakable(`${boothLabels[i]} table`, x + 0.72, 0.7, zz - 0.45, new THREE.BoxGeometry(0.72, 0.14, 0.55), mat(0xb5a28c, { roughness: 0.82 }));
       makeBreakable(`${boothLabels[i]} object`, x, 0.42, zz + 1.35, new THREE.SphereGeometry(0.34, 12, 8), mat(0xc3263e, { roughness: 0.42 }));
-      z.interactables.push({
-        id: `rage-booth-${i}`, type: 'flavor', label: `Scream into ${boothLabels[i]} box`,
-        title: `GLASS BOX ${String(i + 1).padStart(2, '0')}`, pos: new THREE.Vector3(x, 1.1, zz + 2.05), radius: 2.2,
-        lines: boothLines[i],
-      });
+      // The centre booth's two music controls need the interaction focus;
+      // neighbouring booths keep their scream prompts.
+      if (i !== 2) {
+        z.interactables.push({
+          id: `rage-booth-${i}`, type: 'flavor', label: `Scream into ${boothLabels[i]} box`,
+          title: `GLASS BOX ${String(i + 1).padStart(2, '0')}`, pos: new THREE.Vector3(x, 1.1, zz + 2.05), radius: 2.2,
+          lines: boothLines[i],
+        });
+      }
     }
 
-    // The centre booth is a one-person stage: MC Freeglass, a microphone and
-    // a tiny sampler desk. His bars arrive as paced subtitles over the coded
-    // room score, while his body keeps time with the beat.
+    // The centre booth is a one-person stage: the supplied animated MC
+    // character replaces the old procedural body. A compact transparent WebM
+    // keeps all twenty GIF poses moving without uploading a 13 MB GIF every
+    // frame; the PNG is a visible fallback while the video becomes ready.
     const dude = new THREE.Group(); dude.position.set(0, 0, 0.5);
-    const skin = mat(0x8e5538, { roughness: 0.78 });
-    const shirt = mat(0x49336e, { roughness: 0.54, metalness: 0.08 });
     const trousers = mat(0x16222a, { roughness: 0.7 });
-    const gold = mat(0xd8a52d, { roughness: 0.22, metalness: 0.82 });
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 6, 10), shirt); torso.position.y = 1.03;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), skin); head.position.y = 1.69;
-    const makeArm = (side) => {
-      const pivot = new THREE.Group(); pivot.position.set(side * 0.34, 1.28, 0);
-      const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.36, 5, 8), skin); limb.position.y = -0.25;
-      const fist = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), skin); fist.position.y = -0.5;
-      pivot.add(limb, fist); dude.add(pivot); return pivot;
-    };
-    const armL = makeArm(-1); const armR = makeArm(1);
-    const legL = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.44, 5, 8), trousers); legL.position.set(-0.14, 0.38, 0);
-    const legR = legL.clone(); legR.position.x = 0.14;
-    dude.add(torso, head, legL, legR);
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.225, 0.235, 0.11, 14), trousers); cap.position.y = 1.87; dude.add(cap);
-    const brim = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.035, 0.19), trousers); brim.position.set(0, 1.82, 0.18); dude.add(brim);
-    const chain = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 7, 20, Math.PI), gold); chain.position.set(0, 1.34, 0.285); chain.rotation.x = Math.PI / 2; dude.add(chain);
-    const shades = new THREE.Mesh(new THREE.BoxGeometry(0.31, 0.07, 0.035), mat(0x12181d, { metalness: 0.62, roughness: 0.18 })); shades.position.set(0, 1.72, 0.205); dude.add(shades);
-    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.025, 0.018), mat(0xffd4b8, { roughness: 0.58 })); mouth.position.set(0, 1.61, 0.218); dude.add(mouth);
-    dude.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; }); z.group.add(dude);
-    dude.add(plane(z, { w: 2.55, h: 0.34, x: 0, y: 2.3, z: -0.02, material: new THREE.MeshBasicMaterial({ map: textTexture('MC FREEGLASS · BOXED BUT UNBROKEN', { fg: '#fff8d6', bg: '#392556', size: 28, w: 1100, h: 140, font: '900' }) }), noSplat: true }));
+    const rapperFallback = textureLoader.load('puplic/characters/mc-freeglass-extreme.png');
+    rapperFallback.colorSpace = THREE.SRGBColorSpace;
+    const rapperMaterial = new THREE.MeshBasicMaterial({
+      map: rapperFallback, transparent: true, alphaTest: 0.035,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    const rapperPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.68, 2.52), rapperMaterial);
+    rapperPlane.position.set(0, 1.3, 0.06); rapperPlane.renderOrder = 3;
+    rapperPlane.userData.noSplat = true; dude.add(rapperPlane);
+    const rapperVideo = document.createElement('video');
+    rapperVideo.src = 'puplic/characters/mc-freeglass-extreme.webm';
+    rapperVideo.loop = true; rapperVideo.muted = true; rapperVideo.playsInline = true; rapperVideo.preload = 'auto';
+    const rapperVideoTexture = new THREE.VideoTexture(rapperVideo);
+    rapperVideoTexture.colorSpace = THREE.SRGBColorSpace;
+    rapperVideoTexture.minFilter = THREE.LinearFilter;
+    rapperVideoTexture.magFilter = THREE.LinearFilter;
+    rapperVideo.addEventListener('canplay', () => {
+      rapperMaterial.map = rapperVideoTexture;
+      rapperMaterial.needsUpdate = true;
+      rapperVideo.play().catch(() => {});
+    }, { once: true });
+    rapperVideo.load();
+    z.group.add(dude);
+    dude.add(plane(z, { w: 2.85, h: 0.36, x: 0, y: 2.78, z: -0.04, material: new THREE.MeshBasicMaterial({ map: textTexture('MC FREEGLASS · SIX TRACKS · NO SMALL MOVEMENTS', { fg: '#fff8d6', bg: '#d32079', size: 27, w: 1300, h: 150, font: '900' }) }), noSplat: true }));
 
     const micStand = new THREE.Group(); micStand.position.set(0.42, 0, 0.82);
     const standPole = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.024, 1.46, 8), frameMat); standPole.position.y = 0.73;
@@ -5034,6 +5568,96 @@ export class World {
         const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 0.025, 16), mat(0x344d56, { roughness: 0.48 }));
         cone.position.set(sx, y, -0.725); cone.rotation.x = Math.PI / 2; cone.userData.noSplat = true; z.group.add(cone);
       }
+    }
+
+    // A large, front-of-glass controller makes track changes legible without
+    // hiding the performer. Left starts/stops; the hot-pink right button skips.
+    box(z, { w: 2.25, h: 0.42, d: 0.44, x: 0, y: 0.48, z: 2.68, material: trousers, solid: false, noSplat: true, name: 'MC visible track controller' });
+    const playButton = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 10), mat(0x55e6cf, { emissive: 0x147d70, emissiveIntensity: 1.2, roughness: 0.22 }));
+    playButton.position.set(-0.6, 0.95, 2.7); playButton.userData.noSplat = true; z.group.add(playButton);
+    const nextButton = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10), mat(0xff2d91, { emissive: 0x8f0b49, emissiveIntensity: 1.45, roughness: 0.18 }));
+    nextButton.position.set(0.6, 0.97, 2.7); nextButton.userData.noSplat = true; z.group.add(nextButton);
+    plane(z, {
+      w: 2.6, h: 0.52, x: 0, y: 1.34, z: 2.94,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('LEFT: PLAY / STOP     RIGHT: NEXT TRACK\nSTEP LEFT OR RIGHT · PRESS E', { fg: '#fff8dd', bg: '#24212b', size: 28, w: 1400, h: 260, font: '900' }) }),
+      noSplat: true, name: 'MC track controls sign',
+    });
+
+    // Three adult pole dancers occupy the neighbouring glass boxes. Their
+    // bodies are intentionally lightweight, but the bikinis, heels and single
+    // procedural faces give each performer a clear silhouette and identity.
+    const poleDancers = [];
+    const dancerDefs = [
+      { id: 'velvet-crash', name: 'VELVET CRASH', x: -8, z: 0.55, skin: 0xb87555, bikini: 0xff477e, heel: 0x19131d, phase: 0.1 },
+      { id: 'chrome-mercy', name: 'CHROME MERCY', x: -4, z: 0.55, skin: 0x8b5b43, bikini: 0x43d8e8, heel: 0xd9e4e8, phase: 2.15 },
+      { id: 'miss-shatter', name: 'MISS SHATTER', x: 4, z: 0.55, skin: 0xd5a17f, bikini: 0x8d5cff, heel: 0xffcf4d, phase: 4.2 },
+    ];
+    for (const def of dancerDefs) {
+      const root = new THREE.Group(); root.position.set(def.x, 0, def.z);
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.025, 0.03, 3.55, 10),
+        mat(0xd8e4e7, { metalness: 0.94, roughness: 0.12 })
+      );
+      pole.position.y = 1.78;
+      const stage = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.78, 0.88, 0.1, 24),
+        mat(0x24212b, { metalness: 0.42, roughness: 0.28 })
+      );
+      stage.position.y = 0.05;
+
+      const body = new THREE.Group(); body.position.set(0.27, 0.1, 0);
+      const skinMat = mat(def.skin, { roughness: 0.74 });
+      const bikiniMat = mat(def.bikini, { roughness: 0.34, metalness: 0.16 });
+      const heelMat = mat(def.heel, { roughness: 0.25, metalness: 0.38 });
+      const bodyHairMat = new THREE.MeshStandardMaterial({
+        color: 0x39241d, ...bodyHairPbr, roughness: 0.98,
+        normalScale: new THREE.Vector2(0.42, 0.42),
+        transparent: true, opacity: 0.46, depthWrite: false,
+      });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.46, 5, 8), skinMat); torso.position.y = 1.0;
+      const bikiniTopL = new THREE.Mesh(new THREE.SphereGeometry(0.115, 9, 7), bikiniMat); bikiniTopL.scale.set(1, 0.75, 0.6); bikiniTopL.position.set(-0.105, 1.17, 0.155);
+      const bikiniTopR = bikiniTopL.clone(); bikiniTopR.position.x = 0.105;
+      const bikiniBottom = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.18, 0.25), bikiniMat); bikiniBottom.position.y = 0.67;
+
+      const chestHair = new THREE.Mesh(new THREE.CircleGeometry(0.13, 14), bodyHairMat);
+      chestHair.position.set(0, 0.985, 0.202);
+      chestHair.scale.set(0.86 + (def.phase % 1) * 0.18, 1.16, 1);
+      chestHair.rotation.z = (def.phase - 2) * 0.08;
+      chestHair.renderOrder = 2;
+      body.add(chestHair);
+
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.072, 0.5, 4, 7), skinMat);
+        const legHair = new THREE.Mesh(leg.geometry, bodyHairMat);
+        legHair.scale.set(1.035, 1.012, 1.035); legHair.renderOrder = 2; leg.add(legHair);
+        leg.position.set(side * 0.11, 0.35, 0); legs.push(leg); body.add(leg);
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.08, 0.28), heelMat);
+        shoe.position.set(side * 0.11, 0.08, 0.07);
+        const highHeel = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.16, 0.04), heelMat);
+        highHeel.position.set(side * 0.11, 0.1, -0.055);
+        body.add(shoe, highHeel);
+      }
+
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Group(); arm.position.set(side * 0.24, 1.2, 0);
+        const limb = new THREE.Mesh(new THREE.CapsuleGeometry(0.052, 0.38, 4, 7), skinMat); limb.position.y = -0.23;
+        const armHair = new THREE.Mesh(limb.geometry, bodyHairMat);
+        armHair.scale.set(1.04, 1.012, 1.04); armHair.renderOrder = 2; limb.add(armHair);
+        arm.add(limb); arms.push(arm); body.add(arm);
+      }
+
+      const headPivot = new THREE.Group(); headPivot.position.y = 1.6;
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.185, 12, 9), skinMat);
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(0x211822, { roughness: 0.9 }));
+      hair.position.y = 0.025;
+      headPivot.add(skull, hair, ridiculousFaceOverlay({ id: def.id }, 0.31, 0.31, 0, 0.19));
+      body.add(torso, bikiniTopL, bikiniTopR, bikiniBottom, headPivot);
+      root.add(pole, stage, body);
+      root.traverse((o) => { o.userData.noSplat = true; if (o.isMesh) o.castShadow = true; });
+      z.group.add(root);
+      poleDancers.push({ ...def, root, body, torso, head: headPivot, arms, legs });
     }
 
     // Floating signal lights and translucent acoustic ribbons borrow the
@@ -5059,17 +5683,25 @@ export class World {
       ribbon.userData.noSplat = true; z.group.add(ribbon);
     }
 
-    z.interactables.push({
-      id: 'mc-freeglass', type: 'flavor', label: 'Listen at MC Freeglass’s booth',
-      title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(0, 1.1, 2.45), radius: 2.35,
-      lines: [
-        'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
-        'MC FREEGLASS: “Freedom is not silence. Freedom is choosing what the echo gets to keep.”',
-      ],
-    });
+    z.interactables.push(
+      {
+        id: 'mc-freeglass', type: 'mcJukebox', label: 'Green button · E play/stop MC Freeglass',
+        title: 'THE FREEDOM FREQUENCY', pos: new THREE.Vector3(-0.65, 1.0, 2.85), radius: 1.22,
+        lines: [
+          'A sampler chews daylight into crooked drums. The booth returns every word as a softer revolution.',
+          'MC FREEGLASS: “Freedom is not silence. Freedom is choosing what the echo gets to keep.”',
+        ],
+      },
+      {
+        id: 'mc-freeglass-next', type: 'mcJukeboxNext', label: 'Pink button · E next MC Freeglass track',
+        title: 'SKIP THE CURATOR', pos: new THREE.Vector3(0.65, 1.0, 2.85), radius: 1.22,
+        lines: ['Six tracks. One bright button. No committee meeting.'],
+      },
+    );
 
     z.animated.rageRoom = {
-      breakables, shards, dude, torso, head, armL, armR, signalOrbs, rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0,
+      breakables, shards, dude, rapperPlane, rapperVideo, signalOrbs, poleDancers,
+      rageLight: null, timer: 1.5, nextIndex: 0, shoutIndex: 0, moanTimer: 2.2, moanIndex: 0,
       lines: [
         'Chaos on the kick drum, but I keep my breath in time.',
         'Jesus in the reverb saying mercy still can rhyme.',
@@ -5103,6 +5735,169 @@ export class World {
     const red = new THREE.PointLight(0x78d8e7, 1.65, 10, 1.7); red.position.set(0, 3.0, 0.4); red.userData.baseIntensity = 1.65; z.group.add(red); z.animated.rageLight = red; z.animated.rageRoom.rageLight = red;
     door(z, { x: -11.8, z: 0, ry: Math.PI / 2, label: '← GALLERIA BIANCA', to: 'galleria' });
     z.waypoints = [new THREE.Vector3(-9, 0, -5), new THREE.Vector3(-5, 0, -5), new THREE.Vector3(5, 0, -5), new THREE.Vector3(9, 0, -5)];
+  }
+
+  /* ---------------------------------------------------------- */
+  /*  THREE FART BOXES — three boxes, three guys, one medium    */
+  /* ---------------------------------------------------------- */
+  #buildFartBoxes() {
+    const z = this.#newZone('fartBoxes');
+    shell(z, { w: 15, d: 10, h: 4.2, floorColor: 0xc6c5c0, wallColor: 0xe7e5de, ceilColor: 0xf2f0e9 });
+    z.spawn.set(0, 0, 4.15);
+    z.spawnYaw = Math.PI;
+    z.fog = { color: 0xdeddd7, density: 0.009 };
+
+    const glass = new THREE.MeshStandardMaterial({
+      color: 0xd7f3f5, transparent: true, opacity: 0.2,
+      roughness: 0.08, metalness: 0.08, depthWrite: false,
+    });
+    const frame = mat(0x7c8386, { metalness: 0.82, roughness: 0.24 });
+    const guys = [];
+    const defs = [
+      { id: 'fart-box-guy-1', x: -4.5, skin: 0xc98d6c, shirt: 0x394c63, briefs: 0x202229, suit: 0xa65d32, hose: 0x5d3325, phase: 0.2 },
+      { id: 'fart-box-guy-2', x: 0, skin: 0x8c5b43, shirt: 0x73516e, briefs: 0x17191f, suit: 0x81964b, hose: 0x45572e, phase: 2.3 },
+      { id: 'fart-box-guy-3', x: 4.5, skin: 0xd7aa86, shirt: 0x5d6940, briefs: 0x29242a, suit: 0xd19b35, hose: 0x75551d, phase: 4.4 },
+    ];
+
+    for (const def of defs) {
+      for (const side of [-1, 1]) {
+        box(z, { w: 0.07, h: 3.25, d: 4.3, x: def.x + side * 1.55, z: -0.45, material: glass, noSplat: true, name: 'fart box glass' });
+      }
+      for (const zz of [-2.58, 1.68]) {
+        box(z, { w: 3.1, h: 3.25, d: 0.07, x: def.x, z: zz, material: glass, noSplat: true, name: 'fart box glass' });
+      }
+      for (const [fx, fz] of [[-1.55, -2.58], [1.55, -2.58], [-1.55, 1.68], [1.55, 1.68]]) {
+        box(z, { w: 0.075, h: 3.32, d: 0.075, x: def.x + fx, z: fz, material: frame, solid: false, noSplat: true });
+      }
+
+      const guy = new THREE.Group(); guy.position.set(def.x, 0, -0.45);
+      const skinMat = mat(def.skin, { roughness: 0.78 });
+      const shirtMat = mat(def.shirt, { roughness: 0.84 });
+      const briefsMat = mat(def.briefs, { roughness: 0.86 });
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.5, 5, 8), shirtMat); torso.position.y = 1.03;
+      const hips = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.2, 0.28), briefsMat); hips.position.y = 0.66;
+      const suitMat = new THREE.MeshPhysicalMaterial({
+        color: def.suit, roughness: 0.28, metalness: 0.03,
+        clearcoat: 0.72, clearcoatRoughness: 0.18,
+      });
+      const costume = new THREE.Group(); costume.position.y = 1.02;
+      const inflatedBody = new THREE.Mesh(new THREE.SphereGeometry(0.58, 18, 12), suitMat);
+      inflatedBody.scale.set(1.02, 1.18, 0.82);
+      const inflatedShoulders = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10), suitMat);
+      inflatedShoulders.position.y = 0.34; inflatedShoulders.scale.set(1.35, 0.58, 0.88);
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.055, 8, 20), mat(0x2c2827, { roughness: 0.38 }));
+      collar.position.y = 0.56; collar.rotation.x = Math.PI / 2;
+      const gasPatch = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.42, 0.24),
+        new THREE.MeshBasicMaterial({ map: textTexture('GAS\nSUIT', { fg: '#fff7d5', bg: '#252225', size: 36, w: 500, h: 280, font: '900' }) })
+      );
+      gasPatch.position.set(0, 0.05, 0.485);
+      costume.add(inflatedBody, inflatedShoulders, collar, gasPatch);
+      const legs = [];
+      for (const side of [-1, 1]) {
+        const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, 0.48, 4, 7), skinMat);
+        leg.position.set(side * 0.12, 0.34, 0); legs.push(leg); guy.add(leg);
+      }
+      const arms = [];
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.42, 4, 7), skinMat);
+        arm.position.set(side * 0.32, 1.0, 0); arm.rotation.z = side * -0.08; arms.push(arm); guy.add(arm);
+      }
+      const head = new THREE.Group(); head.position.y = 1.66;
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 9), skinMat);
+      const hair = new THREE.Mesh(new THREE.SphereGeometry(0.195, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), mat(0x201b1b, { roughness: 0.95 }));
+      hair.position.y = 0.025;
+      head.add(skull, hair, ridiculousFaceOverlay({ id: def.id }, 0.32, 0.32, 0, 0.195));
+      guy.add(torso, hips, costume, head);
+      guy.traverse((o) => { o.userData.noSplat = true; });
+      z.group.add(guy);
+
+      // One sealed-looking hose exits each suit, passes through the front pane
+      // and slumps into the public aisle. The glass is conceptual; the tubing
+      // is satisfyingly literal.
+      const hoseCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(def.x + 0.43, 1.0, 0.0),
+        new THREE.Vector3(def.x + 0.72, 0.88, 0.72),
+        new THREE.Vector3(def.x + 0.62, 0.62, 1.72),
+        new THREE.Vector3(def.x + 0.88, 0.28, 2.35),
+        new THREE.Vector3(def.x + 1.02, 0.12, 2.72),
+      ]);
+      const hose = new THREE.Mesh(
+        new THREE.TubeGeometry(hoseCurve, 28, 0.072, 9, false),
+        mat(def.hose, { roughness: 0.46, metalness: 0.08 })
+      );
+      hose.userData.noSplat = true; hose.castShadow = true; z.group.add(hose);
+      const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.085, 0.16, 12), frame);
+      nozzle.position.set(def.x + 1.02, 0.12, 2.72); nozzle.rotation.x = Math.PI / 2;
+      nozzle.userData.noSplat = true; z.group.add(nozzle);
+      guys.push({ ...def, group: guy, torso, costume, head, arms, legs });
+    }
+
+    // The room now treats flatulence with the over-serious graphic language
+    // of a museum survey: signal-chain labels above the boxes and two readable
+    // information posters in the entrance aisle.
+    const posterFrame = new THREE.MeshBasicMaterial({ color: 0x202126 });
+    const hangPoster = ({ x, y, zz, ry = 0, w, h, text, fg, bg, size = 30 }) => {
+      const inset = ry > 0 ? 0.012 : ry < 0 ? -0.012 : 0;
+      plane(z, { w: w + 0.13, h: h + 0.13, x, y, z: zz, ry, material: posterFrame, noSplat: true, name: 'fart poster frame' });
+      plane(z, {
+        w, h, x: x + inset, y, z: zz + (ry === 0 ? 0.012 : 0), ry,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(text, { fg, bg, size, w: 900, h: 1100, font: '900' }) }),
+        noSplat: true, name: 'fart information poster',
+      });
+    };
+
+    plane(z, {
+      w: 11.8, h: 0.52, x: 0, y: 3.82, z: -4.98,
+      material: new THREE.MeshBasicMaterial({ map: textTexture('THE INSTITUTE OF ATMOSPHERIC RELEASE', { fg: '#fff6d8', bg: '#202126', size: 43, w: 1800, h: 170, font: '900' }) }),
+      noSplat: true, name: 'fart room title poster',
+    });
+    const channelLabels = [
+      { x: -4.5, text: 'BOX 01 · REVERB\nTHE LONG AFTERMATH', fg: '#153335', bg: '#8de5dd' },
+      { x: 0, text: 'BOX 02 · DELAY\nTHE REPEATING ARGUMENT', fg: '#3a1d39', bg: '#f0a7e5' },
+      { x: 4.5, text: 'BOX 03 · DISTORTION\nTHE DAMAGED TESTIMONY', fg: '#3e2705', bg: '#ffd45d' },
+    ];
+    for (const label of channelLabels) {
+      plane(z, {
+        w: 3.35, h: 0.42, x: label.x, y: 3.35, z: -4.97,
+        material: new THREE.MeshBasicMaterial({ map: textTexture(label.text, { fg: label.fg, bg: label.bg, size: 28, w: 1000, h: 190, font: '900' }) }),
+        noSplat: true, name: 'fart box signal label',
+      });
+    }
+
+    hangPoster({
+      x: -7.42, y: 2.05, zz: 3.0, ry: Math.PI / 2, w: 2.35, h: 3.05,
+      text: 'FART FACT 01\n\nMOST INTESTINAL GAS\nHAS NO SMELL.\n\nSULFUR COMPOUNDS\nDO THE DRAMA.\n\nPFFFFT IS A SOUND,\nNOT A MORAL FAILURE.',
+      fg: '#f7f1df', bg: '#31524c', size: 37,
+    });
+    hangPoster({
+      x: 7.42, y: 2.05, zz: 3.0, ry: -Math.PI / 2, w: 2.35, h: 3.05,
+      text: 'FART FACT 02\n\nSWALLOWED AIR +\nGUT MICROBES\nMAKE THE MATERIAL.\n\nPRESSURE MAKES\nTHE PERFORMANCE.\n\nTHE GALLERY ADDS\nREVERB.',
+      fg: '#2a1730', bg: '#f3b7dd', size: 37,
+    });
+
+    z.interactables.push(
+      {
+        id: 'fart-wall-text-odor', type: 'flavor', label: 'Read the fart facts',
+        title: 'DEPARTMENT OF OLFACTORY STUDIES', pos: new THREE.Vector3(-6.75, 1.25, 3.0), radius: 2.25,
+        lines: [
+          'Most intestinal gas is odorless. Trace sulfur compounds are responsible for the memorable part.',
+          'The institution has chosen not to disclose whether the ventilation system is conceptual.',
+        ],
+      },
+      {
+        id: 'fart-wall-text-sound', type: 'flavor', label: 'Read the fart acoustics',
+        title: 'ACOUSTICS OF RELEASE', pos: new THREE.Vector3(6.75, 1.25, 3.0), radius: 2.25,
+        lines: [
+          'Gas pressure and vibrating tissue shape the sound. Architecture decides how long the embarrassment survives.',
+          'Box 01 blooms. Box 02 repeats. Box 03 destroys the waveform and calls it research.',
+        ],
+      },
+    );
+
+    z.group.add(new THREE.HemisphereLight(0xf7f5ed, 0x55575a, 1.35));
+    door(z, { x: 0, z: 5.08, ry: Math.PI, label: '← GALLERIA BIANCA', to: 'galleria' });
+    z.animated.fartBoxes = { guys, timer: 0.8, index: 0 };
   }
 
   /* ---------------------------------------------------------- */
@@ -6291,7 +7086,7 @@ export class World {
     for (const [x, color] of [[-4.2, 0xffb85c], [-1.4, 0xe76f51], [1.4, 0x66b7d3], [4.2, 0xffd994]]) {
       const spot = new THREE.SpotLight(color, 4.5, 10, 0.34, 0.72, 1.7); spot.position.set(x, 4.75, -4.0); spot.target.position.set(x * 0.55, 1.0, -5.1); spot.userData.base = 3.8; z.group.add(spot, spot.target); bandLights.push(spot);
     }
-    z.animated.listeningBand = { performers: [guitarist, bassist, singer, drummer], guitarist, bassist, singer, drummer, kit, kickDrum, cymbals, sticks, bandLights };
+    z.animated.listeningBand = { performers: [guitarist, bassist, singer, drummer], guitarist, bassist, singer, drummer, kit, kickDrum, cymbals, sticks, bandLights, nextVocal: 0 };
     z.colliders.push({ minX: -5.35, maxX: 5.35, minZ: -6.95, maxZ: -3.72 });
     z.interactables.push({
       id: 'listening-live-band', type: 'flavor', label: 'Watch the live take', title: 'THE HOUSE BAND',
@@ -6676,7 +7471,7 @@ export class World {
         } else if (cameraCorrupted) {
           material.map = textTexture(corruptLines[i % corruptLines.length], { fg: '#ff78c8', bg: '#171019', size: 31, w: 600, h: 350 });
         } else {
-          material.map = material.userData.normalMap;
+          material.map = (d.scarred && i === 4) ? d.staticTex : material.userData.normalMap;
         }
         material.needsUpdate = true;
       }
@@ -6838,6 +7633,137 @@ export class World {
     }
   }
 
+  waitingLaneAt(position) {
+    if (this.current !== 'biennaleWaiting' || !position) return null;
+    const waiting = this.zones.get('biennaleWaiting')?.animated.waiting;
+    if (!waiting) return null;
+    for (const [id, bounds] of Object.entries(waiting.lanes)) {
+      if (position.x >= bounds.minX && position.x <= bounds.maxX
+        && position.z >= bounds.minZ && position.z <= bounds.maxZ) return id;
+    }
+    return null;
+  }
+
+  isWaitingPavilionSignHit(object) {
+    if (this.current !== 'biennaleWaiting') return null;
+    let target = object;
+    while (target) {
+      if (target.userData?.waitingPavilionSign) return target.userData.waitingPavilionSign;
+      target = target.parent;
+    }
+    return null;
+  }
+
+  waitingSupportFromObject(object) {
+    if (this.current !== 'biennaleWaiting') return null;
+    let target = object;
+    while (target) {
+      if (target.userData?.waitingSupport) return target.userData.waitingSupport;
+      target = target.parent;
+    }
+    return null;
+  }
+
+  isNowOrNeverBoardHit(object) {
+    if (this.current !== 'nowOrNever') return false;
+    let target = object;
+    while (target) {
+      if (target.userData?.nowOrNeverBoard || target.name === 'nowOrNeverBoard') return true;
+      target = target.parent;
+    }
+    return false;
+  }
+
+  syncNowOrNeverBoard({ hasPainting = false, title = '', fame = 0, heat = 0, seen = false } = {}) {
+    const room = this.zones.get('nowOrNever')?.animated.nowOrNever;
+    if (!room) return;
+    room.board.context = { hasPainting: Boolean(hasPainting), title: typeof title === 'string' ? title : '', fame: Number(fame) || 0, heat: Number(heat) || 0 };
+    room.seen = Boolean(seen);
+    room.board.lastRender = -1;
+  }
+
+  nowOrNeverBoardRow() {
+    const room = this.zones.get('nowOrNever')?.animated.nowOrNever;
+    if (!room) return null;
+    const board = room.board;
+    const cycle = Math.floor(this.#t / 5.6);
+    const rowIndex = cycle % board.rows.length;
+    const row = board.rows[rowIndex];
+    const statusIndex = rowIndex === 0
+      ? (board.context.hasPainting ? [0, 1, 3, 5, 10][cycle % 5] : [0, 2, 6, 5, 9][cycle % 5])
+      : row.schedule[(cycle + rowIndex) % row.schedule.length];
+    return { ...row, destination: rowIndex === 0 && board.context.title ? `“${board.context.title.slice(0, 25)}”` : row.destination, status: board.statuses[statusIndex], index: rowIndex };
+  }
+
+  nowOrNeverBoardAppraisal() {
+    const row = this.nowOrNeverBoardRow();
+    if (!row) return 'The departure board is currently between versions of the present.';
+    return `${row.code} · ${row.artist} is ${row.status} for ${row.destination}. The institution estimates this status will remain current for approximately one refresh.`;
+  }
+
+  /** Rebuild preliminary gates, pavilion scores and the final tableau from run flags. */
+  applyWaitingState({ stage = 0, activeQueue = null, finalStarted = false, finalElapsed = 0, pavilions = {}, complete = false, winner = null } = {}) {
+    const waiting = this.zones.get('biennaleWaiting')?.animated.waiting;
+    if (!waiting) return;
+    waiting.stage = Math.max(0, Math.min(4, Number(stage) || 0));
+    waiting.activeQueue = typeof activeQueue === 'string' ? activeQueue : null;
+    waiting.finalStarted = Boolean(finalStarted);
+    waiting.finalElapsed = Math.max(0, Number(finalElapsed) || 0);
+    waiting.pavilions = pavilions && typeof pavilions === 'object' ? pavilions : {};
+    waiting.complete = Boolean(complete);
+    waiting.winner = typeof winner === 'string' ? winner : null;
+
+    const names = { nordic: 'NORDIC', german: 'GERMAN', american: 'AMERICAN', french: 'FRENCH', british: 'BRITISH' };
+    const order = ['nordic', 'german', 'american', 'french', 'british'];
+    const lines = order.map((key) => {
+      const p = waiting.pavilions[key] ?? {};
+      const score = Math.max(0, Math.round(Number(p.score) || 50));
+      const status = p.eliminated ? 'COLLAPSED' : waiting.complete && key === waiting.winner ? 'WINNER' : `${score} SEC`;
+      return `${names[key].padEnd(9, ' ')} ${status}`;
+    });
+    const heading = waiting.complete
+      ? `QUEUE SURVIVAL · ${names[waiting.winner] ?? 'PENDING'} PAVILION WINS`
+      : waiting.finalStarted
+        ? `QUEUE SURVIVAL · ${Math.min(120, Math.floor(waiting.finalElapsed))}/120 SEC`
+        : `QUEUE SURVIVAL · PRELIMINARY ${Math.min(4, waiting.stage)}/4`;
+    const boardKey = `${heading}:${lines.join('|')}`;
+    if (waiting.scoreboard.userData.boardKey !== boardKey) {
+      waiting.scoreboard.material.map?.dispose?.();
+      waiting.scoreboard.material.map = textTexture(`${heading}\n\n${lines.join('\n')}`, {
+        fg: '#d9f2dc', bg: '#102017', size: 39, w: 1200, h: 650, font: '800',
+      });
+      waiting.scoreboard.material.needsUpdate = true;
+      waiting.scoreboard.userData.boardKey = boardKey;
+    }
+
+    for (const key of order) {
+      const state = waiting.pavilions[key] ?? {};
+      const sign = waiting.pavilionSigns[key];
+      const eliminated = Boolean(state.eliminated);
+      sign.material.opacity = eliminated ? 0.28 : 1;
+      sign.material.color.set(eliminated ? 0x777777 : 0xffffff);
+      sign.rotation.z = eliminated ? (order.indexOf(key) % 2 ? -0.08 : 0.08) : 0;
+      sign.scale.setScalar(waiting.complete && key === waiting.winner ? 1.12 : state.supported ? 1.045 : 1);
+      for (const visitor of waiting.visitors.filter((v) => v.lane === key)) visitor.group.visible = !eliminated || (waiting.complete && key === waiting.winner);
+    }
+    waiting.germanDoors.forEach((doorMesh, i) => {
+      const german = waiting.pavilions.german ?? {};
+      doorMesh.rotation.z = german.eliminated ? (i % 2 ? -0.9 : 0.9) : german.supported ? -0.24 - i * 0.08 : 0;
+      doorMesh.visible = !german.eliminated || waiting.winner === 'german';
+    });
+    waiting.placards.forEach((placard, i) => {
+      placard.rotation.z = (waiting.pavilions.french?.eliminated ? 0.42 : 0.08) * (i % 2 ? -1 : 1);
+    });
+    waiting.puddles.forEach((puddle, i) => {
+      const growth = waiting.pavilions.british?.eliminated ? 1.9 : 0.55 + Math.min(1, waiting.finalElapsed / 120) * (0.65 + i * 0.05);
+      puddle.scale.setScalar(growth);
+      puddle.material.opacity = waiting.pavilions.british?.eliminated ? 0.62 : 0.38;
+    });
+    waiting.juryDesk.material.color.set(waiting.complete ? 0x725d22 : order.filter((key) => !waiting.pavilions[key]?.eliminated).length === 1 ? 0x455c35 : 0x17181d);
+    const visualKey = `${waiting.stage}:${waiting.activeQueue}:${waiting.finalStarted}:${waiting.complete}:${waiting.winner}`;
+    waiting.visualKey = visualKey;
+  }
+
   /* ---- the gallery display slot ---- */
 
   hangOnDisplay(texture, title, lotNumber = lotNumberFor(1)) {
@@ -6976,6 +7902,20 @@ export class World {
       }
     }
 
+    if (z.animated.blueChipDuck) {
+      const duck = z.animated.blueChipDuck;
+      duck.duck.position.y = 0.27 + Math.sin(t * 2.1) * 0.025;
+      duck.duck.rotation.y = Math.sin(t * 0.7) * 0.16;
+    }
+    if (z.animated.adultVisitors) {
+      for (const visitor of z.animated.adultVisitors) {
+        const phase = visitor.userData.phase;
+        visitor.position.y = Math.sin(t * 1.15 + phase) * 0.008;
+        visitor.rotation.y = Math.sin(t * 0.32 + phase) * 0.07;
+        visitor.children[1].rotation.y = Math.sin(t * 0.52 + phase) * 0.12;
+      }
+    }
+
     if (z.animated.listeningDrivers) {
       const breathe = beat ? kick : Math.max(0, Math.sin(t * 2.15)) * 0.018;
       for (const d of z.animated.listeningDrivers) {
@@ -7024,6 +7964,12 @@ export class World {
       band.singer.arms[1].rotation.z = 0.18 + downbeat * (0.16 + intensity * 0.72);
       band.singer.arms[1].rotation.x = -0.55 - downbeat * intensity * 0.5;
       band.singer.group.rotation.y = Math.sin(t * beatRate * Math.PI) * (0.03 + intensity * 0.13);
+
+      // A recorded ad-lib the singer keeps coming back to, one call every 10s.
+      if (t >= band.nextVocal) {
+        band.nextVocal = t + 10;
+        event = { type: 'singerVocal' };
+      }
 
       // Alternating stick travel lands snare/hat gestures between the kicks.
       band.drummer.arms[0].rotation.x = -0.48 - downbeat * travel;
@@ -7083,6 +8029,70 @@ export class World {
       }
     }
 
+    if (z.animated.waiting) {
+      const waiting = z.animated.waiting;
+      for (const visitor of waiting.visitors) {
+        if (!visitor.group.visible) continue;
+        visitor.phase = (visitor.phase + dt * visitor.speed + 1) % 1;
+        const eased = visitor.phase * visitor.phase * (3 - 2 * visitor.phase);
+        visitor.group.position.x = THREE.MathUtils.lerp(visitor.from.x, visitor.to.x, eased);
+        visitor.group.position.z = THREE.MathUtils.lerp(visitor.from.y, visitor.to.y, eased);
+        visitor.group.rotation.y = Math.atan2(visitor.to.x - visitor.from.x, visitor.to.y - visitor.from.y) + (visitor.speed < 0 ? Math.PI : 0);
+        const step = Math.sin(t * 5.2 + visitor.phase * Math.PI * 2);
+        visitor.group.position.y = Math.abs(step) * 0.014;
+        visitor.legs[0].rotation.x = step * 0.08;
+        visitor.legs[1].rotation.x = -step * 0.08;
+        visitor.head.rotation.y = Math.sin(t * 0.42 + visitor.phase * 7) * 0.09;
+      }
+      waiting.ticketGlow.material.opacity = 0.68 + Math.pow(Math.max(0, Math.sin(t * 3.2)), 8) * 0.32;
+      waiting.vipArrows.forEach((arrow, i) => { arrow.position.x += Math.sin(t * 1.35 + i * 0.7) * dt * 0.035; });
+      waiting.placards.forEach((placard, i) => {
+        placard.position.y = 1.75 + Math.sin(t * 1.8 + i * 1.1) * 0.08;
+      });
+      waiting.puddles.forEach((puddle, i) => {
+        puddle.material.opacity += Math.sin(t * 0.7 + i) * dt * 0.012;
+        puddle.material.opacity = clamp(puddle.material.opacity, 0.3, 0.68);
+      });
+    }
+
+    if (z.animated.nowOrNever) {
+      const nowRoom = z.animated.nowOrNever;
+      const board = nowRoom.board;
+      const cycle = Math.floor(t / 5.6);
+      board.activeRow = cycle % board.rows.length;
+      board.flash = (t % 5.6) < 0.42 ? 1 : 0;
+      const renderTick = Math.floor(t * 8);
+      if (renderTick !== board.lastRender) {
+        board.lastRender = renderTick;
+        board.render(t);
+        const seconds = Math.floor(t) % 3600;
+        if (seconds !== nowRoom.lastClockSecond) {
+          nowRoom.lastClockSecond = seconds;
+          const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+          const secs = String(seconds % 60).padStart(2, '0');
+          nowRoom.clock.material.map?.dispose?.();
+          nowRoom.clock.material.map = textTexture(`${mins}:${secs}\nTREND CYCLE TIME`, { fg: '#f2d77f', bg: '#111820', size: 37, w: 420, h: 170, font: '900' });
+          nowRoom.clock.material.needsUpdate = true;
+        }
+      }
+      if (t >= nowRoom.nextBoardFlap) {
+        nowRoom.nextBoardFlap = t + 0.72;
+        event = { type: 'nowOrNeverFlap', variant: cycle + board.activeRow };
+      }
+      if (t >= nowRoom.nextAnnouncement && !event) {
+        nowRoom.nextAnnouncement = t + 9.5;
+        event = { type: 'nowOrNeverAnnouncement', variant: nowRoom.announcementIndex++ };
+      }
+      nowRoom.boardGlow.intensity = 1.05 + (board.flash ? 1.1 : 0) + kick * 0.35;
+      nowRoom.suitcases.forEach((caseMesh, i) => {
+        caseMesh.rotation.z = Math.sin(t * 0.8 + i) * 0.012;
+        caseMesh.position.y = 0.04 + Math.abs(Math.sin(t * 1.4 + i * 0.7)) * 0.008;
+      });
+      nowRoom.gateSigns.forEach((sign, i) => {
+        sign.material.opacity = i === board.activeRow % nowRoom.gateSigns.length && board.flash ? 0.72 : 1;
+      });
+    }
+
     if (z.animated.documenta) {
       const doc = z.animated.documenta;
       for (let i = 0; i < doc.crews.length; i++) {
@@ -7123,14 +8133,27 @@ export class World {
       const frenzy = 0.7 + Math.sin(t * 5.8) * 0.3;
       rage.dude.position.y = Math.abs(Math.sin(t * 8.4)) * 0.035;
       rage.dude.rotation.y = Math.sin(t * 5.1) * 0.16;
-      rage.torso.rotation.z = Math.sin(t * 11.5) * 0.08;
-      rage.torso.rotation.x = -0.08 - frenzy * 0.08;
-      rage.head.rotation.y = Math.sin(t * 13.2) * 0.32;
-      rage.head.rotation.z = Math.sin(t * 7.7) * 0.12;
-      rage.armL.rotation.z = -0.55 - Math.abs(Math.sin(t * 7.1)) * 1.05;
-      rage.armR.rotation.z = 0.55 + Math.abs(Math.sin(t * 8.2 + 0.8)) * 1.12;
-      rage.armL.rotation.x = Math.sin(t * 4.6) * 0.32;
-      rage.armR.rotation.x = Math.sin(t * 5.2 + 1.2) * -0.28;
+      rage.rapperPlane.rotation.z = Math.sin(t * 7.7) * 0.025;
+      rage.rapperPlane.rotation.x = -0.015 - frenzy * 0.018;
+      rage.rapperPlane.scale.set(1 + frenzy * 0.018, 1 + Math.sin(t * 8.4) * 0.012, 1);
+
+      for (let i = 0; i < (rage.poleDancers?.length ?? 0); i++) {
+        const dancer = rage.poleDancers[i];
+        const phase = t * (0.78 + i * 0.07) + dancer.phase;
+        dancer.body.position.x = Math.cos(phase) * 0.3;
+        dancer.body.position.z = Math.sin(phase) * 0.3;
+        dancer.body.position.y = 0.1 + Math.abs(Math.sin(phase * 2)) * 0.045;
+        dancer.body.rotation.y = -phase + Math.PI / 2;
+        dancer.torso.rotation.z = Math.sin(phase * 2) * 0.12;
+        dancer.torso.rotation.x = -0.08 + Math.sin(phase) * 0.06;
+        dancer.head.rotation.y = Math.sin(phase * 1.7) * 0.24;
+        dancer.head.rotation.z = Math.sin(phase * 2.2) * 0.08;
+        dancer.arms[0].rotation.z = -0.72 - Math.sin(phase) * 0.18;
+        dancer.arms[1].rotation.z = 0.5 + Math.cos(phase) * 0.24;
+        dancer.arms[0].rotation.x = -0.5;
+        dancer.legs[0].rotation.z = Math.sin(phase) * 0.1;
+        dancer.legs[1].rotation.z = -Math.sin(phase) * 0.1;
+      }
 
       for (const orb of rage.signalOrbs ?? []) {
         orb.mesh.position.y = orb.baseY + Math.sin(t * 1.15 + orb.phase) * 0.09;
@@ -7166,9 +8189,43 @@ export class World {
           event = { type: 'rageBreak', variant: rage.shoutIndex % 4, line: rage.lines[(rage.shoutIndex - 1) % rage.lines.length] };
         }
       }
+      rage.moanTimer -= dt;
+      if (rage.moanTimer <= 0 && !event && rage.poleDancers?.length) {
+        const dancer = rage.poleDancers[rage.moanIndex % rage.poleDancers.length];
+        rage.moanIndex++;
+        rage.moanTimer = 3.4 + (rage.moanIndex % 3) * 0.75;
+        event = {
+          type: 'rageMoan', speaker: dancer.name, variant: rage.moanIndex,
+          line: ['MM—AHH.', 'OH—KEEP THE GLASS SHAKING.', 'AHH—THE POLE HAS BETTER RHYTHM.'][rage.moanIndex % 3],
+        };
+      }
       const breakAge = t - (rage.lastBreak ?? 0);
       const daylightBase = rage.rageLight.userData.baseIntensity ?? 1.65;
       rage.rageLight.intensity = daylightBase + (breakAge >= 0 && breakAge < 0.45 ? (1 - breakAge / 0.45) * 3.2 : 0);
+    }
+
+    if (z.animated.fartBoxes) {
+      const room = z.animated.fartBoxes;
+      for (let i = 0; i < room.guys.length; i++) {
+        const guy = room.guys[i];
+        const phase = t * (1.15 + i * 0.08) + guy.phase;
+        guy.group.position.y = Math.abs(Math.sin(phase)) * 0.018;
+        guy.torso.rotation.x = -0.04 + Math.max(0, Math.sin(phase * 0.5)) * 0.1;
+        guy.torso.rotation.z = Math.sin(phase) * 0.035;
+        const inflate = 1 + Math.sin(phase * 0.72) * 0.025;
+        guy.costume.scale.set(inflate, 1 + Math.sin(phase * 0.72 + 0.35) * 0.035, inflate);
+        guy.costume.rotation.z = Math.sin(phase) * 0.022;
+        guy.head.rotation.y = Math.sin(phase * 0.7) * 0.14;
+        guy.arms[0].rotation.x = Math.sin(phase) * 0.08;
+        guy.arms[1].rotation.x = -Math.sin(phase) * 0.08;
+      }
+      room.timer -= dt;
+      if (room.timer <= 0) {
+        const index = room.index % room.guys.length;
+        room.index++;
+        room.timer = 1.65 + (room.index % 3) * 0.55;
+        event = { type: 'fartBox', boxIndex: index };
+      }
     }
 
     if (z.animated.deathMetal) {

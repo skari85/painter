@@ -2187,6 +2187,121 @@ const DOCUMENTERS = [
   ]],
 ];
 
+const WAITING_STAFF = [
+  ['waitingMarshal', 'Number Annika', 'Queue Marshal', 'waiting-marshal', 0xd0a081, 0x24262c, [
+    'If your number is called while you are yourself, please become someone else.',
+    'The estimated wait is accurate within one biennale.',
+  ]],
+  ['waitingClosedAttendant', 'Yesterday Moss', 'Closure Attendant', 'waiting-closed', 0x8f5d43, 0x545860, [
+    'The artwork closed yesterday. The queue remains critically open.',
+    'You may still experience the fact that you missed it.',
+  ]],
+  ['waitingApologist', 'Sorry Sørensen', 'Nordic Apologist', 'waiting-apologist', 0xd9ab8d, 0x567385, [
+    'I am so sorry about the bench. It has been thinking about capacity.',
+    'Sorry. Was that apology ahead of you in the queue?',
+  ]],
+  ['waitingSponsorA', 'Liberty Brandguard One', 'Sponsorship Officer', 'waiting-sponsor-a', 0x74462f, 0x742238, [
+    'Your safety is presented by a beverage you have not consented to crave.',
+    'Please keep both hands visible near the tote bags.',
+  ]],
+  ['waitingSponsorB', 'Liberty Brandguard Two', 'Sponsorship Officer', 'waiting-sponsor-b', 0xc58f70, 0x263f67, [
+    'The gift shop is a sovereign commercial zone.',
+    'Browsing without brand alignment may look like intent.',
+  ]],
+  ['waitingStriker', 'Camille Toujours', 'Striking Delegate', 'waiting-striker', 0x9b674c, 0x315b87, [
+    'The pavilion is closed. The strike is open. Join whichever has a future.',
+    'We refuse to perform waiting without collective bargaining.',
+  ]],
+  ['waitingDamp', 'Nigel Mildew', 'Damp Attendant', 'waiting-damp', 0xd0a58a, 0x485d64, [
+    'It is not leaking. It is remembering the weather indoors.',
+    'The queue is damp at the edges and constitutionally unable to mention it.',
+  ]],
+  ['waitingJuryClerk', 'Patience Quorum', 'International Jury Clerk', 'waiting-jury', 0x80513a, 0x1d2026, [
+    'National culture is difficult to compare. Queue duration is a number.',
+    'The jury has reached a decision by waiting for four alternatives to collapse.',
+  ]],
+];
+
+// An original superhero-shaped nuisance: primary-colour costume, heroic pose,
+// absolutely no trademarked insignia. He is intentionally cheap to render so
+// the gag does not make the already busy rooms heavier.
+const SUPER_FARTER = {
+  id: 'captainFlatulence', name: 'CAPTAIN FLATULENCE', shortRole: 'cape nuisance',
+  role: 'Cape Nuisance, Unrequested', ego: 58, weak: 'witty', resist: 'kind',
+  hint: 'He believes the room is his audience. The room has filed an objection.',
+  pace: 2.15, pitch: 0.72, accessory: 'cape', fartingHero: true,
+  bodyScale: [1.08, 1.16, 1.08],
+  palette: { skin: 0xd29b78, hair: 0x17191f, top: 0x2454a6, bottom: 0x16254f },
+  openers: ['MAKE WAY FOR HEROISM. AND MY PERSONAL ATMOSPHERE.', 'I PROTECT THE PEOPLE FROM QUIET ROOMS.'],
+  countered: ['Your criticism cannot penetrate the cape.', 'I heard that. I will moan about it later.'],
+  reactions: {
+    kind: ['Kindness? In this economy? I am confused and briefly touched.'],
+    witty: ['That was a direct hit to the ego. I will run away heroically.'],
+    brutal: ['Villain talk! Excellent. The cape needs a nemesis.'],
+  },
+  weakHit: ['Stop making sense. It ruins the entrance.'],
+  disarmed: ['I shall leave with dignity. The smell will remain.'],
+  dismiss: ['The people need me elsewhere. Possibly outdoors.'],
+  meltdown: 'I WAS BORN TO SAVE THE ROOM. THE ROOM WAS NOT READY.',
+  barks: ['I am faster than accountability.', 'The cape is symbolic. The smell is literal.', 'A hero moans when the institution says no.'],
+  playerJabs: {
+    kind: ['Your cape is doing all the emotional labour and it is exhausted.'],
+    witty: ['You are not a superhero. You are a weather event with branding.'],
+    brutal: ['The only thing you rescue is attention from having a peaceful afternoon.'],
+  },
+};
+
+export const BIENNALE_WAITING_CAST = WAITING_STAFF.map(([id, name, role, anchor, skin, top, barks], i) => ({
+  id, name, shortRole: role.toLowerCase(), role: `${role}, The Biennale of Waiting`, anchor,
+  waitingAmbient: true, static: true, ambient: true, ego: 40, weak: 'witty', resist: 'brutal',
+  hint: 'They are employed by the duration rather than the exhibition.',
+  pace: 0.72, pitch: 0.78 + i * 0.045, accessory: i === 3 || i === 4 ? 'sunglasses' : null,
+  palette: { skin, hair: 0x2a292b, top, bottom: 0x1b1c20 }, barks,
+  openers: barks, reactions: { kind: barks, witty: barks, brutal: barks }, countered: barks,
+  weakHit: barks, disarmed: barks, dismiss: barks, meltdown: barks[0],
+  playerJabs: { kind: barks, witty: barks, brutal: barks },
+})).concat(SUPER_FARTER);
+
+const NOW_OR_NEVER_STAFF = [
+  ['nowRunner', 'Mira Lastcall', 'Missed Artist', 'now-runner', 0xc28b6e, 0x503b66, [
+    'THE GATE CLOSED WHILE I WAS EXPLAINING THE WORK.',
+    'I was trending in the taxi. The taxi has no signal now.',
+  ]],
+  ['nowPress', 'Bram Presswell', 'Obsolete Press Liaison', 'now-press', 0xb77352, 0x2d5263, [
+    'Would you like a press release from last Tuesday? It is still very warm.',
+    'The headline was perfect until the internet changed the subject.',
+  ]],
+  ['nowCurator', 'Sofia Refresh', 'Destination Curator', 'now-curator', 0xd0a27f, 0x493d2e, [
+    'The destination is now THE NEXT BIG THING. No, wait. THE NEXT NEXT BIG THING.',
+    'I only update the board when somebody becomes legible to the market.',
+  ]],
+  ['nowLuggage', 'Timo Baggage', 'Relevance Attendant', 'now-luggage', 0x8d5c45, 0x355461, [
+    'This suitcase is marked EMERGING. Nobody has claimed it since 2019.',
+    'Please keep your concepts with you at all times. Lost concepts go to storage.',
+  ]],
+  ['nowBreakout', 'June Breakout', 'Former Breakout Artist', 'now-breakout', 0xd7ad8c, 0x7a3f48, [
+    'I just landed. The sign says so. The show closed before I found the exit.',
+    'My moment was beautiful. It lasted for twelve refreshes.',
+  ]],
+  ['nowGate', 'Gate Agent 0', 'Opportunity Announcer', 'now-gate', 0x8e634c, 0x1c2736, [
+    'FINAL CALL for an opportunity that expired during this announcement.',
+    'Passengers for relevance may board now, yesterday, or never.',
+  ]],
+];
+
+export const NOW_OR_NEVER_CAST = NOW_OR_NEVER_STAFF.map(([id, name, role, anchor, skin, top, barks], i) => ({
+  id, name, shortRole: role.toLowerCase(), role: `${role}, NOW OR NEVER`, anchor,
+  nowOrNeverAmbient: true, static: i === 3 || i === 5, ambient: true, ego: 38 + i * 3,
+  weak: i % 2 ? 'witty' : 'kind', resist: i % 3 === 0 ? 'brutal' : 'kind',
+  hint: 'They arrived at the exact moment the institution stopped looking.',
+  pace: 0.68 + i * 0.05, pitch: 0.76 + i * 0.04,
+  accessory: i === 1 ? 'clipboard' : i === 3 ? 'cane' : null,
+  palette: { skin, hair: 0x25262c, top, bottom: 0x171a20 }, barks,
+  openers: barks, reactions: { kind: barks, witty: barks, brutal: barks }, countered: barks,
+  weakHit: barks, disarmed: barks, dismiss: barks, meltdown: barks[0],
+  playerJabs: { kind: barks, witty: barks, brutal: barks },
+}));
+
 export const DOCUMENTA_CAST = [
   ...DOCUMENTERS.map(([id, name, role, anchor, skin, top, barks], i) => ({
     id, name, shortRole: role.toLowerCase(), role: `${role}, DOCUMENTA`, anchor,
@@ -2263,6 +2378,7 @@ export const DOCUMENTA_CAST = [
       ],
     },
   },
+  SUPER_FARTER,
 ];
 
 /** Build a crowd of ambient weirdos for a zone. */
@@ -2389,6 +2505,8 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
+        nowOrNever: NOW_OR_NEVER_CAST,
       };
     case 2:
 
@@ -2413,6 +2531,8 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
+        nowOrNever: NOW_OR_NEVER_CAST,
       };
     default:
 
@@ -2434,6 +2554,8 @@ export function castForNight(night) {
         publicRestroom: PUBLIC_RESTROOM_CAST,
         blackForest: BLACK_FOREST_CAST,
         documenta: DOCUMENTA_CAST,
+        biennaleWaiting: BIENNALE_WAITING_CAST,
+        nowOrNever: NOW_OR_NEVER_CAST,
       };
 
   }

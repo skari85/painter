@@ -41,6 +41,9 @@ export const TECHNO_BPM = TECHNO.bpm;   // the world pulses in time
    detuned Rhodes-ish keys, a sub that forgets the changes, and little
    synth ghosts wandering the upper register. 96 BPM, swing optional,
    taste negotiable. */
+const SINGER_VOCAL_URL = 'puplic/songs/singer-yhea.mp3';
+const FART_BOX_SAMPLE_URL = 'puplic/songs/meltzers-gate-9.m4a';
+
 const JAZZ = {
   bpm: 88,
   level: 0.3,
@@ -78,6 +81,13 @@ export class AudioEngine {
   #roomScoreKey = null;
   #roomScoreStep = 0;
   #roomScoreDrive = 0;
+  #singerBufferPromise = null;   // decoded, cached vocal sample for the listening room
+  #singerReverbBuffer = null;    // synthetic impulse response, generated once
+  #fartBoxBufferPromise = null;  // one recording, three effect chains
+  #fartBoxSources = [null, null, null];
+  #jukebox = null;               // active local performance track
+  #jukeboxPlaylist = [];
+  #jukeboxPlaylistIndex = 0;
 
 
   /** Must be called from a user-gesture handler at least once. */
@@ -110,6 +120,7 @@ export class AudioEngine {
     if (this.#master) this.#master.gain.value = this.#volume;
     this.#musicTarget = this.#volume * MUSIC_LEVEL;
     if (this.#music) this.#music.volume = Math.min(this.#music.volume, this.#musicTarget);
+    if (this.#jukebox) this.#jukebox.volume = clamp(this.#volume * 0.9, 0, 1);
   }
 
   /* ---------------- music (the record collection) ---------------- */
@@ -187,6 +198,7 @@ export class AudioEngine {
   fadeOutSoundtrack(durationMs = 180) {
     const ms = Math.max(0, durationMs);
     this.#stopMusic(ms);
+    this.stopJukebox();
     this.#roomScoreKey = null;
     this.#stopRoomScoreRig(ms === 0, ms);
     this.stopJazz(ms === 0, ms);
@@ -207,7 +219,81 @@ export class AudioEngine {
     this.#music = null;
     this.#musicKey = null;
     this.#musicTarget = 0;
+    this.stopJukebox();
   }
+
+  /** Toggle a complete local performance playlist and loop the full set. */
+  toggleJukeboxPlaylist(sources) {
+    if (this.jukeboxPlaying) {
+      this.stopJukebox();
+      return false;
+    }
+    this.stopJukebox();
+    this.#jukeboxPlaylist = (sources ?? []).filter((src) => typeof src === 'string' && src.length);
+    this.#jukeboxPlaylistIndex = 0;
+    if (!this.#jukeboxPlaylist.length) return false;
+    return this.#startJukeboxTrack();
+  }
+
+  /** Advance the local performance immediately. If the jukebox is stopped,
+      the next control doubles as a highly visible start button. */
+  nextJukeboxTrack(sources) {
+    const incoming = (sources ?? []).filter((src) => typeof src === 'string' && src.length);
+    if (!this.#jukeboxPlaylist.length) {
+      this.#jukeboxPlaylist = incoming;
+      this.#jukeboxPlaylistIndex = 0;
+    } else {
+      if (incoming.length) this.#jukeboxPlaylist = incoming;
+      this.#jukeboxPlaylistIndex = (this.#jukeboxPlaylistIndex + 1) % this.#jukeboxPlaylist.length;
+    }
+    if (!this.#jukeboxPlaylist.length) return -1;
+    if (this.#jukebox) {
+      this.#jukebox.pause();
+      this.#jukebox.currentTime = 0;
+      this.#jukebox = null;
+    }
+    return this.#startJukeboxTrack() ? this.#jukeboxPlaylistIndex : -1;
+  }
+
+  #startJukeboxTrack() {
+    const src = this.#jukeboxPlaylist[this.#jukeboxPlaylistIndex];
+    if (!src) return false;
+    try {
+      const track = new Audio(encodeURI(src));
+      track.loop = false;
+      track.volume = clamp(this.#volume * 0.9, 0, 1);
+      track.addEventListener('ended', () => {
+        if (this.#jukebox !== track) return;
+        this.#jukebox = null;
+        this.#jukeboxPlaylistIndex = (this.#jukeboxPlaylistIndex + 1) % this.#jukeboxPlaylist.length;
+        this.#startJukeboxTrack();
+      });
+      track.addEventListener('error', () => {
+        if (this.#jukebox !== track) return;
+        this.#jukebox = null;
+        this.#jukeboxPlaylist = [];
+      });
+      this.#jukebox = track;
+      track.play().catch(() => {});
+      return true;
+    } catch {
+      this.#jukebox = null;
+      return false;
+    }
+  }
+
+  stopJukebox() {
+    if (this.#jukebox) {
+      this.#jukebox.pause();
+      this.#jukebox.currentTime = 0;
+    }
+    this.#jukebox = null;
+    this.#jukeboxPlaylist = [];
+    this.#jukeboxPlaylistIndex = 0;
+  }
+
+  get jukeboxPlaying() { return Boolean(this.#jukebox && !this.#jukebox.paused); }
+  get jukeboxPlaylistIndex() { return this.#jukeboxPlaylistIndex; }
 
 
   get ready() { return !!this.#ctx; }
@@ -762,6 +848,33 @@ export class AudioEngine {
     if (pos === 15) this.#scoreNoise(swung, { bus: s.bus, peak: 0.009, decay: s.stepDur * 2.4, freq: 3800, type: 'lowpass' });
   }
 
+  #scoreWaitingStep(step, t, s) {
+    const waiting = s.profile.waiting;
+    const pos = step % 16;
+    const swung = pos % 2 ? t + s.stepDur * s.profile.swing : t;
+    if (waiting.tickets.includes(pos)) {
+      const base = pos === 0 ? 659.25 : 739.99;
+      this.#scoreTone(swung, base, { bus: s.bus, type: 'sine', peak: 0.022, attack: 0.004, decay: s.stepDur * 0.9, cutoff: 2600 });
+      this.#scoreTone(swung + 0.085, base * 1.5, { bus: s.bus, type: 'sine', peak: 0.012, attack: 0.004, decay: s.stepDur * 0.65, cutoff: 3100 });
+    }
+    if (waiting.belts.includes(pos)) {
+      this.#scoreTone(swung, 205 + (pos % 4) * 18, { bus: s.bus, type: 'triangle', peak: 0.025, attack: 0.002, decay: 0.055, cutoff: 780, slide: 0.7 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.012, decay: 0.035, freq: 2400, type: 'bandpass' });
+    }
+    if (waiting.hydraulics.includes(pos)) {
+      this.#scoreTone(swung, 92, { bus: s.bus, type: 'sawtooth', peak: 0.034, attack: 0.012, decay: s.stepDur * 1.3, cutoff: 340, slide: 0.56 });
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.014, decay: s.stepDur * 0.8, freq: 620, type: 'lowpass' });
+    }
+    if (waiting.drips.includes(pos)) {
+      const freq = 1280 + (pos % 5) * 145;
+      this.#scoreTone(swung + 0.025, freq, { bus: s.bus, type: 'sine', peak: 0.011, attack: 0.002, decay: 0.075, cutoff: 3600, slide: 0.46 });
+    }
+    if (waiting.strikeClaps.includes(pos)) {
+      this.#scoreNoise(swung, { bus: s.bus, peak: 0.022, decay: 0.08, freq: 1250, type: 'bandpass' });
+      this.#scoreNoise(swung + 0.035, { bus: s.bus, peak: 0.012, decay: 0.055, freq: 2100, type: 'highpass' });
+    }
+  }
+
   #roomScoreStep16(step, t, s) {
     const p = s.profile;
     const lofi = s.lofi;
@@ -776,6 +889,7 @@ export class AudioEngine {
       this.#scoreOfficeStep(step, t, s);
       return;
     }
+    if (p.waiting) this.#scoreWaitingStep(step, t, s);
 
     if (p.kick.includes(pos)) {
       this.#scoreTone(swung, 145, { bus: s.bus, peak: (p.kickLevel ?? 0.56) * ROOM_SCORE_FEEL.percussionScale, decay: 0.22, cutoff: 500, slide: 0.24 });
@@ -828,6 +942,139 @@ export class AudioEngine {
     if (p.rap?.steps.includes(step)) {
       this.#scoreRapChop(swung, s, p.rap, p.rap.steps.indexOf(step));
     }
+  }
+
+  /* ---------------- the listening room's recorded ad-lib ---------------- */
+
+  /** Lazily fetch and decode the singer's sample; cached across calls. */
+  #loadSingerBuffer() {
+    if (!this.#ctx) return Promise.resolve(null);
+    if (!this.#singerBufferPromise) {
+      this.#singerBufferPromise = fetch(encodeURI(SINGER_VOCAL_URL))
+        .then((res) => res.arrayBuffer())
+        .then((data) => this.#ctx.decodeAudioData(data))
+        .catch(() => null);
+    }
+    return this.#singerBufferPromise;
+  }
+
+  /** A synthetic impulse response: exponentially-decaying stereo noise,
+      cheap to build and plenty convincing for a small live room. */
+  #singerReverbImpulse() {
+    if (this.#singerReverbBuffer) return this.#singerReverbBuffer;
+    const rate = this.#ctx.sampleRate;
+    const len = Math.floor(rate * 2.2);
+    const buffer = this.#ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
+      }
+    }
+    this.#singerReverbBuffer = buffer;
+    return buffer;
+  }
+
+  /** The singer's recorded ad-lib: dry call, a tiny slapback, and a wash of
+      reverb tail — the same sample the house band keeps returning to. */
+  async singerVocal() {
+    if (!this.#ctx) return;
+    const buffer = await this.#loadSingerBuffer();
+    if (!buffer || !this.#ctx) return;
+
+    const t = this.#ctx.currentTime + 0.02;
+    const src = this.#ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const dry = this.#ctx.createGain();
+    dry.gain.value = 0.85;
+    src.connect(dry).connect(this.#master);
+
+    // tiny delay: a short slapback, one soft repeat
+    const delay = this.#ctx.createDelay(0.5);
+    delay.delayTime.value = 0.09;
+    const delayGain = this.#ctx.createGain();
+    delayGain.gain.value = 0.22;
+    const delayFeedback = this.#ctx.createGain();
+    delayFeedback.gain.value = 0.16;
+    src.connect(delay);
+    delay.connect(delayGain).connect(this.#master);
+    delay.connect(delayFeedback).connect(delay);
+
+    // reverb: convolved tail, darkened so it sits behind the dry call
+    const convolver = this.#ctx.createConvolver();
+    convolver.buffer = this.#singerReverbImpulse();
+    const reverbFilter = this.#ctx.createBiquadFilter();
+    reverbFilter.type = 'lowpass';
+    reverbFilter.frequency.value = 3600;
+    const reverbGain = this.#ctx.createGain();
+    reverbGain.gain.value = 0.4;
+    src.connect(convolver).connect(reverbFilter).connect(reverbGain).connect(this.#master);
+
+    src.start(t);
+  }
+
+  /** Lazily decode the shared Three Fart Boxes recording. */
+  #loadFartBoxBuffer() {
+    if (!this.#ctx) return Promise.resolve(null);
+    if (!this.#fartBoxBufferPromise) {
+      this.#fartBoxBufferPromise = fetch(encodeURI(FART_BOX_SAMPLE_URL))
+        .then((res) => res.arrayBuffer())
+        .then((data) => this.#ctx.decodeAudioData(data))
+        .catch(() => null);
+    }
+    return this.#fartBoxBufferPromise;
+  }
+
+  /** Play the same recording through one effect per box:
+      0 = reverb, 1 = delay, 2 = distortion. */
+  async fartBoxSample(effectIndex = 0) {
+    if (!this.#ctx) return;
+    const effect = Math.abs(effectIndex) % 3;
+    const buffer = await this.#loadFartBoxBuffer();
+    if (!buffer || !this.#ctx) {
+      this.punkFart(effect);
+      return;
+    }
+
+    try { this.#fartBoxSources[effect]?.stop(); } catch {}
+    const src = this.#ctx.createBufferSource();
+    src.buffer = buffer;
+    this.#fartBoxSources[effect] = src;
+    src.addEventListener('ended', () => {
+      if (this.#fartBoxSources[effect] === src) this.#fartBoxSources[effect] = null;
+    });
+
+    if (effect === 0) {
+      const dry = this.#ctx.createGain(); dry.gain.value = 0.24;
+      const convolver = this.#ctx.createConvolver(); convolver.buffer = this.#singerReverbImpulse();
+      const dark = this.#ctx.createBiquadFilter(); dark.type = 'lowpass'; dark.frequency.value = 3100;
+      const wet = this.#ctx.createGain(); wet.gain.value = 0.72;
+      src.connect(dry).connect(this.#master);
+      src.connect(convolver).connect(dark).connect(wet).connect(this.#master);
+    } else if (effect === 1) {
+      const dry = this.#ctx.createGain(); dry.gain.value = 0.4;
+      const delay = this.#ctx.createDelay(1.0); delay.delayTime.value = 0.27;
+      const feedback = this.#ctx.createGain(); feedback.gain.value = 0.38;
+      const wet = this.#ctx.createGain(); wet.gain.value = 0.52;
+      const dark = this.#ctx.createBiquadFilter(); dark.type = 'lowpass'; dark.frequency.value = 2800;
+      src.connect(dry).connect(this.#master);
+      src.connect(delay).connect(dark).connect(wet).connect(this.#master);
+      delay.connect(feedback).connect(delay);
+    } else {
+      const shaper = this.#ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * 2 - 1;
+        curve[i] = Math.tanh(x * 7.5);
+      }
+      shaper.curve = curve; shaper.oversample = '4x';
+      const filter = this.#ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 2200;
+      const output = this.#ctx.createGain(); output.gain.value = 0.48;
+      src.connect(shaper).connect(filter).connect(output).connect(this.#master);
+    }
+
+    src.start(this.#ctx.currentTime + 0.012);
   }
 
   /* ---------------- game verbs ---------------- */
@@ -910,6 +1157,55 @@ export class AudioEngine {
     if (outcome === 'destroy') this.#noise({ peak: 0.22, decay: 0.7, filterFreq: 4800, filterEnd: 180, q: 0.7, type: 'highpass' });
   }
 
+  waitingTicket(variant = 0) {
+    const base = [740, 830, 622, 554][Math.abs(variant) % 4];
+    this.#tone({ freq: base, freqEnd: base * 1.012, type: 'sine', peak: 0.065, decay: 0.16 });
+    setTimeout(() => this.#tone({ freq: base * 1.5, type: 'sine', peak: 0.045, decay: 0.13 }), 115);
+    this.#noise({ peak: 0.03, decay: 0.08, filterFreq: 2700, filterEnd: 920, q: 1.4, type: 'bandpass' });
+  }
+
+  waitingAdvance(variant = 0) {
+    const freq = 170 + (Math.abs(variant) % 4) * 28;
+    this.#tone({ freq, freqEnd: freq * 0.72, type: 'triangle', peak: 0.07, decay: 0.18 });
+    this.#noise({ peak: 0.055, decay: 0.12, filterFreq: 1850, filterEnd: 430, q: 1.1, type: 'bandpass' });
+  }
+
+  waitingAbandon() {
+    this.#noise({ peak: 0.13, decay: 0.055, filterFreq: 6200, filterEnd: 1800, q: 1.8, type: 'bandpass' });
+    setTimeout(() => this.#noise({ peak: 0.085, decay: 0.04, filterFreq: 5100, filterEnd: 1500, q: 1.5, type: 'bandpass' }), 92);
+    this.#tone({ freq: 310, freqEnd: 146, type: 'square', peak: 0.052, decay: 0.25 });
+  }
+
+  waitingCollapse(variant = 0) {
+    const base = 128 - (Math.abs(variant) % 4) * 11;
+    [1, 0.82, 0.58].forEach((ratio, i) => setTimeout(() => {
+      this.#tone({ freq: base * ratio, freqEnd: base * ratio * 0.55, type: 'sawtooth', peak: 0.075, decay: 0.3 });
+      this.#noise({ peak: 0.055, decay: 0.2, filterFreq: 1500 - i * 260, filterEnd: 180, q: 0.8, type: 'bandpass' });
+    }, i * 90));
+  }
+
+  waitingWinner() {
+    [392, 523.25, 659.25, 783.99].forEach((freq, i) => setTimeout(() => {
+      this.#tone({ freq, type: 'sine', peak: 0.085, attack: 0.012, decay: 0.42 });
+    }, i * 105));
+    setTimeout(() => this.#noise({ peak: 0.09, decay: 0.48, filterFreq: 4200, filterEnd: 680, q: 0.7, type: 'bandpass' }), 330);
+  }
+
+  nowOrNeverFlap(variant = 0) {
+    const base = [310, 370, 440, 523][Math.abs(variant) % 4];
+    this.#noise({ peak: 0.045, decay: 0.035, filterFreq: 3400, filterEnd: 920, q: 1.5, type: 'bandpass' });
+    this.#tone({ freq: base, freqEnd: base * 0.92, type: 'square', peak: 0.028, decay: 0.055 });
+  }
+
+  nowOrNeverAnnouncement(variant = 0) {
+    const notes = [659.25, 783.99, 987.77, 523.25];
+    const base = notes[Math.abs(variant) % notes.length];
+    [base, base * 1.25].forEach((freq, i) => setTimeout(() => {
+      this.#tone({ freq, type: 'sine', peak: 0.045, attack: 0.008, decay: 0.18 });
+    }, i * 105));
+    this.#noise({ peak: 0.022, decay: 0.18, filterFreq: 1800, filterEnd: 520, q: 1.1, type: 'bandpass' });
+  }
+
   /** A short two-formant boxer moan. It is fully synthesized: pitched throat,
       vowel resonances, breath, pitch drop and an uneven vibrato after impact. */
   #boxingMoan(voice = 0, hard = false) {
@@ -987,6 +1283,18 @@ export class AudioEngine {
       this.#boxingMoan(victim, hard);
       if (hard) this.#tone({ freq: 74, freqEnd: 118, type: 'sawtooth', peak: 0.06, attack: 0.03, decay: 0.24 });
     }, 32);
+  }
+
+  /** The cape-wearing nuisance gets a short, cartoonishly weary groan. */
+  annoyingMoan(variant = 0) {
+    if (!this.#ctx) return;
+    this.#boxingMoan(variant % 2, false);
+  }
+
+  /** Short rotating vocal punctuation for the Glass Boxes pole performers. */
+  clubMoan(variant = 0) {
+    if (!this.#ctx) return;
+    this.#boxingMoan((variant + 1) % 2, false);
   }
 
   /** A cheap, ugly impact for the room where emotional regulation goes to die. */

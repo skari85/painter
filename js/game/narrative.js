@@ -14,6 +14,8 @@ const CLUE_REVEALS = {
   theorySeen: 'The language changes. The transaction does not.',
   privateCollectionSeen: 'Someone has made a room for the version of you they can own.',
   documentationSeen: 'The archive has catalogued you and the work as an Edition of One.',
+  waitingSeen: 'The institution confirms you remained present longer than the artwork.',
+  nowOrNeverSeen: 'The departure board has assigned your relevance a gate, a delay, and an expiration time.',
 };
 
 const STORY_LINES = {
@@ -96,6 +98,10 @@ const TRANSITIONS = {
   'galleria>vault': 'The white cube ends. The paperwork continues.',
   'galleria>documenta': 'The artwork stops. The documentation continues without supervision.',
   'documenta>galleria': 'The shutters fade. The white cube feels almost undocumented.',
+  'galleria>biennaleWaiting': 'The opening becomes a line. The line has its own opening hours.',
+  'biennaleWaiting>galleria': 'The queue keeps your shape for a moment, then admits someone else.',
+  'galleria>nowOrNever': 'The gallery doors become departure gates. Your relevance has a boarding time.',
+  'nowOrNever>galleria': 'The terminal empties behind you. Somewhere, your row changes to departed.',
   'vault>invisibleCollection': 'The cages end. The empty paperwork has its own annex.',
   'invisibleCollection>vault': 'The alarms fade behind you. The Vault suddenly looks burdened with objects.',
   'vault>garret': 'Home is smaller when you know who has measured it.',
@@ -105,6 +111,8 @@ const TRANSITIONS = {
   'galleria>maxPro': 'The label gets longer. The painting stays the same size.',
   'galleria>rageRoom': 'The gallery keeps the label. The glass boxes offer somewhere to put the feeling.',
   'rageRoom>galleria': 'The glass doors close behind you. The red dot is still waiting in the gallery.',
+  'galleria>fartBoxes': 'The wall text ends. Three sealed boxes begin making their own argument.',
+  'fartBoxes>galleria': 'The glass door closes. The air does not follow, officially.',
   'galleria>deathMetal': 'The gallery calls it a theme. The basement calls it a riff. Barbie gets the better entrance.',
   'deathMetal>galleria': 'The amps keep arguing behind you. The white cube is waiting to call the argument context.',
   'galleria>listeningRoom': 'The white cube lowers its voice. Two speakers take over the argument.',

@@ -24,6 +24,12 @@ export class UIManager {
   #callTimer = null;
   #callStartedAt = 0;
   #onboardingKey = null;
+  #objectiveTimer = null;
+  #hotkeysTimer = null;
+  #hotkeysFadeTimer = null;
+  #meterValues = new Map();
+  #meterTimers = new Map();
+  #meterFrames = new Map();
 
   constructor() {
     this.el = {
@@ -42,6 +48,7 @@ export class UIManager {
       collectionHud: $('collection-value'),
       collectionValue: $('collection-value-number'),
       collectionStatus: $('collection-value-status'),
+      crosshair: $('crosshair'),
       hitmarker: $('hitmarker'),
       interact: $('interact-prompt'),
       interactText: $('interact-text'),
@@ -62,6 +69,7 @@ export class UIManager {
       dlgHint: $('dlg-weakness-hint'),
       curtain: $('curtain'),
       credPulse: $('cred-pulse'),
+      moodGrade: $('mood-grade'),
       title: $('title-screen'),
       resumeRun: $('btn-resume'),
       onboarding: $('onboarding'),
@@ -277,19 +285,70 @@ export class UIManager {
   setMeter(key, value) {
     const pair = this.el.meters[key];
     if (!pair) return;
+    const next = Math.round(value);
+    const previous = this.#meterValues.get(key);
+    this.#meterValues.set(key, next);
     pair[0].style.width = `${clamp(value, 0, 100)}%`;
-    pair[1].textContent = Math.round(value);
+
+    const oldFrame = this.#meterFrames.get(key);
+    if (oldFrame) cancelAnimationFrame(oldFrame);
+    if (previous == null || previous === next) {
+      pair[1].textContent = next;
+      return;
+    }
+
+    const row = pair[0].closest('.meter');
+    const direction = next > previous ? 'gain' : 'loss';
+    row?.classList.remove('changed', 'gain', 'loss');
+    void row?.offsetWidth;
+    row?.classList.add('changed', direction);
+
+    let delta = row?.querySelector('.meter-delta');
+    if (!delta && row) {
+      delta = document.createElement('span');
+      delta.className = 'meter-delta';
+      row.appendChild(delta);
+    }
+    if (delta) {
+      delta.textContent = formatSigned(next - previous);
+      delta.style.animation = 'none';
+      void delta.offsetWidth;
+      delta.style.animation = '';
+    }
+
+    const started = performance.now();
+    const duration = 300;
+    const displayed = Number(pair[1].textContent);
+    const countFrom = Number.isFinite(displayed) ? displayed : previous;
+    const count = (now) => {
+      const p = clamp((now - started) / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      pair[1].textContent = Math.round(countFrom + (next - countFrom) * eased);
+      if (p < 1) this.#meterFrames.set(key, requestAnimationFrame(count));
+      else this.#meterFrames.delete(key);
+    };
+    this.#meterFrames.set(key, requestAnimationFrame(count));
+
+    clearTimeout(this.#meterTimers.get(key));
+    this.#meterTimers.set(key, setTimeout(() => {
+      row?.classList.remove('changed', 'gain', 'loss');
+      delta?.remove();
+      this.#meterTimers.delete(key);
+    }, 900));
   }
 
   setObjective(nightLabel, text) {
     this.el.nightLabel.textContent = nightLabel;
     this.el.objective.textContent = text;
-    this.el.objectiveCard.style.animation = 'none';
-    void this.el.objectiveCard.offsetWidth;   // restart the pulse
-    this.el.objectiveCard.style.animation = '';
+    clearTimeout(this.#objectiveTimer);
+    this.el.objectiveCard.classList.remove('updated');
+    void this.el.objectiveCard.offsetWidth;
+    this.el.objectiveCard.classList.add('updated');
+    this.#objectiveTimer = setTimeout(() => this.el.objectiveCard.classList.remove('updated'), 850);
   }
 
   interactPrompt(label) {
+    this.el.crosshair?.classList.toggle('targeting', Boolean(label));
     if (!label) { this.hide('interact-prompt'); return; }
     this.el.interactText.textContent = label;
     this.show('interact-prompt');
@@ -338,21 +397,45 @@ export class UIManager {
       paused: { title: 'PAUSED', items: [['Esc', 'resume'], ['Mouse', 'choose menu']] },
     };
     const preset = presets[mode] ?? presets.playing;
-    if (!this.el.hotkeys || this.#hotkeyMode === mode) return;
+    if (!this.el.hotkeys) return;
+    clearTimeout(this.#hotkeysTimer);
+    clearTimeout(this.#hotkeysFadeTimer);
+    this.el.hotkeys.classList.remove('retiring');
+    if (this.#hotkeyMode === mode) {
+      this.el.hotkeys.classList.remove('hidden');
+      if (mode === 'playing') this.#scheduleHotkeysRetirement();
+      return;
+    }
     this.#hotkeyMode = mode;
     this.el.hotkeys.classList.remove('hidden');
     this.el.hotkeysTitle.textContent = preset.title;
     this.el.hotkeysList.innerHTML = preset.items
       .map(([key, label]) => `<span class="hotkey"><kbd>${escapeHtml(key)}</kbd><span>${escapeHtml(label)}</span></span>`)
       .join('');
+    if (mode === 'playing') this.#scheduleHotkeysRetirement();
   }
 
   hideHotkeys() {
+    clearTimeout(this.#hotkeysTimer);
+    clearTimeout(this.#hotkeysFadeTimer);
     this.el.hotkeys?.classList.add('hidden');
+    this.el.hotkeys?.classList.remove('retiring');
     this.#hotkeyMode = null;
   }
 
+  #scheduleHotkeysRetirement() {
+    this.#hotkeysTimer = setTimeout(() => {
+      if (this.#hotkeyMode !== 'playing') return;
+      this.el.hotkeys?.classList.add('retiring');
+      this.#hotkeysFadeTimer = setTimeout(() => {
+        if (this.#hotkeyMode === 'playing') this.el.hotkeys?.classList.add('hidden');
+        this.el.hotkeys?.classList.remove('retiring');
+      }, 320);
+    }, 9000);
+  }
+
   #hotkeyMode = null;
+  #moodGradeTimer = null;
 
   hitmarker(brutal = false) {
     const h = this.el.hitmarker;
@@ -368,6 +451,16 @@ export class UIManager {
     setTimeout(() => c.classList.remove('on'), 220);
   }
 
+  /** A barely-there color wash for a sustained run of tone. Never announced. */
+  setMoodGrade(kind) {
+    const el = this.el.moodGrade;
+    el.classList.remove('brutal', 'kind');
+    void el.offsetWidth;
+    el.classList.add(kind);
+    clearTimeout(this.#moodGradeTimer);
+    this.#moodGradeTimer = setTimeout(() => el.classList.remove(kind), 60000);
+  }
+
   /** World-space → screen-space damage number. */
   damageNumber(sx, sy, text, cls = '') {
     const d = document.createElement('div');
@@ -380,6 +473,7 @@ export class UIManager {
   }
 
   toast(kicker, body, cls = '') {
+    while (this.el.toasts.children.length >= 3) this.el.toasts.firstElementChild?.remove();
     const t = document.createElement('div');
     t.className = `toast ${cls}`;
     t.innerHTML = `<span class="t-kicker">${escapeHtml(kicker)}</span>${escapeHtml(body)}`;
@@ -1006,8 +1100,11 @@ export class UIManager {
 const MAP_ZONES = [
   { key: 'garret', name: 'THE GARRET', desc: 'Home. Turpentine, candles, the mattress of champions.' },
   { key: 'galleria', name: 'GALLERIA BIANCA', desc: 'The white cube. Victoria. The opening. The wine.' },
+  { key: 'lastStandingGallery', name: 'THE LAST STANDING BLUE CHIP GALLERY', desc: 'A floating blue-chip vault, a billionaire duck, helicopter spotlights, and adult latex-clad patrons beneath the glass.' },
   { key: 'vault', name: 'THE VAULT', desc: 'Mister Index\'s collection. Invitation only. Bring nerve.' },
   { key: 'documenta', name: 'DOCUMENTA: THE DOCUMENTING', desc: 'Accreditation, cameras, metadata and an exhibition nobody has time to experience.' },
+  { key: 'biennaleWaiting', name: 'THE BIENNALE OF WAITING', desc: 'Nine queues, five nations, one prize for remaining publicly stationary.' },
+  { key: 'nowOrNever', name: 'NOW OR NEVER: THE GROUP SHOW', desc: 'An airport terminal for artists who arrived after their own moment.' },
   { key: 'invisibleCollection', name: 'THE INVISIBLE COLLECTION', desc: 'Five empty footprints, three grave officials, and a valuation rising faster than the evidence.' },
   { key: 'leatherLatex', name: 'THE LEATHER & LATEX ROOMS', desc: 'The collector\'s house. Warm hide up front, black gloss in the back — one bassline, two moods.' },
   { key: 'gildedFork', name: 'THE GILDED FORK', desc: 'One long table. Every big shot. All of them drunk and messed up.' },
@@ -1018,6 +1115,7 @@ const MAP_ZONES = [
   { key: 'vacantEditions', name: 'VACANT EDITIONS', desc: 'Two texture experts. Eight tactile editions. One duct-taped banana cock.' },
   { key: 'hairSalon', name: 'U WISH U HAD HAIR BUT U DONT', desc: 'Six chairs, six immaculate bald heads, and enough mirrors to confirm the situation from every angle.' },
       { key: 'rageRoom', name: 'THE GLASS BOXES', desc: 'Five daylight booths, one weird jazz beat, and MC Freeglass rapping chaos into freedom.' },
+  { key: 'fartBoxes', name: 'THREE FART BOXES', desc: 'Three boxes. Three guys. Fart noise. Nothing else.' },
   { key: 'deathMetal', name: 'BARBIE DEATH METAL', desc: 'Punks, death-metal goths, pink amps, and an argument about whether Barbie is a product or a survivor.' },
   { key: 'blackForest', name: 'CHURCH BURNING FIRE SENSATION COCKBURN', desc: 'Ten stave churches. Heavy fog. Thirty-four sponge-squeaking boars. One fictional forest encounter.' },
   { key: 'publicRestroom', name: 'THE PUBLIC RESTROOM', desc: 'Wet ceramic, painted stall fronts, and 132 BPM Techno Zamba made only from piss and fart sounds.' },

@@ -21,7 +21,7 @@ if (window.location.hostname === 'painter-iota.vercel.app') {
 }
 
 
-import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
+import { GameState, loadSettings, saveSettings, loadEndings, unlockEnding, dayStamp, registerVisit, recordCowVisit, markDocumentaScarred, dailyComplete, completeDaily, loadRun, saveRun, clearRun } from './core/state.js';
 import { InputManager, isTouchOnlyDevice } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
 import { Ghostwriter } from './core/ai.js';
@@ -48,6 +48,14 @@ import { QuestDirector } from './game/quests.js';
 import { DEAD_ARTISTS, SeanceSession } from './game/seance.js';
 import { UIManager } from './ui/ui.js';
 
+const FREEGLASS_TRACKS = [
+  { src: 'puplic/songs/gallery-joke.mp3', title: 'GALLERY JOKE' },
+  { src: 'puplic/songs/a-sorry-excuse-for-breakfast.mp3', title: 'A SORRY EXCUSE FOR BREAKFAST' },
+  { src: 'puplic/songs/scrap-metal-crown.mp3', title: 'SCRAP METAL CROWN' },
+  { src: 'puplic/songs/flat-on-my-back.mp3', title: 'FLAT ON MY BACK' },
+  { src: 'puplic/songs/polygonal-panic.mp3', title: 'POLYGONAL PANIC' },
+  { src: 'puplic/songs/picasso-on-the-hood.mp3', title: 'PICASSO ON THE HOOD' },
+];
 
 class Game {
   constructor() {
@@ -87,6 +95,10 @@ class Game {
   #runActive = false;
   #saveTimer = 0;
   #savedRun = null;
+  #lastTone = null;
+  #toneStreak = 0;
+  #waitingTickAccum = 0;
+  #waitingLaneGrace = 0;
 
   /* ============================================================
      Boot
@@ -125,7 +137,7 @@ class Game {
     this.audio = new AudioEngine();
     this.input = new InputManager(canvas);
 
-    this.world = new World(this.scene);
+    this.world = new World(this.scene, { documentaScarred: this.#meta.documentaScarred });
     this.player = new PlayerController(this.camera, this.input);
     this.hand = new HandRig(this.camera);
     this.paint = new PaintSystem();
@@ -153,7 +165,7 @@ class Game {
     this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
     this.ghosts.loadZone('garret');
-    this.ui.setHotkeys('playing');
+    this.ui.hideHotkeys();
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
     this.hand.setReduceMotion(this.settings.reduceMotion);
@@ -189,10 +201,10 @@ class Game {
   #resize() {
     const w = window.innerWidth, h = window.innerHeight;
     const scale = this.settings.quality;
-    // BARBIE DEATH METAL deliberately carries the heaviest lighting/material
-    // budget. Cap its internal resolution so the concert stays responsive on
-    // high-DPI screens without lowering quality in every other room.
-    const pixelCap = this.world?.current === 'deathMetal' ? 1.15 : 2;
+    // The three busiest rooms get a modest internal-resolution cap so they
+    // stay responsive on high-DPI screens without lowering quality elsewhere.
+    const busyRoom = ['deathMetal', 'documenta', 'biennaleWaiting'].includes(this.world?.current);
+    const pixelCap = busyRoom ? 1.25 : 2;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, pixelCap) * scale);
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
@@ -304,7 +316,6 @@ class Game {
 
     this.quests.on('objective', ({ night, text }) => {
       ui.setObjective(night, text);
-      ui.toast(night, text);
       this.audio.nightChime();
     });
 
@@ -324,6 +335,7 @@ class Game {
 
 
     // ---- dialogue engine → view ----
+    this.dialogue.on('tone', ({ tone }) => this.#trackToneStreak(tone));
     this.dialogue.on('start', ({ npc, line, options, hint }) => {
       this.mode = 'dialogue';
       ui.setHotkeys('dialogue');
@@ -599,6 +611,8 @@ class Game {
     this.world.setVaultArchive(latest?.title, latest?.lotNumber);
     this.#syncDocumenta();
     this.#syncInvisibleCollection(zoneKey);
+    this.#syncWaiting();
+    this.#syncNowOrNever();
     this.#syncCarry();
 
     if (!this.quests.restore(saved.quest)) this.quests.startNight(this.state.night);
@@ -663,6 +677,8 @@ class Game {
     const cast = castForNight(n);
     for (const [zone, defs] of Object.entries(cast)) this.npcs.spawn(defs, zone);
     this.#syncDocumenta();
+    this.#syncWaiting();
+    this.#syncNowOrNever();
 
     const z = this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
@@ -1124,9 +1140,17 @@ class Game {
       return;
     }
     if (this.mode !== 'dialogue') return;
-    if (this.ui.isTyping) { this.ui.completeLine(); return; }
+    const wasTyping = this.ui.isTyping;
+    if (wasTyping) this.ui.completeLine();
     this.audio.uiMove();
-    this.dialogue.choose(i);
+    this.dialogue.choose(i, wasTyping);
+  }
+
+  /** Three same-tone answers in a row give the world a barely-there mood. Never explained. */
+  #trackToneStreak(tone) {
+    if (tone === this.#lastTone) this.#toneStreak++;
+    else { this.#lastTone = tone; this.#toneStreak = 1; }
+    if (this.#toneStreak >= 3 && (tone === 'brutal' || tone === 'kind')) this.ui.setMoodGrade(tone);
   }
 
   #onSwing() {
@@ -1217,6 +1241,11 @@ class Game {
         if (this.world.current !== 'garret') {
           this.state.addMeter('heat', 2, 'The walls were white. Were.');
         }
+        const waitingPavilion = this.world.isWaitingPavilionSignHit(hit.object);
+        if (waitingPavilion) {
+          this.#splatWaitingPavilion(waitingPavilion);
+          return;
+        }
         if (this.world.current === 'invisibleCollection' && Number.isInteger(hit.object.userData.invisibleWorkIndex)) {
           this.#contaminateInvisibleCollection(hit.object.userData.invisibleWorkIndex);
         }
@@ -1234,6 +1263,19 @@ class Game {
   #onAppraise() {
     if (this.mode !== 'playing' || !this.input.locked) return;
     const fwd = this.player.forwardDir(this.#fwd);
+    if (this.world.current === 'biennaleWaiting') {
+      this.#raycaster.camera = this.camera;
+      this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
+      this.#raycaster.far = 5.5;
+      const supportHit = this.#raycaster.intersectObjects(this.world.zone().group.children, true)
+        .find((hit) => hit.object.visible && this.world.waitingSupportFromObject(hit.object));
+      const pavilion = this.world.waitingSupportFromObject(supportHit?.object);
+      if (pavilion) {
+        this.#supportWaitingPavilion(pavilion, 'appraise');
+        this.#advanceDaily('appraise');
+        return;
+      }
+    }
     if (this.world.current === 'documenta') {
       this.#raycaster.camera = this.camera;
       this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
@@ -1242,6 +1284,21 @@ class Game {
         .find((hit) => hit.object.visible && this.world.isDocumentaArchiveHit(hit.object));
       if (archiveHit) {
         this.#appraiseDocumentaArchive();
+        this.#advanceDaily('appraise');
+        return;
+      }
+    }
+    if (this.world.current === 'nowOrNever') {
+      this.#raycaster.camera = this.camera;
+      this.#raycaster.set(this.camera.position, this.camera.getWorldDirection(this.#fwd));
+      this.#raycaster.far = 6.5;
+      const boardHit = this.#raycaster.intersectObjects(this.world.zone().group.children, true)
+        .find((hit) => hit.object.visible && this.world.isNowOrNeverBoardHit(hit.object));
+      if (boardHit) {
+        const firstRead = this.state.discoverClue('nowOrNeverSeen', clueReveal('nowOrNeverSeen'));
+        this.ui.toast('NOW OR NEVER · DEPARTURES', this.world.nowOrNeverBoardAppraisal(), firstRead ? 'good' : undefined);
+        this.audio.nowOrNeverFlap(this.world.nowOrNeverBoardRow()?.index ?? 0);
+        this.#syncNowOrNever();
         this.#advanceDaily('appraise');
         return;
       }
@@ -1374,6 +1431,18 @@ class Game {
         this.ui.hint('STATION 2 · Aim at the main Live Documentation camera and paint its lens with LMB.');
         setTimeout(() => this.ui.hint(null), 9000);
         break;
+      case 'waitingQueue':
+        this.#handleWaitingPreliminary(it.queue);
+        break;
+      case 'waitingPavilion':
+        this.#joinWaitingPavilion(it.pavilion);
+        break;
+      case 'waitingSupport':
+        this.#supportWaitingPavilion(it.pavilion, 'interact');
+        break;
+      case 'waitingJury':
+        this.#ratifyWaitingWinner();
+        break;
       case 'flavor':
         if (it.clueKey && !this.state.hasClue(it.clueKey)) {
           const latest = this.state.paintings[this.state.paintings.length - 1];
@@ -1450,6 +1519,34 @@ class Game {
         this.#openRecords();
         break;
 
+      case 'mcJukebox': {
+        this.audio.ensure();
+        const playing = this.audio.toggleJukeboxPlaylist(FREEGLASS_TRACKS.map((track) => track.src));
+        const active = FREEGLASS_TRACKS[this.audio.jukeboxPlaylistIndex] ?? FREEGLASS_TRACKS[0];
+        this.audio.uiConfirm();
+        this.ui.toast(
+          playing ? `MC FREEGLASS · NOW PLAYING 1/${FREEGLASS_TRACKS.length}` : 'MC FREEGLASS · CUT',
+          playing
+            ? `${active.title}. Use the bright NEXT TRACK button to skip through the full set.`
+            : 'The jukebox stops and pretends this was part of the arrangement.',
+          playing ? 'good' : undefined,
+        );
+        break;
+      }
+
+      case 'mcJukeboxNext': {
+        this.audio.ensure();
+        const index = this.audio.nextJukeboxTrack(FREEGLASS_TRACKS.map((track) => track.src));
+        const active = FREEGLASS_TRACKS[index] ?? FREEGLASS_TRACKS[0];
+        this.audio.uiConfirm();
+        this.ui.toast(
+          `MC FREEGLASS · NOW PLAYING ${index + 1}/${FREEGLASS_TRACKS.length}`,
+          `${active.title}. The pink button remains legally classified as curatorial guidance.`,
+          'good',
+        );
+        break;
+      }
+
       case 'collectionAction':
         this.#handleCollectionAction(it);
         break;
@@ -1500,6 +1597,16 @@ class Game {
 
   #talkTo(npc) {
     this.#advanceDaily('talk');
+    if (npc.def.waitingAmbient) {
+      const winner = this.state.getFlag('biennaleWaitingWinner');
+      const line = winner
+        ? `The ${String(winner).toUpperCase()} Pavilion won by remaining publicly available after everyone else became logistics.`
+        : pick(npc.def.barks);
+      this.ui.subtitle(`${npc.def.name.toUpperCase()} · ${npc.def.shortRole.toUpperCase()}`, line, 0.84, this.audio);
+      this.ui.toast(npc.def.name.toUpperCase(), line);
+      this.audio.uiMove();
+      return;
+    }
     // Victoria runs the appraisal script when a fresh piece hangs
     if (npc.def.id === 'victoria' && this.pendingAppraisal) {
       const script = this.quests.appraisalScript(this.pendingAppraisal.p, this.state.meters.fame);
@@ -1740,12 +1847,426 @@ class Game {
       this.state.shiftVirtue('valor', 4, 'Authority lost its footing');
       this.state.shiftVirtue('compassion', -2, 'Some subjects were still in the folders');
       this.ui.toast('AUTHORITY NOT FOUND', 'Tripods fall in sequence. The server altar loses the authoritative description and keeps only the impact footage.', 'bad');
+      markDocumentaScarred();
     }
     this.state.record(`Resolved DOCUMENTA through ${outcome}`, null);
     this.audio.metadataCollapse(outcome);
     this.#syncDocumenta();
     this.ui.hint('DOCUMENTA COMPLETE · The exhibition may now begin. Nobody has time.');
     setTimeout(() => this.ui.hint(null), 9000);
+  }
+
+  #waitingPavilions() {
+    const saved = this.state.getFlag('waitingPavilions');
+    const order = ['nordic', 'german', 'american', 'french', 'british'];
+    const result = {};
+    for (const key of order) {
+      const p = saved && typeof saved === 'object' ? saved[key] : null;
+      result[key] = {
+        score: Number.isFinite(Number(p?.score)) ? Math.max(0, Number(p.score)) : 50,
+        presence: Number.isFinite(Number(p?.presence)) ? Math.max(0, Number(p.presence)) : 0,
+        eliminated: Boolean(p?.eliminated), supported: Boolean(p?.supported), splattered: Boolean(p?.splattered),
+      };
+    }
+    return result;
+  }
+
+  #syncWaiting() {
+    const pavilions = this.#waitingPavilions();
+    this.world.applyWaitingState({
+      stage: Number(this.state.getFlag('waitingStage')) || 0,
+      activeQueue: this.state.getFlag('waitingActiveQueue') || null,
+      finalStarted: Boolean(this.state.getFlag('waitingFinalStarted')),
+      finalElapsed: Number(this.state.getFlag('waitingFinalElapsed')) || 0,
+      pavilions,
+      complete: Boolean(this.state.getFlag('biennaleWaitingComplete')),
+      winner: this.state.getFlag('biennaleWaitingWinner') || null,
+    });
+    const apologist = this.npcs?.byId?.('waitingApologist');
+    if (apologist) {
+      const joined = Boolean(pavilions.nordic.supported);
+      apologist.group.position.set(joined ? 4.35 : 4.9, 0, joined ? 8.55 : 9.15);
+      apologist.group.rotation.y = joined ? Math.PI : 0;
+    }
+  }
+
+  #syncNowOrNever() {
+    const latest = this.state.paintings[this.state.paintings.length - 1];
+    this.world.syncNowOrNeverBoard({
+      hasPainting: Boolean(latest),
+      title: latest?.title ?? '',
+      fame: this.state.meters.fame,
+      heat: this.state.meters.heat,
+      seen: this.state.hasClue('nowOrNeverSeen'),
+    });
+  }
+
+  #handleWaitingPreliminary(queue) {
+    if (this.state.getFlag('biennaleWaitingComplete')) {
+      this.ui.toast('QUEUE ARCHIVED', 'The jury has already converted your waiting into a national result.');
+      return;
+    }
+    const stage = Number(this.state.getFlag('waitingStage')) || 0;
+    const expected = ['accreditation', 'closed', 'recursive', 'vip'][stage];
+    if (!expected) {
+      this.ui.toast('PAVILION COURT OPEN', 'The preliminary waiting has been validated. Join one of the five national queues.', 'good');
+      return;
+    }
+    if (queue !== expected) {
+      const labels = {
+        accreditation: 'Accreditation must first establish which incompatible person is waiting.',
+        closed: 'Your badges are valid. Now queue for the artwork that closed yesterday.',
+        recursive: 'The closed artwork has released you into the queue for another queue.',
+        vip: 'Only the backward VIP queue still separates you from national culture.',
+      };
+      this.ui.toast('WRONG QUEUE, CORRECT INSTITUTION', labels[expected], 'bad');
+      this.audio.countered();
+      return;
+    }
+
+    const active = this.state.getFlag('waitingActiveQueue') || null;
+    if (active !== queue) {
+      if (active) this.#abandonWaitingQueue();
+      this.state.setFlag('waitingActiveQueue', queue);
+      this.state.setFlag('waitingQueueElapsed', 0);
+      this.state.setFlag('waitingQueueCalls', 0);
+      this.state.setFlag('waitingQueueReady', false);
+      this.state.setFlag('waitingVipCheckpoint', 0);
+      this.#waitingLaneGrace = 0;
+      this.audio.waitingTicket(stage);
+      const copy = {
+        accreditation: 'Number A-404. Remain inside the belts. Three contradictory identities will be called.',
+        closed: 'The line advances toward an artwork whose final opening was yesterday.',
+        recursive: 'Follow each transfer when called. Every queue leads to a queue with better positioning.',
+        vip: 'The arrows point backward. Cross three reverse checkpoints without leaving the velvet geometry.',
+      };
+      this.ui.toast('QUEUE JOINED', copy[queue], 'good');
+      this.#syncWaiting();
+      this.#persistRun();
+      return;
+    }
+
+    if ((queue === 'accreditation' || queue === 'recursive') && this.state.getFlag('waitingQueueReady')) {
+      const calls = (Number(this.state.getFlag('waitingQueueCalls')) || 0) + 1;
+      this.audio.waitingAdvance(calls);
+      this.state.setFlag('waitingQueueCalls', calls);
+      this.state.setFlag('waitingQueueElapsed', 0);
+      this.state.setFlag('waitingQueueReady', false);
+      if (calls >= 3) {
+        this.#completeWaitingPreliminary(stage + 1,
+          queue === 'accreditation' ? 'ACCREDITATION INCONSISTENTLY COMPLETE' : 'QUEUE TRANSFER COMPLETE',
+          queue === 'accreditation'
+            ? 'You are ARTIST, VISITOR, LIABILITY and PERSON WHO MAY HAVE LEFT. Proceed to yesterday.'
+            : 'Three queues later, the institution recognizes your eligibility for backward privilege.');
+      } else {
+        this.ui.toast(queue === 'accreditation' ? `IDENTITY ${calls} OF 3 ACCEPTED` : `TRANSFER ${calls} OF 3`,
+          queue === 'accreditation' ? 'Remain in line until your next self is called.' : 'The next queue is already waiting for your queue.');
+      }
+      return;
+    }
+
+    if (queue === 'vip') {
+      this.ui.toast('VIP ACCESS', 'Walk backward through the gold arrows. Each checkpoint requires ten seconds of visible patience.');
+    } else {
+      this.ui.toast('PLEASE CONTINUE WAITING', this.state.getFlag('waitingQueueReady')
+        ? 'Your call is ready. Press E again before the institution changes its mind.'
+        : 'The line is aware of your continued presence. This is not the same as progress.');
+    }
+    this.audio.uiMove();
+  }
+
+  #completeWaitingPreliminary(nextStage, title, body) {
+    this.state.setFlag('waitingStage', nextStage);
+    this.state.setFlag('waitingActiveQueue', false);
+    this.state.setFlag('waitingQueueElapsed', 0);
+    this.state.setFlag('waitingQueueCalls', 0);
+    this.state.setFlag('waitingQueueReady', false);
+    this.state.setFlag('waitingVipCheckpoint', 0);
+    this.#waitingLaneGrace = 0;
+    this.audio.waitingAdvance(nextStage);
+    this.state.record(`Completed Biennale waiting stage ${nextStage} of 4`, null);
+    this.ui.toast(title, body, 'good');
+    if (nextStage >= 4) {
+      this.ui.hint('NATIONAL ENDURANCE · Join a pavilion queue. Every 24 seconds the weakest line collapses.');
+      setTimeout(() => this.ui.hint(null), 10000);
+    }
+    this.#syncWaiting();
+    this.#persistRun();
+  }
+
+  #beginWaitingFinal() {
+    if (this.state.getFlag('waitingFinalStarted')) return;
+    this.state.setFlag('waitingFinalStarted');
+    this.state.setFlag('waitingFinalElapsed', 0);
+    this.state.setFlag('waitingEliminations', 0);
+    this.state.setFlag('waitingJuryReady', false);
+    this.state.setFlag('waitingPavilions', this.#waitingPavilions());
+    this.audio.waitingTicket(3);
+    this.ui.toast('NATIONAL ENDURANCE BEGINS', 'Two minutes. Every twenty-four seconds, the least-supported queue becomes history. History receives no refund.', 'good');
+  }
+
+  #joinWaitingPavilion(pavilion) {
+    const names = { nordic: 'Nordic', german: 'German', american: 'American', french: 'French', british: 'British' };
+    if (this.state.getFlag('biennaleWaitingComplete')) {
+      this.ui.toast('NATIONAL RESULT RATIFIED', `${names[this.state.getFlag('biennaleWaitingWinner')]} Pavilion already owns the surviving wait.`);
+      return;
+    }
+    if ((Number(this.state.getFlag('waitingStage')) || 0) < 4) {
+      this.ui.toast('PAVILION ACCESS PENDING', 'Complete Accreditation, Yesterday, the Queue for a Queue and backward VIP access first.', 'bad');
+      this.audio.countered();
+      return;
+    }
+    this.#beginWaitingFinal();
+    const pavilions = this.#waitingPavilions();
+    if (!pavilions[pavilion] || pavilions[pavilion].eliminated) {
+      this.ui.toast('QUEUE COLLAPSED', `${names[pavilion]} culture has been folded into a stack of temporary barriers.`, 'bad');
+      return;
+    }
+    const active = this.state.getFlag('waitingActiveQueue') || null;
+    if (active === pavilion) {
+      this.ui.toast(`${names[pavilion].toUpperCase()} QUEUE`, 'Your continued presence is being counted at institutional precision.');
+      return;
+    }
+    if (active) this.#abandonWaitingQueue();
+    this.state.setFlag('waitingActiveQueue', pavilion);
+    this.#waitingLaneGrace = 0;
+    this.audio.waitingAdvance(Object.keys(names).indexOf(pavilion));
+    this.ui.toast(`${names[pavilion].toUpperCase()} QUEUE JOINED`, 'Remain inside the belts to add endurance. Leaving before release costs Fame.', 'good');
+    this.#syncWaiting();
+    this.#persistRun();
+  }
+
+  #supportWaitingPavilion(pavilion, source) {
+    const names = { nordic: 'Nordic', german: 'German', american: 'American', french: 'French', british: 'British' };
+    if (!this.state.getFlag('waitingFinalStarted') || this.state.getFlag('biennaleWaitingComplete')) {
+      this.ui.toast('SUPPORT NOT YET ELIGIBLE', 'Reach the national endurance round before converting attention into duration.', 'bad');
+      return;
+    }
+    const pavilions = this.#waitingPavilions();
+    const p = pavilions[pavilion];
+    if (!p || p.eliminated) {
+      this.ui.toast('PAVILION COLLAPSED', 'Support arrived after the temporary architecture left.', 'bad');
+      return;
+    }
+    if (this.state.getFlag('waitingActiveQueue') !== pavilion) {
+      this.ui.toast('SUPPORT REQUIRES PRESENCE', `Join the ${names[pavilion]} queue before helping it endure.`, 'bad');
+      return;
+    }
+    if ((pavilion === 'american' || pavilion === 'british') && source !== 'appraise') {
+      this.ui.toast('MARKET ATTENTION REQUIRED', 'Look directly at the installation and press Q to institutionalize the problem.');
+      return;
+    }
+    if (pavilion === 'german') {
+      const phase = (Number(this.state.getFlag('waitingFinalElapsed')) || 0) % 24;
+      if (phase < 7 || phase > 17) {
+        this.ui.toast('HYDRAULIC WINDOW CLOSED', 'The smaller door accepts interaction only during the middle ten seconds of each elimination cycle.', 'bad');
+        return;
+      }
+    }
+    if (p.supported) {
+      this.ui.toast('SUPPORT ALREADY CATALOGUED', `${names[pavilion]} endurance already includes your authored intervention.`);
+      return;
+    }
+    p.supported = true;
+    p.score += 12;
+    this.state.setFlag('waitingPavilions', pavilions);
+    this.audio.waitingTicket(Object.keys(names).indexOf(pavilion));
+    const copy = {
+      nordic: 'You accept the apology. The apologizer joins behind you to apologize for extending the line.',
+      german: 'The industrial door opens onto a smaller industrial door. Scale decreases. Authority remains.',
+      american: 'The sponsor merchandise is appraised as strategic access. Security counts the attention as footfall.',
+      french: 'You join the chant. The strike becomes the pavilion and the pavilion finally has a public.',
+      british: 'The leak is reclassified as site-specific weather. Conservation adds twelve seconds and leaves.',
+    };
+    this.state.record(`Supported the ${names[pavilion]} Pavilion queue`, null);
+    this.ui.toast(`${names[pavilion].toUpperCase()} ENDURANCE +12`, copy[pavilion], 'good');
+    this.#syncWaiting();
+    this.#persistRun();
+  }
+
+  #splatWaitingPavilion(pavilion) {
+    if (!this.state.getFlag('waitingFinalStarted') || this.state.getFlag('biennaleWaitingComplete')) {
+      this.ui.toast('UNSCHEDULED INTERVENTION', 'The paint is premature. The pavilion files it under queue-adjacent activity.');
+      return;
+    }
+    const pavilions = this.#waitingPavilions();
+    const p = pavilions[pavilion];
+    if (!p || p.eliminated) {
+      this.ui.toast('POSTHUMOUS INTERVENTION', 'The collapsed pavilion acquires paint but no additional duration.');
+      return;
+    }
+    if (p.splattered) {
+      this.ui.toast('INTERVENTION ALREADY LIVE', 'The first splat was rebellion. The second is installation maintenance.');
+      return;
+    }
+    p.splattered = true;
+    p.score += 5;
+    this.state.setFlag('waitingPavilions', pavilions);
+    this.state.record(`Extended the ${pavilion} queue with a live intervention`, null);
+    this.audio.waitingAdvance(4);
+    this.ui.toast('LIVE INTERVENTION · ENDURANCE +5', 'The painted sign becomes programming. The Heat remains yours.', 'good');
+    this.#syncWaiting();
+    this.#persistRun();
+  }
+
+  #abandonWaitingQueue() {
+    const active = this.state.getFlag('waitingActiveQueue') || null;
+    if (!active) return false;
+    this.state.setFlag('waitingActiveQueue', false);
+    this.state.setFlag('waitingQueueElapsed', 0);
+    this.state.setFlag('waitingQueueReady', false);
+    this.state.setFlag('waitingAbandonments', (Number(this.state.getFlag('waitingAbandonments')) || 0) + 1);
+    this.state.addMeter('fame', -3, 'People noticed you leave the queue');
+    this.state.record(`Abandoned the ${active} queue in public`, null);
+    this.#waitingLaneGrace = 0;
+    this.audio.waitingAbandon();
+    this.ui.toast('PEOPLE NOTICED', 'Leaving the queue costs 3 Fame. Your absence has excellent sightlines.', 'bad');
+    this.#syncWaiting();
+    this.#persistRun();
+    return true;
+  }
+
+  #eliminateWaitingPavilion(pavilion, pavilions, count) {
+    const names = { nordic: 'NORDIC', german: 'GERMAN', american: 'AMERICAN', french: 'FRENCH', british: 'BRITISH' };
+    pavilions[pavilion].eliminated = true;
+    if (this.state.getFlag('waitingActiveQueue') === pavilion) {
+      this.state.setFlag('waitingActiveQueue', false);
+      this.#waitingLaneGrace = 0;
+    }
+    this.audio.waitingCollapse(count);
+    this.ui.toast(`${names[pavilion]} PAVILION COLLAPSES`, {
+      nordic: 'The bench apologizes and is folded into a van.',
+      german: 'The smallest industrial door closes on the larger idea.',
+      american: 'The gift shop survives. The national pavilion becomes its loading bay.',
+      french: 'The strike continues elsewhere and refuses the elimination paperwork.',
+      british: 'The damp reaches the plug. Everyone calls this an orderly withdrawal.',
+    }[pavilion], 'bad');
+  }
+
+  #ratifyWaitingWinner() {
+    if (this.state.getFlag('biennaleWaitingComplete')) {
+      const winner = this.state.getFlag('biennaleWaitingWinner');
+      this.ui.toast('RESULT ALREADY RATIFIED', `${String(winner).toUpperCase()} remains the last queue standing.`);
+      return;
+    }
+    const elapsed = Number(this.state.getFlag('waitingFinalElapsed')) || 0;
+    const pavilions = this.#waitingPavilions();
+    const survivors = Object.keys(pavilions).filter((key) => !pavilions[key].eliminated);
+    if (elapsed < 120 || survivors.length !== 1) {
+      this.ui.toast('JURY STILL WAITING', `Ratification begins at 120 seconds after four collapses. Current duration: ${Math.floor(elapsed)} seconds.`, 'bad');
+      this.audio.countered();
+      return;
+    }
+    const winner = survivors[0];
+    this.state.setFlag('biennaleWaitingWinner', winner);
+    this.state.setFlag('biennaleWaitingComplete');
+    this.state.setFlag('waitingActiveQueue', false);
+    this.state.discoverClue('waitingSeen', clueReveal('waitingSeen'));
+    this.state.addMeter('fame', 6, 'Witnessed at the historic duration');
+    this.state.shiftVirtue('sacrifice', 3, 'Surrendered time to the institution');
+    const abandonments = Number(this.state.getFlag('waitingAbandonments')) || 0;
+    if (abandonments === 0) {
+      this.state.addMeter('soul', 5, 'Waited without abandoning anyone, including yourself');
+      this.state.shiftVirtue('humility', 2, 'Accepted that the line was larger than you');
+    }
+    this.state.record(`Ratified the ${winner} queue as winner of The Biennale of Waiting`, null);
+    this.audio.waitingWinner();
+    this.#syncWaiting();
+    this.ui.toast(`${winner.toUpperCase()} PAVILION WINS`, abandonments === 0
+      ? 'The queue survived. Your perfect attendance is added to the wall text in a smaller font.'
+      : 'The queue survived longer than the alternatives. National culture receives a laminated certificate.', 'good');
+    this.ui.hint('THE BIENNALE OF WAITING COMPLETE · You remained present longer than the artwork.');
+    setTimeout(() => this.ui.hint(null), 10000);
+    this.#persistRun();
+  }
+
+  #updateWaiting(dt) {
+    if (this.world.current !== 'biennaleWaiting' || this.mode !== 'playing' || this.state.getFlag('biennaleWaitingComplete')) return;
+    const active = this.state.getFlag('waitingActiveQueue') || null;
+    if (active) {
+      const lane = this.world.waitingLaneAt(this.player.position);
+      if (lane !== active) {
+        this.#waitingLaneGrace += dt;
+        if (this.#waitingLaneGrace >= 0.75) {
+          this.#abandonWaitingQueue();
+          return;
+        }
+      } else {
+        this.#waitingLaneGrace = 0;
+      }
+    } else {
+      this.#waitingLaneGrace = 0;
+    }
+
+    this.#waitingTickAccum += dt;
+    if (this.#waitingTickAccum < 0.2) return;
+    const step = this.#waitingTickAccum;
+    this.#waitingTickAccum = 0;
+    const stage = Number(this.state.getFlag('waitingStage')) || 0;
+    if (stage < 4) {
+      const expected = ['accreditation', 'closed', 'recursive', 'vip'][stage];
+      if (active !== expected || this.world.waitingLaneAt(this.player.position) !== expected) return;
+      let elapsed = (Number(this.state.getFlag('waitingQueueElapsed')) || 0) + step;
+      if ((expected === 'accreditation' || expected === 'recursive') && elapsed >= 22 && !this.state.getFlag('waitingQueueReady')) {
+        this.state.setFlag('waitingQueueReady');
+        this.audio.waitingTicket((Number(this.state.getFlag('waitingQueueCalls')) || 0) + stage);
+        this.ui.toast(expected === 'accreditation' ? 'YOUR IDENTITY HAS BEEN CALLED' : 'QUEUE TRANSFER AVAILABLE',
+          'Press E at the queue station while remaining inside the belts.', 'good');
+      }
+      if (expected === 'closed' && elapsed >= 55) {
+        this.#completeWaitingPreliminary(2, 'THE ARTWORK CLOSED YESTERDAY', 'The line reaches the plaque. The exhibition is unavailable. The queue declares itself the surviving work.');
+        return;
+      }
+      if (expected === 'vip') {
+        const checkpoint = Number(this.state.getFlag('waitingVipCheckpoint')) || 0;
+        const thresholds = [-2.8, -3.75, -4.7];
+        if (elapsed >= 10 && checkpoint < thresholds.length && this.player.position.x <= thresholds[checkpoint]) {
+          const next = checkpoint + 1;
+          this.state.setFlag('waitingVipCheckpoint', next);
+          elapsed = 0;
+          this.audio.waitingAdvance(next);
+          if (next >= thresholds.length) {
+            this.#completeWaitingPreliminary(4, 'VIP ACCESS REVERSED SUCCESSFULLY', 'You arrive where the queue began. This is accepted as entry to the national pavilion court.');
+            return;
+          }
+          this.ui.toast(`BACKWARD CHECKPOINT ${next} OF 3`, 'Continue against the visual direction of progress.', 'good');
+        }
+      }
+      this.state.setFlag('waitingQueueElapsed', elapsed);
+      this.#syncWaiting();
+      return;
+    }
+
+    if (!this.state.getFlag('waitingFinalStarted')) return;
+    let elapsed = Math.min(120, (Number(this.state.getFlag('waitingFinalElapsed')) || 0) + step);
+    const pavilions = this.#waitingPavilions();
+    const pavilionKeys = Object.keys(pavilions);
+    const activePavilion = pavilionKeys.includes(active) ? active : null;
+    if (activePavilion && !pavilions[activePavilion].eliminated && this.world.waitingLaneAt(this.player.position) === activePavilion) {
+      pavilions[activePavilion].presence += step;
+      pavilions[activePavilion].score += step * 0.45;
+    }
+    let eliminations = Number(this.state.getFlag('waitingEliminations')) || 0;
+    const fixedEliminationOrder = { british: 0, american: 1, german: 2, nordic: 3, french: 4 };
+    while (eliminations < 4 && elapsed >= (eliminations + 1) * 24) {
+      const candidate = pavilionKeys.filter((key) => !pavilions[key].eliminated).sort((a, b) =>
+        pavilions[a].score - pavilions[b].score
+        || pavilions[a].presence - pavilions[b].presence
+        || fixedEliminationOrder[a] - fixedEliminationOrder[b])[0];
+      this.#eliminateWaitingPavilion(candidate, pavilions, eliminations);
+      eliminations++;
+    }
+    this.state.setFlag('waitingFinalElapsed', elapsed);
+    this.state.setFlag('waitingEliminations', eliminations);
+    this.state.setFlag('waitingPavilions', pavilions);
+    if (elapsed >= 120 && !this.state.getFlag('waitingJuryReady')) {
+      this.state.setFlag('waitingJuryReady');
+      this.state.setFlag('waitingActiveQueue', false); // the surviving line is formally released to the jury
+      this.#waitingLaneGrace = 0;
+      this.audio.waitingTicket(4);
+      this.ui.toast('JURY READY', 'One queue remains. Press E at the International Jury desk to turn endurance into national culture.', 'good');
+    }
+    this.#syncWaiting();
   }
 
   #invisibleValue() {
@@ -1886,6 +2407,9 @@ class Game {
 
   #travelTo(zoneKey) {
     const fromZone = this.world.current;
+    if (fromZone === 'biennaleWaiting' && zoneKey !== 'biennaleWaiting' && this.state.getFlag('waitingActiveQueue')) {
+      this.#abandonWaitingQueue();
+    }
     this.audio.uiConfirm();
     this.ui.transition(() => {
 
@@ -1901,6 +2425,8 @@ class Game {
       this.world.setVaultArchive(latest?.title, latest?.lotNumber);
       this.#syncDocumenta();
       this.#syncInvisibleCollection(zoneKey);
+      this.#syncWaiting();
+      this.#syncNowOrNever();
       if (zoneKey === 'dildoBall' && !this.#cowVisitedThisRun) {
         this.#cowVisitedThisRun = true;
         const visits = recordCowVisit();
@@ -1909,6 +2435,7 @@ class Game {
       this.ui.toast(ZONES[zoneKey].name, {
         garret: 'Home. It smells like turpentine and unresolved feelings.',
         galleria: 'The white cube hums. Somewhere, wine is being swirled menacingly.',
+        lastStandingGallery: 'The final blue-chip room floats above an ocean of auctioneers. The duck is worth €4.7 billion.',
         vault: 'Cold air, gold light. The cages are listening.',
         leatherLatex: 'The collector’s house: warm hide up front, black gloss in the back. One bassline, two moods.',
         gildedFork: 'One long table. Every big shot. All of them drunk and messed up.',
@@ -1920,15 +2447,24 @@ class Game {
         hairSalon: 'Every chair is occupied. Every scalp is immaculate. Not one hair has survived the branding.',
         blackForest: 'Ten stave churches stand in heavy fog. Thirty-four boars squeeze the silence. A lighter burns in one hand; a gasoline can weighs down the other.',
         rageRoom: 'Five daylight glass boxes turn panic into architecture. MC Freeglass is inside one, rapping liberation over crooked jazz and a dusty beat.',
+        fartBoxes: 'Three boxes. Three guys. The room has rejected every medium except fart noise.',
         deathMetal: 'Pink lights, black amps, and five punks arguing that Barbie is the loudest death-metal artist alive.',
         publicRestroom: 'Four stalls, three urinals, wet tile, and one strict acoustic policy. Techno Zamba begins below the belt.',
         listeningRoom: 'A four-piece band follows the selected record in real time while two reference speakers and twelve art legends hold the room.',
         mtvCribs: 'The camera is rolling. Four unmistakably adult spoiled heirs explain why their gold sippy cups are appreciating assets.',
         documenta: 'The exhibition has not begun. Documentation is nearly complete. Every camera is facing another camera.',
+        biennaleWaiting: 'Every pavilion is a queue. The winning nation is whichever line remains embarrassing for longest.',
+        nowOrNever: 'Your relevance has a departure time. The board is already changing its mind about you.',
         invisibleCollection: 'Five taped footprints. Three severe officials. Nothing on display, and the estimate is already moving.',
       }[zoneKey]);
       if (fromZone && fromZone !== zoneKey) {
-        this.ui.toast('BETWEEN ROOMS', transitionLine(fromZone, zoneKey));
+        const waitingWinner = this.state.getFlag('biennaleWaitingWinner');
+        const waitingTransition = waitingWinner && (fromZone === 'biennaleWaiting' || zoneKey === 'biennaleWaiting')
+          ? (zoneKey === 'biennaleWaiting'
+            ? `The ${String(waitingWinner).toUpperCase()} queue is still standing. The other nations have become storage.`
+            : `The winning ${String(waitingWinner).toUpperCase()} queue remains behind, practicing cultural duration without you.`)
+          : null;
+        this.ui.toast('BETWEEN ROOMS', waitingTransition ?? transitionLine(fromZone, zoneKey));
       }
 
       if (zoneKey === 'maxPro') this.debate.enter();
@@ -1948,15 +2484,19 @@ class Game {
   }
 
   #soundtrackFor(zoneKey) {
+    if (zoneKey === 'fartBoxes') return { id: 'room:fartBoxes:silent', kind: 'room', key: zoneKey };
     if (this.#recordKey) return { id: `record:${this.#recordKey}`, kind: 'record', key: this.#recordKey };
     if (zoneKey === 'dildoBall') return { id: 'room:dildoBall:jazz', kind: 'jazz', key: zoneKey };
     return { id: `room:${zoneKey}`, kind: 'room', key: zoneKey };
   }
 
   #roomScoreTitle(zoneKey) {
+    if (zoneKey === 'fartBoxes') return 'FART NOISE ONLY';
     if (zoneKey === 'dildoBall') return 'THE ROYAL JAZZ COMBO';
     if (zoneKey === 'publicRestroom') return 'TECHNO ZAMBA';
     if (zoneKey === 'documenta') return 'ADMINISTRATIVE MINIMAL TECHNO';
+    if (zoneKey === 'biennaleWaiting') return 'HOLD MUSIC FOR A NATIONAL CONDITION';
+    if (zoneKey === 'nowOrNever') return 'NOW OR NEVER · AIRPORT HOLD MUSIC';
     if (zoneKey === 'invisibleCollection') return 'VALUATION OFFICE MUZAK';
     return `${ZONES[zoneKey]?.name ?? 'THE ROOM'} · ROOM SCORE`;
   }
@@ -1964,7 +2504,9 @@ class Game {
   #updateSoundtrackUI(zoneKey = this.world.current) {
     if (!zoneKey) return;
     this.world.setRecordPlayerState(this.#recordKey);
-    this.ui.setNowPlaying(this.#recordKey
+    this.ui.setNowPlaying(zoneKey === 'fartBoxes'
+      ? { kind: 'room', title: this.#roomScoreTitle(zoneKey) }
+      : this.#recordKey
       ? { kind: 'record', title: MUSIC_TITLES[this.#recordKey] ?? this.#recordKey }
       : { kind: 'room', title: this.#roomScoreTitle(zoneKey) });
     if (this.mode === 'records') this.ui.updateRecords(this.#recordKey, ZONES[zoneKey].name);
@@ -2124,6 +2666,13 @@ class Game {
         this.audio.rageBreak(worldEvent.variant);
         this.ui.subtitle('MC FREEGLASS · BOXED BUT UNBROKEN', worldEvent.line, 0.76, this.audio);
       }
+      if (worldEvent?.type === 'rageMoan') {
+        this.audio.clubMoan(worldEvent.variant);
+        this.ui.subtitle(`${worldEvent.speaker} · GLASS BOX DANCER`, worldEvent.line, 0.92, this.audio);
+      }
+      if (worldEvent?.type === 'fartBox') {
+        this.audio.fartBoxSample(worldEvent.boxIndex);
+      }
       if (worldEvent?.type === 'deathMetalHit') {
         this.audio.deathMetalHit(worldEvent.variant);
       }
@@ -2133,9 +2682,26 @@ class Game {
       if (worldEvent?.type === 'documentaShutter') {
         this.audio.documentaShutter(worldEvent.corrupted);
       }
+      if (worldEvent?.type === 'nowOrNeverFlap') {
+        this.audio.nowOrNeverFlap(worldEvent.variant);
+      }
+      if (worldEvent?.type === 'nowOrNeverAnnouncement') {
+        this.audio.nowOrNeverAnnouncement(worldEvent.variant);
+        this.ui.subtitle('TERMINAL ANNOUNCEMENT', [
+          'FINAL CALL for the artist who was briefly unavoidable.',
+          'JUST LANDED: an opportunity that departed before the applause.',
+          'PASSENGERS FOR RELEVANCE: please proceed to the gate that no longer exists.',
+          'LOST CAUSE service is now boarding from Platform 0.',
+        ][worldEvent.variant % 4], 0.84, this.audio);
+      }
       if (worldEvent?.type === 'invisibleContact') {
         this.#onInvisibleContact(worldEvent.index, worldEvent.title);
       }
+      if (worldEvent?.type === 'singerVocal') {
+        this.audio.singerVocal();
+      }
+
+      this.#updateWaiting(dt);
 
       this.npcs.update(dt, now, this.player.position);
       this.ghosts.update(dt);
@@ -2157,7 +2723,7 @@ class Game {
       this.arti.update(dt);
 
       // footsteps
-      if (moving && this.world.current !== 'publicRestroom') {
+      if (moving && !['publicRestroom', 'fartBoxes'].includes(this.world.current)) {
         this.#stepAccum += dt * (this.player.sprinting ? 5.6 : 4.1);
         if (this.#stepAccum > 2.1) { this.#stepAccum = 0; this.audio.footstep(); }
       }

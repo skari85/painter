@@ -35,6 +35,7 @@ export const DUEL = {
   wittyFame: 4,
   kindSoul: 3,
   roundsBeforeDismiss: 4,   // npcs get bored after this many unanswered jabs
+  quickWitBonus: 1,         // extra virtue point for answering before the line finishes typing
 };
 
 export const PAINT = {
@@ -78,6 +79,8 @@ export const ZONES = {
   galleria:    { name: 'GALLERIA BIANCA',   mood: 'galleria' },
   vault:       { name: 'THE VAULT',         mood: 'vault' },
   documenta:   { name: 'DOCUMENTA: THE DOCUMENTING', mood: 'documenta' },
+  biennaleWaiting: { name: 'THE BIENNALE OF WAITING', mood: 'biennaleWaiting' },
+  nowOrNever: { name: 'NOW OR NEVER: THE GROUP SHOW', mood: 'nowOrNever' },
   invisibleCollection: { name: 'THE INVISIBLE COLLECTION', mood: 'galleria' },
   leatherLatex: { name: 'THE LEATHER & LATEX ROOMS', mood: 'leatherLatex' },
   gildedFork:  { name: 'THE GILDED FORK',   mood: 'gildedFork' },
@@ -88,11 +91,13 @@ export const ZONES = {
   vacantEditions: { name: 'VACANT EDITIONS', mood: 'galleria' },
   hairSalon: { name: 'U WISH U HAD HAIR BUT U DONT', mood: 'galleria' },
   rageRoom: { name: 'THE GLASS BOXES', mood: 'rageRoom' },
+  fartBoxes: { name: 'THREE FART BOXES', mood: 'off' },
   deathMetal: { name: 'BARBIE DEATH METAL', mood: 'deathMetal' },
   blackForest: { name: 'CHURCH BURNING FIRE SENSATION COCKBURN', mood: 'blackForest' },
   publicRestroom: { name: 'THE PUBLIC RESTROOM', mood: 'off' },
   listeningRoom: { name: 'THE LISTENING ROOM', mood: 'galleria' },
   mtvCribs: { name: 'MTV CRIBS: BABY MONEY', mood: 'leatherLatex' },
+  lastStandingGallery: { name: 'THE LAST STANDING BLUE CHIP GALLERY', mood: 'galleria' },
 };
 
 /**
@@ -324,6 +329,42 @@ export const ROOM_SCORES = {
       hissLevel: 0.005, hissHighpass: 1200, hissLowpass: 7200,
       wowRate: 0.08, wowDepth: 8, detune: 2,
       leadAttack: 0.004, leadDecay: 0.65, cutoffScale: 1.35,
+    },
+  },
+  biennaleWaiting: {
+    // Hold-music minimalism: ticket calls, belt clicks, hydraulic doors,
+    // damp footsteps and a fluorescent chord that has forgotten its purpose.
+    bpm: 76, level: 0.23, root: 49, scale: [0, 2, 5, 7, 9, 12],
+    wave: 'sine', bassWave: 'triangle', cutoff: 1850, pad: [0, 5, 7, 9],
+    bass: [0, null, null, 5, null, 7, null, 2],
+    lead: [null, null, 4, null, null, 2, null, null, 5, null, null, 1, null, 3, null, null],
+    kick: [0, 8], snare: [4, 12], hats: [3, 7, 11, 15], swing: 0.04, texture: 0.12,
+    kickLevel: 0.22, snareLevel: 0.035, hatLevel: 0.012,
+    bassLevel: 0.065, bassDecay: 2.2, leadLevel: 0.014,
+    waiting: {
+      tickets: [0, 9], belts: [2, 6, 10, 14], hydraulics: [4, 12],
+      drips: [3, 7, 11, 15], strikeClaps: [5, 13],
+    },
+    lofi: {
+      hissLevel: 0.006, hissHighpass: 1100, hissLowpass: 4900,
+      wowRate: 0.11, wowDepth: 16, detune: 4,
+      leadAttack: 0.045, leadDecay: 1.45, cutoffScale: 0.82,
+    },
+  },
+  nowOrNever: {
+    // Airport hold music for artists who arrived after their own moment:
+    // departure chimes, split-flap clicks, fluorescent hum and soft luggage.
+    bpm: 88, level: 0.24, root: 55, scale: [0, 1, 5, 7, 10, 12],
+    wave: 'sine', bassWave: 'triangle', cutoff: 2100, pad: [0, 1, 7, 10],
+    bass: [0, null, 0, 5, null, 7, null, 2],
+    lead: [null, 4, null, null, 2, null, 5, null, null, 1, null, 3, null, null, 4, null],
+    kick: [0, 8], snare: [4, 12], hats: [2, 6, 10, 14], swing: 0.035, texture: 0.16,
+    kickLevel: 0.2, snareLevel: 0.032, hatLevel: 0.014,
+    bassLevel: 0.07, bassDecay: 2.0, leadLevel: 0.016,
+    lofi: {
+      hissLevel: 0.007, hissHighpass: 980, hissLowpass: 5600,
+      wowRate: 0.13, wowDepth: 14, detune: 3,
+      leadAttack: 0.03, leadDecay: 1.05, cutoffScale: 0.9,
     },
   },
   invisibleCollection: {

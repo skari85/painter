@@ -75,6 +75,7 @@ const FACE_STYLE = {
 };
 
 const faceCache = new Map();
+const ridiculousFaceCache = new Map();
 const texLoader = new THREE.TextureLoader();
 
 /** A quick pen-sketch face: wobbly doubled strokes, deterministic per character. */
@@ -180,6 +181,127 @@ function faceTexture(def) {
   return tex;
 }
 
+/**
+ * A transparent, deliberately overconfident doodle layered over every face.
+ * Portrait assets stay intact underneath; this is just the institution's
+ * unauthorized correction pass. The variant is deterministic per character
+ * so a saved run never changes its punchline.
+ */
+function ridiculousFaceTexture(def) {
+  if (ridiculousFaceCache.has(def.id)) return ridiculousFaceCache.get(def.id);
+
+  const rng = mulberry32(hashSeed(`${def.id}:ridiculous`));
+  const variant = hashSeed(def.id) % 5;
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const jitter = (n = 2) => (rng() - 0.5) * n;
+  const ink = '#17131a';
+  const stroke = (color = ink, width = 7) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+  };
+  const eye = (x, y, r, pupilX, pupilY) => {
+    ctx.fillStyle = '#fffdf3';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = variant === 2 ? '#ff315d' : '#15121b';
+    ctx.beginPath(); ctx.arc(x + pupilX, y + pupilY, Math.max(4, r * 0.28), 0, Math.PI * 2); ctx.fill();
+    if (variant === 0) {
+      ctx.strokeStyle = '#15121b'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(x + pupilX, y + pupilY, r * 0.5, 0, Math.PI * 1.3); ctx.stroke();
+    }
+  };
+  const brow = (x, y, tilt) => {
+    ctx.beginPath();
+    ctx.moveTo(x - 28, y + tilt + jitter());
+    ctx.quadraticCurveTo(x, y - 10 + jitter(), x + 28, y - tilt + jitter());
+    stroke(ink, 9);
+  };
+
+  // Every variant gets the basic “why is this in the collection?” eyes.
+  const leftR = variant === 1 ? 24 : 31;
+  const rightR = variant === 1 ? 16 : 25;
+  eye(82 + jitter(3), 77 + jitter(3), leftR, variant === 3 ? -8 : 6, variant === 3 ? 8 : -3);
+  eye(174 + jitter(3), 73 + jitter(3), rightR, variant === 3 ? 7 : -5, variant === 3 ? -7 : 4);
+  brow(82, 39, variant === 4 ? 14 : -7);
+  brow(174, 37, variant === 4 ? -14 : 8);
+
+  // A nose that has been promoted beyond its remit.
+  ctx.fillStyle = variant === 2 ? '#ff8b22' : '#f06b6b';
+  ctx.beginPath(); ctx.arc(128 + jitter(2), 121 + jitter(2), variant === 2 ? 16 : 11, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.stroke();
+
+  if (variant === 1) {
+    // Buck teeth and a tongue: the official smile of queue compliance.
+    ctx.fillStyle = '#fffdf3';
+    ctx.beginPath(); ctx.roundRect(92, 150, 30, 31, 8); ctx.roundRect(128, 150, 30, 31, 8); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 5; ctx.stroke();
+    ctx.fillStyle = '#ee527d';
+    ctx.beginPath(); ctx.ellipse(130, 190, 27, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.stroke();
+  } else if (variant === 3) {
+    // X eyes and a tragic little moustache.
+    ctx.strokeStyle = '#5b2746'; ctx.lineWidth = 8;
+    for (const x of [82, 174]) {
+      ctx.beginPath(); ctx.moveTo(x - 18, 59); ctx.lineTo(x + 18, 94); ctx.moveTo(x + 18, 59); ctx.lineTo(x - 18, 94); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(91, 157); ctx.quadraticCurveTo(128, 187, 165, 157); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(128, 145); ctx.quadraticCurveTo(109, 134, 96, 149); ctx.moveTo(128, 145); ctx.quadraticCurveTo(147, 134, 160, 149); ctx.stroke();
+  } else {
+    // The mouth changes shape, but always occupies too much curatorial space.
+    ctx.fillStyle = variant === 4 ? '#2b1a26' : '#c92f54';
+    ctx.beginPath();
+    ctx.moveTo(83, 159);
+    ctx.quadraticCurveTo(128, 139 + (variant === 0 ? -12 : 18), 173, 159);
+    ctx.quadraticCurveTo(128, 202 + (variant === 4 ? 10 : 0), 83, 159);
+    ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 6; ctx.stroke();
+    if (variant === 0 || variant === 2) {
+      ctx.fillStyle = '#fffdf3';
+      ctx.fillRect(111, 158, 15, 18); ctx.fillRect(130, 158, 15, 18);
+      ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.strokeRect(111, 158, 15, 18); ctx.strokeRect(130, 158, 15, 18);
+    }
+  }
+
+  if (variant === 2) {
+    // A monocle that suggests the portrait has become a financial instrument.
+    ctx.strokeStyle = '#d6aa42'; ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.arc(174, 73, 34, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(201, 98); ctx.lineTo(218, 128); ctx.stroke();
+  }
+  if (variant === 4) {
+    // Sweat is mandatory when the queue moves backward.
+    ctx.fillStyle = '#4bb8e9';
+    for (const [x, y] of [[52, 112], [205, 119], [194, 178]]) {
+      ctx.beginPath(); ctx.moveTo(x, y - 12); ctx.quadraticCurveTo(x + 10, y + 3, x, y + 11); ctx.quadraticCurveTo(x - 10, y + 3, x, y - 12); ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  ridiculousFaceCache.set(def.id, tex);
+  return tex;
+}
+
+export function ridiculousFaceOverlay(def, width, height, y, z) {
+  const sticker = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({
+      map: ridiculousFaceTexture(def), transparent: true, depthWrite: false,
+      depthTest: true, toneMapped: false,
+    })
+  );
+  sticker.position.set(0, y, z);
+  sticker.name = 'ridiculous-face-overlay';
+  sticker.userData.noSplat = true;
+  return sticker;
+}
+
 /* ---------------- body factory ---------------- */
 
 const ACCESSORY = {
@@ -219,6 +341,16 @@ const ACCESSORY = {
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.035, 16), mats.hat ?? mats.hair);
     brim.position.set(0, hy - 0.06, 0);
     g.add(crown, brim);
+  },
+  cape(g) {
+    const cape = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.72, 1.05),
+      new THREE.MeshStandardMaterial({ color: 0xc3323f, roughness: 0.82, side: THREE.DoubleSide })
+    );
+    cape.position.set(0, 1.03, -0.14);
+    cape.rotation.x = 0.08;
+    cape.userData.noSplat = true;
+    g.add(cape);
   },
   drugHelmet(g) {
     const shell = new THREE.MeshStandardMaterial({
@@ -289,6 +421,8 @@ export function buildBody(def) {
     photo.position.set(0, H / 2, 0.012);
     if (!def.cutoutNoBack) card.add(back);
     card.add(photo);
+    // Authored/mockup artwork is already the finished face; leave the source
+    // image untouched instead of adding the procedural scribble sticker.
     if (def.seated) {
       // sitting on the floor: the paper person sinks politely into the concrete
       card.position.y = -0.52;
@@ -350,6 +484,9 @@ export function buildBody(def) {
         head.add(hair);
       }
     }
+    // Keep the doodle on procedural faces, but leave authored portrait textures
+    // untouched.
+    if (!def.face) head.add(ridiculousFaceOverlay(def, 0.255, 0.255, 0.24, 0.151));
     g.add(legL, legR, torso, armL, armR);
   }
 
@@ -697,6 +834,7 @@ export class NPCManager extends Emitter {
   #vacantTalkT = 2.4;
   #fartT = 5.2;
   #fartTarget = null;
+  #moanT = 4.5;
   #vacantTalk = null;
 
   constructor(world, audio) {
@@ -716,6 +854,7 @@ export class NPCManager extends Emitter {
     this.#vacantTalkT = 2.4;
     this.#fartT = 4.8;
     this.#fartTarget = null;
+    this.#moanT = 4.5;
   }
 
   spawn(cast, zoneKey) {
@@ -821,14 +960,27 @@ export class NPCManager extends Emitter {
   }
 
   #updateFartPrank(dt, playerPos) {
-    if (this.world.current !== 'deathMetal') {
+    const nuisanceZone = this.world.current === 'deathMetal'
+      || this.world.current === 'documenta'
+      || this.world.current === 'biennaleWaiting';
+    if (!nuisanceZone) {
       this.#fartTarget = null;
       this.#fartT = Math.max(this.#fartT, 3.5);
+      this.#moanT = Math.max(this.#moanT, 3.5);
       return;
     }
-    const punk = this.inCurrentZone.find((n) => n.def.fartingPunk && !n.dead);
+    const punk = this.inCurrentZone.find((n) => (n.def.fartingPunk || n.def.fartingHero) && !n.dead);
     if (!punk) return;
     if (punk.state === 'talk' || punk.state === 'meltdown' || punk.state === 'leaving') return;
+
+    if (punk.def.fartingHero) {
+      this.#moanT -= dt;
+      if (this.#moanT <= 0) {
+        this.#moanT = rand(7, 11);
+        this.audio?.annoyingMoan?.(Math.floor(Math.random() * 4));
+        this.emit('bark', { name: punk.def.name, text: pick(punk.def.barks), pitch: punk.def.pitch });
+      }
+    }
 
     if (this.#fartTarget) {
       const targetPos = this.#fartTarget.player ? playerPos : this.#fartTarget.npc?.group.position;

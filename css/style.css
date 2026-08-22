@@ -96,6 +96,13 @@ kbd {
 }
 #cred-pulse.on { opacity: 1; transition-duration: var(--dur-fast); }
 
+#mood-grade {
+  position: fixed; inset: 0; pointer-events: none; z-index: 3; opacity: 0;
+  transition: opacity 3s ease;
+}
+#mood-grade.brutal { opacity: 0.14; background: hsl(0, 0%, 50%); mix-blend-mode: saturation; }
+#mood-grade.kind   { opacity: 0.10; background: #ff9d52;         mix-blend-mode: color; }
+
 #curtain {
   position: fixed; inset: 0; background: #000; z-index: 60;
   opacity: 0; pointer-events: none;
@@ -493,7 +500,17 @@ kbd {
   position: absolute; top: var(--s3); left: var(--s3);
   padding: 14px 18px;
   max-width: 340px;
+  overflow: hidden;
+  transform-origin: top left;
 }
+#objective-card::after {
+  content: ''; position: absolute; inset: 0;
+  pointer-events: none; opacity: 0;
+  background: linear-gradient(105deg, transparent 16%, rgba(232,193,90,.18) 48%, transparent 78%);
+  transform: translateX(-110%);
+}
+#objective-card.updated { animation: objectiveSet 680ms var(--ease-out) both; }
+#objective-card.updated::after { animation: objectiveSweep 760ms var(--ease-out) both; }
 .obj-kicker { font-size: 10.5px; font-weight: 800; letter-spacing: 0.24em; color: var(--accent); margin-bottom: 4px; }
 .obj-text { font-size: 14.5px; color: var(--ink); line-height: 1.4; }
 
@@ -502,11 +519,28 @@ kbd {
   display: flex; flex-direction: column; gap: 10px;
   width: 220px;
 }
-.meter { display: grid; grid-template-columns: 68px 1fr 30px; align-items: center; gap: 10px; }
+.meter {
+  position: relative; display: grid; grid-template-columns: 68px 1fr 30px;
+  align-items: center; gap: 10px; transform-origin: left center;
+}
 .meter-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.16em; color: var(--ink-dim); }
 .meter-track {
-  height: 5px; border-radius: 3px; background: rgba(255,255,255,0.10); overflow: hidden;
+  position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.10); overflow: hidden;
 }
+.meter-track::after {
+  content: ''; position: absolute; inset: 0; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.82), transparent);
+  transform: translateX(-110%);
+}
+.meter.changed { animation: meterNudge 360ms var(--ease-out) both; }
+.meter.changed .meter-track::after { animation: meterSweep 520ms var(--ease-out) both; }
+.meter-delta {
+  position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  font: 800 10px var(--font-mono); letter-spacing: .02em;
+  animation: meterDelta 820ms var(--ease-out) both;
+}
+.meter.gain .meter-delta { color: var(--integrity); }
+.meter.loss .meter-delta { color: var(--danger); }
 .meter-fill {
   height: 100%; width: 50%;
   border-radius: 3px;
@@ -532,12 +566,24 @@ kbd {
 }
 
 #crosshair {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  position: absolute; left: 50%; top: 50%; width: 20px; height: 20px;
+  transform: translate(-50%, -50%);
+  display: grid; place-items: center;
+}
+#crosshair::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  border: 1px solid rgba(232,193,90,.8); opacity: 0;
+  transform: scale(.52); transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+#crosshair.targeting::before { opacity: 1; transform: scale(1); }
+#crosshair.targeting .dot {
+  background: var(--accent); box-shadow: 0 0 9px rgba(232,193,90,.8);
 }
 #crosshair .dot {
   width: 4px; height: 4px; border-radius: 50%;
   background: rgba(255,255,255,0.85);
   box-shadow: 0 0 6px rgba(0,0,0,0.8);
+  transition: background var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 
 #hitmarker {
@@ -580,9 +626,11 @@ kbd {
 
 #toasts {
   position: absolute; top: var(--s3); left: 50%; transform: translateX(-50%);
+  width: min(560px, calc(100vw - 40px));
   display: flex; flex-direction: column; gap: var(--s1); align-items: center;
 }
 .toast {
+  max-width: 100%;
   background: var(--bg-glass);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border: 1px solid var(--line);
@@ -662,7 +710,9 @@ kbd {
   pointer-events: none; color: var(--ink-dim);
   background: rgba(8, 8, 12, 0.68); border: 1px solid var(--line);
   border-radius: var(--r-chip); backdrop-filter: blur(12px);
+  transition: opacity var(--dur-med) ease, transform var(--dur-med) var(--ease-out);
 }
+#hotkeys.retiring { opacity: 0; transform: translateY(7px) scale(.985); }
 #hotkeys-title {
   margin-bottom: 7px; color: var(--accent);
   font-size: 9px; font-weight: 800; letter-spacing: 0.22em;
@@ -982,6 +1032,32 @@ kbd {
   100% { opacity: 0; transform: translate(-50%,-50%) translateY(-46px) scale(0.94); }
 }
 @keyframes blink { 50% { opacity: 0; } }
+@keyframes objectiveSet {
+  0% { transform: translateY(-5px) scale(.985); border-color: rgba(232,193,90,.16); }
+  36% { transform: translateY(0) scale(1.018); border-color: rgba(232,193,90,.48); }
+  100% { transform: none; border-color: var(--line); }
+}
+@keyframes objectiveSweep {
+  0% { opacity: 0; transform: translateX(-110%); }
+  24% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(110%); }
+}
+@keyframes meterNudge {
+  0% { transform: scale(.985); }
+  45% { transform: scale(1.035); }
+  100% { transform: none; }
+}
+@keyframes meterSweep {
+  0% { opacity: 0; transform: translateX(-110%); }
+  25% { opacity: .9; }
+  100% { opacity: 0; transform: translateX(110%); }
+}
+@keyframes meterDelta {
+  0% { opacity: 0; transform: translate(-4px, -50%) scale(.8); }
+  24% { opacity: 1; transform: translate(0, -50%) scale(1.08); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translate(5px, -62%) scale(.96); }
+}
 
 /* ============================================================
    ACCESSIBILITY & EDGE CASES
