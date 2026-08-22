@@ -165,7 +165,7 @@ class Game {
     this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
     this.ghosts.loadZone('garret');
-    this.ui.setHotkeys('playing');
+    this.ui.hideHotkeys();
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
     this.hand.setReduceMotion(this.settings.reduceMotion);
@@ -316,7 +316,6 @@ class Game {
 
     this.quests.on('objective', ({ night, text }) => {
       ui.setObjective(night, text);
-      ui.toast(night, text);
       this.audio.nightChime();
     });
 

@@ -24,6 +24,12 @@ export class UIManager {
   #callTimer = null;
   #callStartedAt = 0;
   #onboardingKey = null;
+  #objectiveTimer = null;
+  #hotkeysTimer = null;
+  #hotkeysFadeTimer = null;
+  #meterValues = new Map();
+  #meterTimers = new Map();
+  #meterFrames = new Map();
 
   constructor() {
     this.el = {
@@ -42,6 +48,7 @@ export class UIManager {
       collectionHud: $('collection-value'),
       collectionValue: $('collection-value-number'),
       collectionStatus: $('collection-value-status'),
+      crosshair: $('crosshair'),
       hitmarker: $('hitmarker'),
       interact: $('interact-prompt'),
       interactText: $('interact-text'),
@@ -278,19 +285,70 @@ export class UIManager {
   setMeter(key, value) {
     const pair = this.el.meters[key];
     if (!pair) return;
+    const next = Math.round(value);
+    const previous = this.#meterValues.get(key);
+    this.#meterValues.set(key, next);
     pair[0].style.width = `${clamp(value, 0, 100)}%`;
-    pair[1].textContent = Math.round(value);
+
+    const oldFrame = this.#meterFrames.get(key);
+    if (oldFrame) cancelAnimationFrame(oldFrame);
+    if (previous == null || previous === next) {
+      pair[1].textContent = next;
+      return;
+    }
+
+    const row = pair[0].closest('.meter');
+    const direction = next > previous ? 'gain' : 'loss';
+    row?.classList.remove('changed', 'gain', 'loss');
+    void row?.offsetWidth;
+    row?.classList.add('changed', direction);
+
+    let delta = row?.querySelector('.meter-delta');
+    if (!delta && row) {
+      delta = document.createElement('span');
+      delta.className = 'meter-delta';
+      row.appendChild(delta);
+    }
+    if (delta) {
+      delta.textContent = formatSigned(next - previous);
+      delta.style.animation = 'none';
+      void delta.offsetWidth;
+      delta.style.animation = '';
+    }
+
+    const started = performance.now();
+    const duration = 300;
+    const displayed = Number(pair[1].textContent);
+    const countFrom = Number.isFinite(displayed) ? displayed : previous;
+    const count = (now) => {
+      const p = clamp((now - started) / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      pair[1].textContent = Math.round(countFrom + (next - countFrom) * eased);
+      if (p < 1) this.#meterFrames.set(key, requestAnimationFrame(count));
+      else this.#meterFrames.delete(key);
+    };
+    this.#meterFrames.set(key, requestAnimationFrame(count));
+
+    clearTimeout(this.#meterTimers.get(key));
+    this.#meterTimers.set(key, setTimeout(() => {
+      row?.classList.remove('changed', 'gain', 'loss');
+      delta?.remove();
+      this.#meterTimers.delete(key);
+    }, 900));
   }
 
   setObjective(nightLabel, text) {
     this.el.nightLabel.textContent = nightLabel;
     this.el.objective.textContent = text;
-    this.el.objectiveCard.style.animation = 'none';
-    void this.el.objectiveCard.offsetWidth;   // restart the pulse
-    this.el.objectiveCard.style.animation = '';
+    clearTimeout(this.#objectiveTimer);
+    this.el.objectiveCard.classList.remove('updated');
+    void this.el.objectiveCard.offsetWidth;
+    this.el.objectiveCard.classList.add('updated');
+    this.#objectiveTimer = setTimeout(() => this.el.objectiveCard.classList.remove('updated'), 850);
   }
 
   interactPrompt(label) {
+    this.el.crosshair?.classList.toggle('targeting', Boolean(label));
     if (!label) { this.hide('interact-prompt'); return; }
     this.el.interactText.textContent = label;
     this.show('interact-prompt');
@@ -339,18 +397,41 @@ export class UIManager {
       paused: { title: 'PAUSED', items: [['Esc', 'resume'], ['Mouse', 'choose menu']] },
     };
     const preset = presets[mode] ?? presets.playing;
-    if (!this.el.hotkeys || this.#hotkeyMode === mode) return;
+    if (!this.el.hotkeys) return;
+    clearTimeout(this.#hotkeysTimer);
+    clearTimeout(this.#hotkeysFadeTimer);
+    this.el.hotkeys.classList.remove('retiring');
+    if (this.#hotkeyMode === mode) {
+      this.el.hotkeys.classList.remove('hidden');
+      if (mode === 'playing') this.#scheduleHotkeysRetirement();
+      return;
+    }
     this.#hotkeyMode = mode;
     this.el.hotkeys.classList.remove('hidden');
     this.el.hotkeysTitle.textContent = preset.title;
     this.el.hotkeysList.innerHTML = preset.items
       .map(([key, label]) => `<span class="hotkey"><kbd>${escapeHtml(key)}</kbd><span>${escapeHtml(label)}</span></span>`)
       .join('');
+    if (mode === 'playing') this.#scheduleHotkeysRetirement();
   }
 
   hideHotkeys() {
+    clearTimeout(this.#hotkeysTimer);
+    clearTimeout(this.#hotkeysFadeTimer);
     this.el.hotkeys?.classList.add('hidden');
+    this.el.hotkeys?.classList.remove('retiring');
     this.#hotkeyMode = null;
+  }
+
+  #scheduleHotkeysRetirement() {
+    this.#hotkeysTimer = setTimeout(() => {
+      if (this.#hotkeyMode !== 'playing') return;
+      this.el.hotkeys?.classList.add('retiring');
+      this.#hotkeysFadeTimer = setTimeout(() => {
+        if (this.#hotkeyMode === 'playing') this.el.hotkeys?.classList.add('hidden');
+        this.el.hotkeys?.classList.remove('retiring');
+      }, 320);
+    }, 9000);
   }
 
   #hotkeyMode = null;
@@ -392,6 +473,7 @@ export class UIManager {
   }
 
   toast(kicker, body, cls = '') {
+    while (this.el.toasts.children.length >= 3) this.el.toasts.firstElementChild?.remove();
     const t = document.createElement('div');
     t.className = `toast ${cls}`;
     t.innerHTML = `<span class="t-kicker">${escapeHtml(kicker)}</span>${escapeHtml(body)}`;
