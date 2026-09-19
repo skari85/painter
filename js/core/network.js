@@ -68,3 +68,41 @@ export async function uploadGhost({ zoneKey, palette, path, note }) {
     clearTimeout(timer);
   }
 }
+
+/** The live-presence route lives on the same Worker as /ghosts. */
+function presenceEndpoint() {
+  const ghosts = ghostsEndpoint();
+  if (!ghosts) return null;
+  return /\/ghosts$/.test(ghosts) ? ghosts.replace(/\/ghosts$/, '/presence') : `${ghosts}/presence`;
+}
+
+/**
+ * One heartbeat: push this tab's spot (+ optional chat line) and get back
+ * everyone else currently live in the same zone. Returns null when the
+ * social layer is unconfigured or the request fails — the caller just
+ * carries on seeing nobody else, same fail-soft contract as the rest of
+ * this module.
+ */
+export async function syncPresence({ zoneKey, sessionId, x, y, z, yaw, personaId, displayName, palette, line }) {
+  const endpoint = presenceEndpoint();
+  if (!endpoint) return null;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zoneKey, sessionId, x, y, z, yaw, personaId, displayName, palette, line: line || null }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data.players) ? data.players : [];
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}

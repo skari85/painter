@@ -252,6 +252,33 @@
     </div>
   </section>
 
+  <!-- Character select — who you are to everyone else live in the room -->
+  <section id="character-select" class="hidden" role="dialog" aria-modal="true" aria-label="Choose who you are tonight">
+    <div class="char-select-inner">
+      <p class="title-kicker">THE SOCIAL LAYER</p>
+      <h2 class="char-select-title">Who are you tonight?</h2>
+      <p class="char-select-tag">Real people are live in these rooms too. Whoever you pick is who they'll meet — and you can say absolutely anything to them. Press <kbd>T</kbd> anytime to talk.</p>
+      <div class="char-grid" id="char-grid" role="listbox" aria-label="Personas"></div>
+      <div class="modal-actions">
+        <button class="btn primary xl" id="char-confirm">Enter as <span id="char-confirm-name">—</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social chat — say something to whoever's live nearby -->
+  <section id="social-chat" class="hidden" role="dialog" aria-modal="true" aria-label="Say something to whoever's nearby">
+    <div class="modal-card">
+      <h2 class="modal-title">SAY SOMETHING</h2>
+      <p class="modal-note">Real people, live, in this room. Say something ridiculous.</p>
+      <input id="social-chat-input" type="text" maxlength="140" placeholder="Type absolutely anything…" autocomplete="off" spellcheck="false" />
+      <div class="modal-actions">
+        <button class="btn" id="social-chat-nonsense">🎲 Nonsense</button>
+        <button class="btn" id="social-chat-cancel">Say nothing</button>
+        <button class="btn primary" id="social-chat-send">Send it</button>
+      </div>
+    </div>
+  </section>
+
   <section id="ghost-note" class="hidden" role="dialog" aria-modal="true" aria-label="A trace left by another player">
     <div class="modal-card">
       <h2 class="modal-title">SOMEONE ELSE WAS HERE</h2>
@@ -300,7 +327,7 @@
     <button class="film-skip" id="onboarding-skip">Skip film <kbd>Esc</kbd></button>
     <div class="film-frame" id="onboarding-frame" data-scene="garret">
       <div class="film-image" aria-hidden="true">
-        <div class="film-image-topline"><span>PAINTER ASCENSION</span><span id="onboarding-image-count">01 / 06</span></div>
+        <div class="film-image-topline"><span>PAINTER ASCENSION</span><span id="onboarding-image-count">01 / 07</span></div>
         <p class="film-image-caption" id="onboarding-image-caption">THE GARRET · BEFORE THE MARKET</p>
         <div class="film-portrait-stack" id="onboarding-cast"></div>
         <div class="film-case-file"><span>CASE FILE</span><strong id="onboarding-chapter">01 · EXPOSURE</strong></div>
@@ -331,6 +358,7 @@
         <div><kbd>Q</kbd></div><p>Appraise. Everything has a price. Ask politely.</p>
         <div><kbd>N</kbd></div><p>ARTI. The app. Do not check it. You will check it.</p>
         <div><kbd>P</kbd></div><p>Open the communal record case. A chosen record follows you through every room.</p>
+        <div><kbd>T</kbd></div><p>Say something to whoever's live nearby. Real people, real time. Nonsense encouraged.</p>
 
         <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></div><p>In dialogue: Kind, Witty or Brutal comebacks. Everyone has a weakness.</p>
         <div><kbd>Tab</kbd></div><p>Meditate on the Eight Virtues — and what The Market made of them.</p>

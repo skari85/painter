@@ -87,6 +87,12 @@ export class UIManager {
       codexGrid: $('codex-grid'),
       naming: $('naming'),
       namingInput: $('naming-input'),
+      charSelect: $('character-select'),
+      charGrid: $('char-grid'),
+      charConfirm: $('char-confirm'),
+      charConfirmName: $('char-confirm-name'),
+      socialChat: $('social-chat'),
+      socialChatInput: $('social-chat-input'),
       ghostNote: $('ghost-note'),
       ghostNoteText: $('ghost-note-text'),
       ghostNoteStatus: $('ghost-note-status'),
@@ -165,7 +171,7 @@ export class UIManager {
       {
         scene: 'ghosts', kicker: 'THE GHOST LAYER · OTHER ARTISTS, AFTERWARD', title: 'SOMEONE ELSE WALKED THIS ROOM FIRST.',
         body: 'A pale figure is not a live player or a bot. It is an asynchronous trace: a past route replaying in the room, with a note that may have been left for whoever arrives next. Notes burn after 24 hours; the route stays.',
-        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'No live chat. Notes burn in 24 hours; routes linger.', accent: '#8ab4ff',
+        caption: 'THE GHOST LAYER · ROUTES WITHOUT A LOBBY', stamp: 'READ A TRACE', chapter: '04 · GHOST LAYER', note: 'Asynchronous only. The live layer is next.', accent: '#8ab4ff',
         cast: [
           { name: 'SOMEONE ELSE', role: 'a recorded route', face: 'puplic/visual assets/character_faces/16-mysterious-traveler.png', pose: 'hero', ghost: true },
           { name: 'THE NEXT ARTIST', role: 'maybe you', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'side', ghost: true },
@@ -173,16 +179,26 @@ export class UIManager {
         beats: [['Read', 'Walk up to a pale figure and press E. Its note shows a live burn timer.'], ['Leave a trace', 'Type a short note—or say nothing. Notes last 24 hours; routes can echo later.']],
       },
       {
+        scene: 'live', kicker: 'THE LIVE LAYER · REAL PEOPLE, RIGHT NOW', title: 'SOMEONE ELSE IS ACTUALLY HERE.',
+        body: 'A solid, moving figure is neither a ghost nor an NPC — it is another real person, live, in your room right now. Pick who the room sees you as before Night One begins. Then press T and say whatever you want. Nonsense is encouraged.',
+        caption: 'THE LIVE LAYER · NO ACCOUNTS, NO HISTORY', stamp: 'SAY SOMETHING', chapter: '05 · LIVE LAYER', note: 'Just whoever else happens to be here right now.', accent: '#e05d4e',
+        cast: [
+          { name: 'A STRANGER', role: 'genuinely someone else', face: 'puplic/visual assets/character_faces/09-street-artist.png', pose: 'hero' },
+          { name: 'ALSO YOU', role: 'from a moment ago', face: 'puplic/art gimps/Alex.png', pose: 'side' },
+        ],
+        beats: [['Pick', 'Choose who the room sees you as — every night, if you like.'], ['Talk', 'Press T. Type anything. Being funny is not required, but it helps.']],
+      },
+      {
         scene: 'vault', kicker: 'NIGHT THREE · THE VAULT', title: 'THEY DO NOT ONLY WANT THE CANVAS.',
         body: 'The market wants the proof that you made it: your title, your history, your provenance. Find Mister Index and choose what, if anything, can be owned.',
-        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '05 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
+        caption: 'THE VAULT · FOR THE ARCHIVE', stamp: 'KEEP YOUR NAME', chapter: '06 · OWNERSHIP', note: 'The archive is not the same as memory.', accent: '#c9b9ea',
         cast: [{ name: 'MISTER INDEX', role: 'archivist of ownership', face: 'puplic/visual assets/character_faces/07-elegant-older-man.png', pose: 'hero' }],
         beats: [['Navigate', 'M opens the map. Optional rooms add evidence, never requirements.'], ['Decide', 'Your choices and meters shape one of four endings.']],
       },
       {
         scene: 'choice', kicker: 'YOUR FIRST MOVE · THE GARRET', title: 'PAINT. GET SEEN. STAY YOURSELF IF YOU CAN.',
         body: 'Three nights, one growing body of work, and a city ready to turn it into an asset. Begin with the canvas. The rest will find you.',
-        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '06 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
+        caption: 'NIGHT ONE · THE CANVAS IS WAITING', stamp: 'BEGIN NIGHT ONE', chapter: '07 · FIRST MOVE', note: 'No checklist. Just make the first mark.', accent: '#e8c15a',
         cast: [
           { name: 'THE ARTIST', role: 'still making the call', face: 'puplic/art gimps/Alex.png', pose: 'hero' },
           { name: 'THE CITY', role: 'already watching', face: 'puplic/visual assets/character_faces_alt/05-punk-librarian.png', pose: 'side' },
@@ -322,10 +338,11 @@ export class UIManager {
         items: [
           ['WASD / arrows', 'move'], ['Shift', 'sprint'], ['Mouse', 'look'],
           ['LMB', 'paint / swing'], ['E', 'talk / use'], ['Q', 'appraise'],
-          ['N', 'ARTI'], ['M', 'map'], ['P', 'records'], ['Tab', 'virtues'], ['Esc', 'pause'],
+          ['T', 'say something'], ['N', 'ARTI'], ['M', 'map'], ['P', 'records'], ['Tab', 'virtues'], ['Esc', 'pause'],
         ],
       },
       dialogue: { title: 'CONVERSATION', items: [['1', 'kind'], ['2', 'witty'], ['3', 'brutal']] },
+      socialChat: { title: 'SAY SOMETHING', items: [['Type', 'say anything'], ['🎲 / button', 'random nonsense'], ['Enter', 'send'], ['Esc', 'cancel']] },
       easel: { title: 'EASEL', items: [['Mouse drag', 'paint'], ['[ / ]', 'brush size'], ['Esc', 'step back']] },
       map: { title: 'MAP', items: [['Mouse', 'choose room'], ['M / Esc', 'close']] },
       records: { title: 'RECORD CASE', items: [['Mouse', 'choose record'], ['P / Esc', 'close']] },
@@ -388,10 +405,10 @@ export class UIManager {
     setTimeout(() => t.remove(), 3000);
   }
 
-  /** A comic speech bubble at a screen position — for talking livestock. */
-  speechBubble(x, y, text, ms = 3000) {
+  /** A comic speech bubble at a screen position — talking livestock, or a live player. */
+  speechBubble(x, y, text, ms = 3000, cls = '') {
     const b = document.createElement('div');
-    b.className = 'speech-bubble';
+    b.className = cls ? `speech-bubble ${cls}` : 'speech-bubble';
     b.textContent = text;
     b.style.left = `${x}px`;
     b.style.top = `${y}px`;
@@ -889,6 +906,92 @@ export class UIManager {
     };
     const onKey = (e) => { if (e.key === 'Enter') confirm(); e.stopPropagation(); };
     $('naming-confirm').addEventListener('click', confirm);
+    input.addEventListener('keydown', onKey);
+  }
+
+  /**
+   * The character-select screen. `personas` is the curated persona list
+   * (js/game/identity.js), `savedId` the one to preselect. onConfirm(id)
+   * fires once, on the confirm button.
+   */
+  openCharacterSelect(personas, savedId, onConfirm) {
+    this.show('character-select');
+    const grid = this.el.charGrid;
+    let chosen = personas.some((p) => p.id === savedId) ? savedId : personas[0].id;
+
+    const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
+    grid.innerHTML = personas.map((p) => `
+      <button type="button" class="char-card${p.id === chosen ? ' selected' : ''}" data-id="${p.id}" role="option" aria-selected="${p.id === chosen}">
+        <span class="char-swatch" aria-hidden="true">
+          <span class="cs-hair" style="background:${hex(p.palette.hair)}"></span>
+          <span class="cs-face" style="background:${hex(p.palette.skin)}"></span>
+          <span class="cs-top" style="background:${hex(p.palette.top)}"></span>
+        </span>
+        <span class="char-card-name">${escapeHtml(p.name)}</span>
+        <span class="char-card-tag">${escapeHtml(p.tagline)}</span>
+      </button>`).join('');
+
+    const updateConfirm = () => {
+      const p = personas.find((x) => x.id === chosen);
+      this.el.charConfirmName.textContent = p ? p.name : '—';
+    };
+    const select = (id) => {
+      chosen = id;
+      for (const card of grid.querySelectorAll('.char-card')) {
+        const on = card.dataset.id === id;
+        card.classList.toggle('selected', on);
+        card.setAttribute('aria-selected', String(on));
+      }
+      updateConfirm();
+    };
+    updateConfirm();
+
+    const onGridClick = (e) => {
+      const card = e.target.closest('.char-card');
+      if (card) select(card.dataset.id);
+    };
+    grid.addEventListener('click', onGridClick);
+
+    const confirm = () => {
+      grid.removeEventListener('click', onGridClick);
+      this.el.charConfirm.removeEventListener('click', confirm);
+      this.hide('character-select');
+      onConfirm(chosen);
+    };
+    this.el.charConfirm.addEventListener('click', confirm);
+  }
+
+  /**
+   * Say something to whoever's live nearby. `nonsenseLine` is called each
+   * time the dice button is pressed to fill the input with a suggestion.
+   * onClose(text) always fires exactly once — a trimmed, non-empty string
+   * on send, or null if the player left without sending.
+   */
+  openSocialChat(nonsenseLine, onClose) {
+    this.show('social-chat');
+    const input = this.el.socialChatInput;
+    input.value = '';
+    setTimeout(() => input.focus(), 60);
+
+    const cleanup = () => {
+      $('social-chat-send').removeEventListener('click', send);
+      $('social-chat-cancel').removeEventListener('click', cancel);
+      $('social-chat-nonsense').removeEventListener('click', nonsense);
+      input.removeEventListener('keydown', onKey);
+      input.blur();
+      this.hide('social-chat');
+    };
+    const send = () => { const text = input.value.trim(); cleanup(); onClose(text || null); };
+    const cancel = () => { cleanup(); onClose(null); };
+    const nonsense = () => { input.value = nonsenseLine(); input.focus(); };
+    const onKey = (e) => {
+      if (e.key === 'Enter') send();
+      else if (e.key === 'Escape') cancel();
+      e.stopPropagation();
+    };
+    $('social-chat-send').addEventListener('click', send);
+    $('social-chat-cancel').addEventListener('click', cancel);
+    $('social-chat-nonsense').addEventListener('click', nonsense);
     input.addEventListener('keydown', onKey);
   }
 

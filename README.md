@@ -29,6 +29,7 @@ Open the printed URL. Desktop browser with keyboard & mouse required.
 | `W A S D` + mouse | Move / look (pointer lock) |
 | `LMB` | Swing the brush — paint splatters walls, canvases, and egos |
 | `E` | Talk / use / hang work / sleep |
+| `T` | Say something to whoever's live nearby — real people, real time |
 | `M` | The map — click a studio, appear there |
 
 | `1 2 3` | In dialogue: **Kind / Witty / Brutal** comebacks |
@@ -48,6 +49,41 @@ reserved wall, and face Victoria Vane's appraisal. Sell, negotiate, or refuse �
 each tilts the virtues.
 
 Four endings. Dots on the title screen track which you've found.
+
+## Other players: ghosts and the live layer
+
+Two separate systems put other people in your room, and the game is
+explicit about which is which — a pale, translucent figure is a **ghost**:
+an asynchronous replay of a past session's recorded route through this
+zone, with an optional note that burns after 24 hours. Walk up and press
+`E` to read it, or leave one of your own. There's no live chat here — it's
+a trace, not a conversation. A **solid** figure is the live layer, below.
+
+### The live social layer
+
+Before each run, a character-select screen asks who the room sees you as.
+Pick one of eight curated artworld nonsense-generators (a nepo-baby heir, an
+unlicensed shaman, a crypto collector slowly becoming a JPEG, …) — that
+choice is your look and your name to every other real person currently live
+in your zone. It's remembered per-browser, so you stay "you" across visits
+until you pick someone else.
+
+Solid, moving figures elsewhere in the room are neither NPCs nor the
+asynchronous ghosts described above — they're other real players, live,
+glided smoothly between position updates. Press `T` anywhere to say
+literally anything: type your own line, hit **🎲 Nonsense** for an
+instant absurd one-liner if typing feels like too much effort, and hit
+Enter. It appears as a speech bubble over your head to everyone nearby, and
+as a subtitle line to you. No accounts, no chat history — just whoever else
+happens to be here right now.
+
+Under the hood this is deliberately not a WebSocket lobby: each open tab
+heartbeats its own position (+ any fresh chat line) to a `/presence` route
+roughly every 1.3 seconds and gets back everyone else currently live in the
+same zone, polling-based "real time" being more than fast enough for a
+comedy hangout. It shares the same optional Cloudflare Worker as the ghost
+layer above (see `worker/`) — with no Worker configured, the game plays
+exactly the same, you just never see anyone else.
 
 ## Soundtrack, vinyl & the radio
 
@@ -260,8 +296,12 @@ js/game/
   characters.js       the authored cast + procedural crowd generator
   dialogue.js         duel engine + weird-line generator
   quests.js           three-night structure, appraisal script, endings
+  identity.js         playable personas + the one-tap nonsense line bank
+  livePlayers.js      the live social layer: presence polling, glide, chat bubbles
+  ghosts.js / ghostRecorder.js   the asynchronous replay layer
 js/ui/ui.js           all DOM: HUD, typewriter dialogue, toasts, codex, transitions
 js/main.js            boot, mode state machine, the loop
+worker/                optional Cloudflare Worker: ghosts (D1) + live presence
 ```
 
 Design decisions worth knowing:

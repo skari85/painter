@@ -22,6 +22,7 @@ const KEY_ACTIONS = {
   KeyN: 'arti',
   KeyM: 'map',
   KeyP: 'records',
+  KeyT: 'socialChat',
   Escape: 'pause',
 
   Tab: 'codex',

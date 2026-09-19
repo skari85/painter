@@ -36,6 +36,8 @@ import { PaintSystem } from './game/paint.js';
 import { NPCManager } from './game/npc.js';
 import { GhostManager } from './game/ghosts.js';
 import { GhostRecorder } from './game/ghostRecorder.js';
+import { LivePlayerManager } from './game/livePlayers.js';
+import { PERSONAS, NONSENSE_LINES, loadOrCreateIdentity, saveIdentity, personaById } from './game/identity.js';
 import { castForNight, MAINS } from './game/characters.js';
 import { appraiseNPC, appraiseObject, makeScandal, makeReview, KREYO_MINTS, KREYO_SELF_MINTS } from './game/gags.js';
 import { ArtiEngine, COLLECTOR_CALL } from './game/arti.js';
@@ -132,6 +134,9 @@ class Game {
     this.npcs = new NPCManager(this.world, this.audio);
     this.ghosts = new GhostManager(this.world);
     this.ghostRecorder = new GhostRecorder();
+    this.identity = loadOrCreateIdentity();
+    this.livePlayers = new LivePlayerManager(this.world);
+    this.livePlayers.setIdentity(this.identity);
     this.dialogue = new DialogueEngine(this.state);
     this.quests = new QuestDirector(this.state);
     this.arti = new ArtiEngine();
@@ -153,6 +158,7 @@ class Game {
     this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
     this.ghosts.loadZone('garret');
+    this.livePlayers.onZoneChange('garret');
     this.ui.setHotkeys('playing');
     this.paint.attachTo(this.world.zone().group);
     this.hand.setBrushColor(this.paint.color);
@@ -275,6 +281,7 @@ class Game {
 
     this.input.on('press:interact', () => this.#onInteract());
     this.input.on('press:appraise', () => this.#onAppraise());
+    this.input.on('press:socialChat', () => { if (this.mode === 'playing') this.#openSocialChat(); });
     this.input.on('press:swing', () => this.#onSwing());
     this.input.on('press:option1', () => this.#onOption(0));
     this.input.on('press:option2', () => this.#onOption(1));
@@ -442,6 +449,19 @@ class Game {
     this.chatter.on('line', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
     void this.ai.init();
 
+    // ---- other real people, live: whatever they typed shows up over their head ----
+    this.livePlayers.on('line', ({ anchor, name, text, pitch }) => {
+      const v = anchor.clone();
+      v.y = 2.15; // just above the head, same anchor height as damage numbers
+      v.project(this.camera);
+      if (v.z <= 1 && Math.abs(v.x) <= 1.3 && Math.abs(v.y) <= 1.3) {
+        const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+        this.ui.speechBubble(x, y, text, 4200, 'wrap');
+      }
+      ui.subtitle(name, text, pitch, this.audio);
+    });
+
     // ---- MAX PRO: the argument that never ends, scripted and proud of it ----
     this.debate = new DebateEngine(this.npcs, this.state);
     this.debate.on('line', ({ name, text, pitch }) => ui.subtitle(name, text, pitch, this.audio));
@@ -522,7 +542,18 @@ class Game {
     this.ui.hide('ending');
     this.ui.hide('title-screen');
     this.ui.hideHotkeys();
-    this.ui.openOnboarding(() => this.#startRun());
+    this.ui.openOnboarding(() => this.#openCharacterSelect());
+  }
+
+  /** Who the room sees you as tonight — the last stop before #startRun(). */
+  #openCharacterSelect() {
+    this.mode = 'characterSelect';
+    this.ui.openCharacterSelect(PERSONAS, this.identity.id, (personaId) => {
+      saveIdentity(personaId);
+      this.identity = personaById(personaId) ?? this.identity;
+      this.livePlayers.setIdentity(this.identity);
+      this.#startRun();
+    });
   }
 
   #startRun() {
@@ -587,6 +618,7 @@ class Game {
     const zone = this.world.setZone(zoneKey);
     this.ghostRecorder.onZoneChange(zoneKey);
     this.ghosts.loadZone(zoneKey);
+    this.livePlayers.onZoneChange(zoneKey);
     this.#resize();
     this.paint.attachTo(zone.group);
     this.hand.setForestLoadout(zoneKey === 'blackForest');
@@ -667,6 +699,7 @@ class Game {
     const z = this.world.setZone('garret');
     this.ghostRecorder.onZoneChange('garret');
     this.ghosts.loadZone('garret');
+    this.livePlayers.onZoneChange('garret');
     this.paint.attachTo(z.group);
     this.hand.setForestLoadout(false);
     this.#applyZoneAtmosphere('garret');
@@ -1541,6 +1574,24 @@ class Game {
     });
   }
 
+  /** T — say literally anything to whoever's live nearby. This is the game. */
+  #openSocialChat() {
+    this.mode = 'socialChat';
+    this.ui.setHotkeys('socialChat');
+    this.player.setFrozen(true);
+    this.input.exitLock();
+    this.ui.openSocialChat(() => pick(NONSENSE_LINES), (text) => {
+      if (text) {
+        this.livePlayers.sendLine(text);
+        this.ui.subtitle(this.identity.name, text, this.identity.pitch, this.audio);
+      }
+      this.mode = 'playing';
+      this.ui.setHotkeys('playing');
+      this.player.setFrozen(false);
+      this.input.requestLock();
+    });
+  }
+
   #doctorDrugShopScript() {
     const owned = (key, name) => this.state.hasItem(key) ? `OWNED · ${name}` : `BUY · ${name} · 3€`;
     const ready = ['energyAmpoule', 'siliconePlug', 'titaniumRing'].every((key) => this.state.hasItem(key));
@@ -1892,6 +1943,7 @@ class Game {
       const z = this.world.setZone(zoneKey);
       this.ghostRecorder.onZoneChange(zoneKey);
       this.ghosts.loadZone(zoneKey);
+      this.livePlayers.onZoneChange(zoneKey);
       this.#resize();
       this.paint.attachTo(z.group);
       this.hand.setForestLoadout(zoneKey === 'blackForest');
@@ -2086,7 +2138,7 @@ class Game {
     this.#t = now;
 
     // the world simulates in every in-run mode; only the player's body freezes
-    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti', 'ghostNote'].includes(this.mode);
+    const playing = ['playing', 'dialogue', 'codex', 'easel', 'naming', 'map', 'seance', 'arti', 'ghostNote', 'socialChat'].includes(this.mode);
 
 
 
@@ -2139,6 +2191,8 @@ class Game {
 
       this.npcs.update(dt, now, this.player.position);
       this.ghosts.update(dt);
+      this.livePlayers.setLocalPose(this.player.position.x, this.player.position.y, this.player.position.z, this.player.yaw);
+      this.livePlayers.update(dt);
       if (this.world.current === 'maxPro') {
         // the argument is scripted; the ghostwriter is not invited to MAX PRO
         this.debate.update(dt, { busy: () => this.mode !== 'playing' });
