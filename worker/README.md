@@ -15,9 +15,36 @@ continuously — Workers are request-scoped, and the whole thing sits on
 Cloudflare's free tier at this game's scale (a handful of concurrent
 players, not a viral product).
 
-## Prerequisites
+## Already provisioned
 
-- A Cloudflare account (free tier is enough).
+The D1 database and KV namespace exist and `wrangler.toml` already points
+at them — this was done via the Cloudflare account tools rather than the
+CLI, so there's no `wrangler d1 create` / `wrangler kv namespace create`
+step left to run:
+
+- D1 database `painter-ghosts` (`893f9e42-4304-4282-974e-679d0c2ab1b0`),
+  in **Georgoskar@gmail.com's Account** — schema already applied, both
+  `ghosts` and `presence` tables exist.
+- KV namespace `painter-ghosts-RATE_LIMIT` (`c61b3690edc54fb4878c51b9e990c31f`),
+  same account.
+
+If you ever need to recreate either (wrong account, accidental deletion,
+forking this repo into your own account), the original commands are:
+
+```sh
+cd worker
+wrangler d1 create painter-ghosts        # → paste database_id into wrangler.toml
+wrangler d1 execute painter-ghosts --remote --file=schema.sql
+wrangler kv namespace create RATE_LIMIT  # → paste id into wrangler.toml
+```
+
+`schema.sql` is idempotent (`CREATE TABLE IF NOT EXISTS`), so re-running it
+is always safe, including after a future schema change.
+
+## Prerequisites to deploy
+
+- Access to **Georgoskar@gmail.com's Account** on Cloudflare (the one the
+  resources above live in) — free tier is enough.
 - [`wrangler`](https://developers.cloudflare.com/workers/wrangler/), the
   Cloudflare CLI: `npm install -g wrangler`, or just use `npx wrangler …`
   for every command below.
@@ -28,71 +55,28 @@ players, not a viral product).
 wrangler login
 ```
 
-Opens a browser tab to authorize the CLI against your Cloudflare account.
+Opens a browser tab to authorize the CLI. If your Cloudflare login has
+access to more than one account, `wrangler` will ask you to pick one —
+make sure it's **Georgoskar@gmail.com's Account**, since that's where the
+D1 database and KV namespace above actually live. Deploying from the wrong
+account produces a Worker with empty bindings that errors on every request.
 
-## 2. Create the D1 database
+## Allowed origins
 
-```sh
-cd worker
-wrangler d1 create painter-ghosts
-```
-
-This prints a `database_id`. Copy it into `wrangler.toml`, replacing
-`REPLACE_WITH_D1_DATABASE_ID`:
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "painter-ghosts"
-database_id = "<paste it here>"
-```
-
-## 3. Apply the schema
-
-```sh
-wrangler d1 execute painter-ghosts --remote --file=schema.sql
-```
-
-`schema.sql` creates both tables — `ghosts` (recorded routes) and
-`presence` (live players) — plus their indexes. It's idempotent
-(`CREATE TABLE IF NOT EXISTS`), so re-running it after a future schema
-change is safe.
-
-## 4. Create the KV namespace
-
-```sh
-wrangler kv namespace create RATE_LIMIT
-```
-
-Copy the printed `id` into `wrangler.toml`:
-
-```toml
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "<paste it here>"
-```
-
-This is used for per-IP rate limiting on both routes — a one-shot lock on
-`/ghosts` uploads, a 60-second fixed-window counter on `/presence`
-heartbeats (see the comments in `index.js` if you're curious why those two
-are different).
-
-## 5. Set your allowed origins
-
-Edit the `ALLOWED_ORIGINS` var in `wrangler.toml` — a comma-separated list
-of the exact origins the Worker should accept requests from (no wildcards,
-no trailing slash):
+`wrangler.toml` already lists the production domain:
 
 ```toml
 [vars]
-ALLOWED_ORIGINS = "https://your-deployed-game.example.com,http://localhost:4173"
+ALLOWED_ORIGINS = "https://painter-iota.vercel.app,http://localhost:4173"
 ```
 
-Requests from any other origin get a CORS rejection. Keep `localhost` (at
-whatever port you use for local dev, e.g. `npx serve .` or
-`http-server . -p 4173`) in the list so local testing still works.
+Requests from any other origin get a CORS rejection, so if the game ever
+moves to a different domain, add it here (comma-separated, no wildcards,
+no trailing slash) — and keep `localhost` in the list at whatever port you
+use for local dev (e.g. `npx serve .` or `http-server . -p 4173`) so local
+testing still works.
 
-## 6. Deploy
+## 2. Deploy
 
 ```sh
 wrangler deploy
@@ -104,7 +88,7 @@ This prints your Worker's URL, something like:
 https://painter-ghosts.<your-subdomain>.workers.dev
 ```
 
-## 7. Point the game at it
+## 3. Point the game at it
 
 The game only needs the `/ghosts` URL — `/presence` is derived
 automatically from it on the client (see `js/core/network.js`). Open
