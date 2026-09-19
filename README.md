@@ -82,8 +82,9 @@ heartbeats its own position (+ any fresh chat line) to a `/presence` route
 roughly every 1.3 seconds and gets back everyone else currently live in the
 same zone, polling-based "real time" being more than fast enough for a
 comedy hangout. It shares the same optional Cloudflare Worker as the ghost
-layer above (see `worker/`) — with no Worker configured, the game plays
-exactly the same, you just never see anyone else.
+layer above (see [`worker/README.md`](worker/README.md) to deploy it) —
+with no Worker configured, the game plays exactly the same, you just never
+see anyone else.
 
 ## Soundtrack, vinyl & the radio
 
